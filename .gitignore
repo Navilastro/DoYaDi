@@ -1,0 +1,6 @@
+# Editör ve Sistem Dosyaları
+.vscode/
+.idea/
+.vs/
+Thumbs.db
+.DS_Store

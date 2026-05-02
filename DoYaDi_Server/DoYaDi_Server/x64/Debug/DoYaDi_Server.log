@@ -1,0 +1,10 @@
+﻿  ViGEmClient.lib(ViGEmClient.obj) : /GL ile derlenmiş MSIL .netmodule veya modül bulundu; bağlantı /LTCG ile yeniden başlatılıyor; bağlayıcı performansını artırmak için bağlantı komut satırına /LTCG ekleyin
+LINK : warning LNK4075: '/INCREMENTAL' belirtimi nedeniyle '/LTCG' yoksayılıyor
+ViGEmClient.lib(ViGEmClient.obj) : error LNK2038: '_ITERATOR_DEBUG_LEVEL' için uyuşmazlık algılandı: 0 üzerinde '2' değeri 'server.obj' değeri ile eşleşmiyor
+ViGEmClient.lib(ViGEmClient.obj) : error LNK2038: 'RuntimeLibrary' için uyuşmazlık algılandı: MT_StaticRelease üzerinde 'MDd_DynamicDebug' değeri 'server.obj' değeri ile eşleşmiyor
+LINK : warning LNK4098: defaultlib 'LIBCMT' diğer kitaplıkların kullanımı ile çakışıyor; /NODEFAULTLIB:library kullanın
+ViGEmClient.lib(ViGEmClient.obj) : error LNK2001: çözümlenmemiş dış sembol __imp_SetupDiDestroyDeviceInfoList
+ViGEmClient.lib(ViGEmClient.obj) : error LNK2001: çözümlenmemiş dış sembol __imp_SetupDiEnumDeviceInterfaces
+ViGEmClient.lib(ViGEmClient.obj) : error LNK2001: çözümlenmemiş dış sembol __imp_SetupDiGetClassDevsW
+ViGEmClient.lib(ViGEmClient.obj) : error LNK2001: çözümlenmemiş dış sembol __imp_SetupDiGetDeviceInterfaceDetailW
+C:\Users\Monster\source\repos\DoYaDi_Server\x64\Debug\DoYaDi_Server.exe : fatal error LNK1120: 4 çözümlenmemiş dışlar
