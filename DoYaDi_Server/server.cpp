@@ -8,7 +8,9 @@
 #include <bthsdpdef.h>  
 #include <initguid.h>   
 #include <Windows.h>
-#include <ViGEm/Client.h> 
+#include <ViGEm/Client.h>
+#include <vector>
+#include <algorithm>
 
 #pragma comment(lib, "ws2_32.lib")      
 #pragma comment(lib, "setupapi.lib")    
@@ -28,9 +30,11 @@ PVIGEM_TARGET pad = nullptr;
 
 // Ortak XInput Güncelleme Fonksiyonu
 void UpdateGamepad(unsigned char* buffer, int bytesReceived, const char* source) {
+    std::lock_guard<std::mutex> lock(vigemMutex);
     XUSB_REPORT report;
     XUSB_REPORT_INIT(&report);
-
+    static int lastMouseClick = 0;
+    static std::vector<int> lastKeys;
     // İlk 5 Bayt (Standart Gaz, Fren, Direksiyon ve Tuşlar)
     if (bytesReceived >= 5) {
         int steering = buffer[0];
@@ -55,7 +59,78 @@ void UpdateGamepad(unsigned char* buffer, int bytesReceived, const char* source)
         report.sThumbRY = (SHORT)((buffer[8] - 128) * -256); // Y ekseni ters
     }
 
-    std::lock_guard<std::mutex> lock(vigemMutex);
+    if (bytesReceived >= 16) {
+
+        // --- 1. FARE HAREKETİ (Byte 9-10) ---
+        int rawMouseX = buffer[9];
+        int rawMouseY = buffer[10];
+
+        if (rawMouseX != 128 || rawMouseY != 128) {
+            int deltaX = (rawMouseX - 128) * 2; // Çarpı 2: Hassasiyet
+            int deltaY = (rawMouseY - 128) * 2;
+
+            INPUT moveInput = { 0 };
+            moveInput.type = INPUT_MOUSE;
+            moveInput.mi.dx = deltaX;
+            moveInput.mi.dy = deltaY;
+            moveInput.mi.dwFlags = MOUSEEVENTF_MOVE;
+            SendInput(1, &moveInput, sizeof(INPUT));
+        }
+
+        // --- 2. FARE TIKLAMALARI (Byte 11) ---
+        int currentMouseClick = buffer[11];
+        if (currentMouseClick != lastMouseClick) {
+            INPUT clickInput = { 0 };
+            clickInput.type = INPUT_MOUSE;
+
+            // Eğer yeni gelen 1 ise Sol Tık basıldı, eski 1 yeni 0 ise Sol Tık bırakıldı
+            if (currentMouseClick == 1) clickInput.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+            else if (lastMouseClick == 1) clickInput.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+
+            if (currentMouseClick == 2) clickInput.mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
+            else if (lastMouseClick == 2) clickInput.mi.dwFlags = MOUSEEVENTF_RIGHTUP;
+
+            if (currentMouseClick == 3) clickInput.mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN;
+            else if (lastMouseClick == 3) clickInput.mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
+
+            SendInput(1, &clickInput, sizeof(INPUT));
+            lastMouseClick = currentMouseClick;
+        }
+
+        // --- 3. KLAVYE ANTI-GHOSTING (Byte 12-15) ---
+        std::vector<int> currentKeys;
+        for (int i = 12; i <= 15; i++) {
+            if (buffer[i] != 0) {
+                currentKeys.push_back(buffer[i]); // Basılı olan tuşları listeye al
+            }
+        }
+
+        // Bırakılan Tuşları Bul (Eski listede var, yeni listede yoksa bırakılmıştır)
+        for (int oldKey : lastKeys) {
+            if (std::find(currentKeys.begin(), currentKeys.end(), oldKey) == currentKeys.end()) {
+                INPUT keyUpInput = { 0 };
+                keyUpInput.type = INPUT_KEYBOARD;
+                keyUpInput.ki.wVk = oldKey;
+                keyUpInput.ki.dwFlags = KEYEVENTF_KEYUP;
+                SendInput(1, &keyUpInput, sizeof(INPUT));
+            }
+        }
+
+        // Yeni Basılan Tuşları Bul (Yeni listede var, eski listede yoksa yeni basılmıştır)
+        for (int newKey : currentKeys) {
+            if (std::find(lastKeys.begin(), lastKeys.end(), newKey) == lastKeys.end()) {
+                INPUT keyDownInput = { 0 };
+                keyDownInput.type = INPUT_KEYBOARD;
+                keyDownInput.ki.wVk = newKey;
+                keyDownInput.ki.dwFlags = 0; // 0 = Basılı tut
+                SendInput(1, &keyDownInput, sizeof(INPUT));
+            }
+        }
+
+        lastKeys = currentKeys; // Hafızayı güncelle
+    }
+
+    
     vigem_target_x360_update(client, pad, report);
 }
 
@@ -104,8 +179,7 @@ void UdpDataListener() {
         std::cerr << "\n[HATA] 8888 Portu mesgul! Gorev Yoneticisinden eski DoYaDi'leri kapatin." << std::endl;
         closesocket(sock);
         return;
-    }
-    bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr));
+    } else {std::cout << "[WIFI] Bağlantı başarılı." << std::endl;}
 
     // 500ms Zaman Aşımı (Güvenlik Freni)
     DWORD timeout = 500;
@@ -115,19 +189,23 @@ void UdpDataListener() {
     sockaddr_in clientAddr;
     int clientAddrLen = sizeof(clientAddr);
     std::cout << "[WIFI] Agda DoYaDi uygulamasi araniyor (Port: 8889)..." << std::endl;
-
+    bool isWifiActive = false;
     while (isRunning) {
         int bytes = recvfrom(sock, (char*)buffer, MAX_PACKET_SIZE, 0, (sockaddr*)&clientAddr, &clientAddrLen);
-
         if (bytes == SOCKET_ERROR) {
             int err = WSAGetLastError();
             if (err == WSAETIMEDOUT) {
                 // Bağlantı koptu: Güvenlik paketi gönder (Direksiyon merkez, diğerleri sıfır)
-                unsigned char safe_buffer[5] = { 128, 0, 0, 0, 0 };
-                UpdateGamepad(safe_buffer, 5, "WIFI");
+                if (isWifiActive) {
+                    std::cerr << "[WIFI] Connection lost. Sending safety packet..." << std::endl;
+                    unsigned char safe_buffer[5] = { 128, 0, 0, 0, 0 };
+                    UpdateGamepad(safe_buffer, 5, "WIFI");
+					isWifiActive = false;
+                }
             }
         }
-        else if (bytes == 5 || bytes == 9) {
+        else if (bytes == 5 || bytes == 9 || bytes == 16) {
+            isWifiActive = true;
             UpdateGamepad(buffer, bytes, "WIFI");
         }
     }
@@ -183,6 +261,8 @@ void BluetoothListener() {
 
     listen(bthSock, 1);
 
+    bool isBthActive = false;
+    
     while (isRunning) {
         SOCKADDR_BTH clientAddr;
         int clientAddrLen = sizeof(clientAddr);
@@ -202,15 +282,19 @@ void BluetoothListener() {
                 if (bytes == SOCKET_ERROR) {
                     int err = WSAGetLastError();
                     if (err == WSAETIMEDOUT) {
-                        unsigned char safe_buffer[5] = { 128, 0, 0, 0, 0 };
-                        UpdateGamepad(safe_buffer, 5, "BTH ");
+                        if (isBthActive) {
+                            unsigned char safe_buffer[5] = { 128, 0, 0, 0, 0 };
+                            UpdateGamepad(safe_buffer, 5, "BTH ");
+                            isBthActive = false;
+                        }
                     }
                     else {
                         std::cout << "\n[BLUETOOTH] Baglanti koptu veya hata." << std::endl;
                         break;
                     }
                 }
-                else if (bytes >= 5) {
+                else if (bytes == 5 || bytes == 9 || bytes == 16) {
+					isBthActive = true;
                     UpdateGamepad(buffer, bytes, "BTH ");
                 }
                 else if (bytes == 0) {

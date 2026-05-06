@@ -135,9 +135,6 @@
     <ClCompile Include="server.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\..\..\Downloads\ViGEmClient-master\ViGEmClient-master\lib\release\x64\ViGEmClient.lib" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -145,6 +142,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\Desktop\DoYaDi\DoYaDi_ico.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\..\..\Users\Monster\Downloads\ViGEmClient-master\ViGEmClient-master\lib\release\x64\ViGEmClient.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

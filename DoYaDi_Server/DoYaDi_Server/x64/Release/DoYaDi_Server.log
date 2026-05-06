@@ -1,4 +1,5 @@
-﻿  ViGEmClient.lib(ViGEmClient.obj) : /GL ile derlenmiş MSIL .netmodule veya modül bulundu; bağlantı /LTCG ile yeniden başlatılıyor; bağlayıcı performansını artırmak için bağlantı komut satırına /LTCG ekleyin
+﻿  server.cpp
+  ViGEmClient.lib(ViGEmClient.obj) : /GL ile derlenmiş MSIL .netmodule veya modül bulundu; bağlantı /LTCG ile yeniden başlatılıyor; bağlayıcı performansını artırmak için bağlantı komut satırına /LTCG ekleyin
   Kod üretiliyor
   Kodun üretilmesi tamamlandı
-  DoYaDi_Server.vcxproj -> C:\Users\Monster\source\repos\DoYaDi_Server\x64\Release\DoYaDi_Server.exe
+  DoYaDi_Server.vcxproj -> C:\proje\DoYaDi_All\DoYaDi_Server\x64\Release\DoYaDi_Server.exe
