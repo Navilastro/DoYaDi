@@ -41,6 +41,7 @@ class AppSettings {
   int globalButtonPressMode; // 0: Anlık, 1: Süreli, 2: Toggle, 3: Hızlı (Eski)
   int globalButtonPressDurationMs;
   Map<int, int> customButtonPressModes; // Key -> Mode map
+  Map<int, int> customButtonPressDurationsMs; // Key -> Duration ms
   Map<int, List<int>> customMacros; // MacroID (>= 2000) -> List of keys
 
 
@@ -107,6 +108,10 @@ class AppSettings {
   int brakeSwipeDownLeft;
   int brakeSwipeDownRight;
 
+  // ── Genel Pedal Tıklama Atamaları ───────────────────────────────────────────
+  int gasTap;
+  int brakeTap;
+
   AppSettings({
     this.backgroundColor        = const Color(0xFF050510),
     this.detailColor            = const Color(0xFF40E0D0),
@@ -131,6 +136,7 @@ class AppSettings {
     this.globalButtonPressMode  = 0,
     this.globalButtonPressDurationMs = 2000,
     this.customButtonPressModes = const {},
+    this.customButtonPressDurationsMs = const {},
     this.customMacros = const {},
     // Donanım tuşları
     this.volumeUpAction   = 2,
@@ -182,5 +188,7 @@ class AppSettings {
     this.brakeSwipeUpRight = 0,
     this.brakeSwipeDownLeft  = 0,
     this.brakeSwipeDownRight = 0,
+    this.gasTap = 3,
+    this.brakeTap = 4,
   });
 }

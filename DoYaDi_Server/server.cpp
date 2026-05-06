@@ -179,7 +179,7 @@ void UdpDataListener() {
         std::cerr << "\n[HATA] 8888 Portu mesgul! Gorev Yoneticisinden eski DoYaDi'leri kapatin." << std::endl;
         closesocket(sock);
         return;
-    } else {std::cout << "[WIFI] Bağlantı başarılı." << std::endl;}
+    }
 
     // 500ms Zaman Aşımı (Güvenlik Freni)
     DWORD timeout = 500;
