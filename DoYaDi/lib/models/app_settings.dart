@@ -32,8 +32,17 @@ class AppSettings {
   double clickMaxDuration;   // Dokunma sayılmak için maks. süre (saniye)
   int defaultDrivingMode;    // 0–5
 
-  // ── Mod 5 özel layout ───────────────────────────────────────────────────────
+  // ── Mod 5 özel layout & Profiller ──────────────────────────────────────────
   String? customLayout5Json;
+  Map<String, String> layout5Profiles;
+  String? activeLayout5Profile;
+
+  // ── Buton Basış Süre Kontrolleri ───────────────────────────────────────────
+  int globalButtonPressMode; // 0: Anlık, 1: Süreli, 2: Toggle, 3: Hızlı (Eski)
+  int globalButtonPressDurationMs;
+  Map<int, int> customButtonPressModes; // Key -> Mode map
+  Map<int, List<int>> customMacros; // MacroID (>= 2000) -> List of keys
+
 
   // ── Donanım tuş ataması (1-16, 0 = devre dışı) ─────────────────────────────
   int volumeUpAction;
@@ -117,6 +126,12 @@ class AppSettings {
     this.clickMaxDuration       = 0.30,
     this.defaultDrivingMode     = 0,
     this.customLayout5Json,
+    this.layout5Profiles        = const {},
+    this.activeLayout5Profile,
+    this.globalButtonPressMode  = 0,
+    this.globalButtonPressDurationMs = 2000,
+    this.customButtonPressModes = const {},
+    this.customMacros = const {},
     // Donanım tuşları
     this.volumeUpAction   = 2,
     this.volumeDownAction = 1,
@@ -136,22 +151,22 @@ class AppSettings {
     // Mod 3
     this.m3Key1     = 5,
     this.m3Key2     = 6,
-    this.m3Key3     = 7,
+    this.m3Key3     = 13,
     this.m3Key4     = 8,
-    this.m3Key5     = 9,
+    this.m3Key5     = 7,
     this.m3TapLeft  = 4,
     this.m3TapRight = 3,
     // Mod 4
     this.m4Key1      = 5,
     this.m4Key2      = 6,
-    this.m4Key3      = 7,
+    this.m4Key3      = 13,
     this.m4Key4      = 8,
-    this.m4KeyBottom = 9,
+    this.m4KeyBottom = 7,
     this.m4TapLeft   = 4,
     this.m4TapRight  = 3,
-    // Gaz swipe atamaları (0 = devre dışı, -1 = bar doldur)
-    this.gasSwipeUp        = -1,
-    this.gasSwipeDown      = 0,
+    // Gaz swipe atamaları (0 = devre dışı, -1 = Gaz, -2 = Fren)
+    this.gasSwipeUp        = 0,
+    this.gasSwipeDown      = -1,
     this.gasSwipeLeft      = 10,
     this.gasSwipeRight     = 11,
     this.gasSwipeUpLeft    = 0,
@@ -159,12 +174,12 @@ class AppSettings {
     this.gasSwipeDownLeft  = 0,
     this.gasSwipeDownRight = 0,
     // Fren swipe atamaları
-    this.brakeSwipeUp      = -1,
-    this.brakeSwipeDown      = 0,
-    this.brakeSwipeLeft      = 12,
-    this.brakeSwipeRight     = 13,
-    this.brakeSwipeUpLeft    = 0,
-    this.brakeSwipeUpRight   = 0,
+    this.brakeSwipeUp      = -2,
+    this.brakeSwipeDown    = 0,
+    this.brakeSwipeLeft    = 12,
+    this.brakeSwipeRight   = 13,
+    this.brakeSwipeUpLeft  = 0,
+    this.brakeSwipeUpRight = 0,
     this.brakeSwipeDownLeft  = 0,
     this.brakeSwipeDownRight = 0,
   });

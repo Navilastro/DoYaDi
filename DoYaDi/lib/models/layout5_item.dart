@@ -10,6 +10,7 @@ enum Layout5ItemType {
   buttonSoft,
   buttonCircle,
   rightJoystick,
+  touchpad,
 }
 
 enum ButtonMode {
@@ -67,6 +68,11 @@ class Layout5Item {
   double modeValue;   // mode == gasPct/brakePct için (0.0 - 1.0)
   List<MacroAction> macro; // mode == macro için aksiyon listesi
 
+  // Buton Basılma Modu
+  int? customPressMode; // 0: Anlık, 1: Süreli, 2: Toggle, 3: Hızlı | null: Global kullan
+  int? customPressDurationMs; // int or null: Global kullan
+
+
   Layout5Item({
     required this.id,
     required this.type,
@@ -82,6 +88,8 @@ class Layout5Item {
     this.keyIndex = 3,
     this.modeValue = 1.0,
     this.macro = const [],
+    this.customPressMode,
+    this.customPressDurationMs,
   });
 
   Map<String, dynamic> toJson() => {
@@ -99,6 +107,8 @@ class Layout5Item {
     'keyIndex': keyIndex,
     'modeValue': modeValue,
     'macro': macro.map((e) => e.toJson()).toList(),
+    'customPressMode': customPressMode,
+    'customPressDurationMs': customPressDurationMs,
   };
 
   factory Layout5Item.fromJson(Map<String, dynamic> json) {
@@ -129,6 +139,8 @@ class Layout5Item {
       keyIndex: json['keyIndex'] as int,
       modeValue: (json['modeValue'] as num).toDouble(),
       macro: parsedMacro,
+      customPressMode: json['customPressMode'] as int?,
+      customPressDurationMs: json['customPressDurationMs'] as int?,
     );
   }
 
@@ -148,6 +160,10 @@ class Layout5Item {
     int? keyIndex,
     double? modeValue,
     List<MacroAction>? macro,
+    int? customPressMode,
+    bool clearCustomPressMode = false,
+    int? customPressDurationMs,
+    bool clearCustomPressDurationMs = false,
   }) {
     return Layout5Item(
       id: id ?? this.id,
@@ -164,6 +180,8 @@ class Layout5Item {
       keyIndex: keyIndex ?? this.keyIndex,
       modeValue: modeValue ?? this.modeValue,
       macro: macro ?? this.macro,
+      customPressMode: clearCustomPressMode ? null : (customPressMode ?? this.customPressMode),
+      customPressDurationMs: clearCustomPressDurationMs ? null : (customPressDurationMs ?? this.customPressDurationMs),
     );
   }
 }

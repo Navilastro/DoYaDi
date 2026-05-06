@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings.dart';
+import '../core/utils/template_profiles.dart';
 
 class SettingsProvider with ChangeNotifier {
   AppSettings _settings = AppSettings();
@@ -22,6 +24,40 @@ class SettingsProvider with ChangeNotifier {
     _settings.clickMaxDuration    = prefs.getDouble('clickMaxDuration') ?? 0.30;
     _settings.defaultDrivingMode  = prefs.getInt('defaultDrivingMode') ?? 0;
     _settings.customLayout5Json   = prefs.getString('customLayout5Json');
+    _settings.activeLayout5Profile = prefs.getString('activeLayout5Profile');
+    final profilesStr = prefs.getString('layout5Profiles');
+    if (profilesStr != null && profilesStr.isNotEmpty) {
+      try {
+        final Map<String, dynamic> decoded = jsonDecode(profilesStr);
+        _settings.layout5Profiles = decoded.map((key, value) => MapEntry(key, value.toString()));
+      } catch (_) {}
+    }
+    if (_settings.layout5Profiles.isEmpty && !(prefs.getBool('templatesInitialized') ?? false)) {
+      _settings.layout5Profiles = {
+        'Oyun şablonu 1': getGameTemplate1(),
+        'Oyuncu şablonu 2': getControllerTemplate2(),
+        'Klavye fare dizilimi': getKeyboardMouseTemplate(),
+      };
+      prefs.setBool('templatesInitialized', true);
+    }
+    _settings.globalButtonPressMode = prefs.getInt('globalButtonPressMode') ?? 0;
+    _settings.globalButtonPressDurationMs = prefs.getInt('globalButtonPressDurationMs') ?? 2000;
+    
+    final customModesStr = prefs.getString('customButtonPressModes');
+    if (customModesStr != null && customModesStr.isNotEmpty) {
+      try {
+        final Map<String, dynamic> decoded = jsonDecode(customModesStr);
+        _settings.customButtonPressModes = decoded.map((key, value) => MapEntry(int.parse(key), value as int));
+      } catch (_) {}
+    }
+
+    final customMacrosStr = prefs.getString('customMacros');
+    if (customMacrosStr != null && customMacrosStr.isNotEmpty) {
+      try {
+        final Map<String, dynamic> decoded = jsonDecode(customMacrosStr);
+        _settings.customMacros = decoded.map((key, value) => MapEntry(int.parse(key), (value as List).cast<int>()));
+      } catch (_) {}
+    }
 
     // Donanım tuş atamaları
     _settings.volumeUpAction   = prefs.getInt('volumeUpAction')   ?? 1;
@@ -36,36 +72,36 @@ class SettingsProvider with ChangeNotifier {
     _settings.m1TapRight = prefs.getInt('m1TapRight') ?? 3;
 
     // Mod 2
-    _settings.m2Key1     = prefs.getInt('m2Key1')     ?? 3;
-    _settings.m2Key2     = prefs.getInt('m2Key2')     ?? 4;
-    _settings.m2Key3     = prefs.getInt('m2Key3')     ?? 5;
-    _settings.m2Key4     = prefs.getInt('m2Key4')     ?? 6;
+    _settings.m2Key1     = prefs.getInt('m2Key1')     ?? 5;
+    _settings.m2Key2     = prefs.getInt('m2Key2')     ?? 6;
+    _settings.m2Key3     = prefs.getInt('m2Key3')     ?? 7;
+    _settings.m2Key4     = prefs.getInt('m2Key4')     ?? 8;
     _settings.m2TapLeft  = prefs.getInt('m2TapLeft')  ?? 4;
     _settings.m2TapRight = prefs.getInt('m2TapRight') ?? 3;
 
     // Mod 3
-    _settings.m3Key1     = prefs.getInt('m3Key1')     ?? 3;
-    _settings.m3Key2     = prefs.getInt('m3Key2')     ?? 4;
-    _settings.m3Key3     = prefs.getInt('m3Key3')     ?? 5;
-    _settings.m3Key4     = prefs.getInt('m3Key4')     ?? 6;
+    _settings.m3Key1     = prefs.getInt('m3Key1')     ?? 5;
+    _settings.m3Key2     = prefs.getInt('m3Key2')     ?? 6;
+    _settings.m3Key3     = prefs.getInt('m3Key3')     ?? 13;
+    _settings.m3Key4     = prefs.getInt('m3Key4')     ?? 8;
     _settings.m3Key5     = prefs.getInt('m3Key5')     ?? 7;
     _settings.m3TapLeft  = prefs.getInt('m3TapLeft')  ?? 4;
     _settings.m3TapRight = prefs.getInt('m3TapRight') ?? 3;
 
     // Mod 4
-    _settings.m4Key1      = prefs.getInt('m4Key1')      ?? 3;
-    _settings.m4Key2      = prefs.getInt('m4Key2')      ?? 4;
-    _settings.m4Key3      = prefs.getInt('m4Key3')      ?? 5;
-    _settings.m4Key4      = prefs.getInt('m4Key4')      ?? 6;
+    _settings.m4Key1      = prefs.getInt('m4Key1')      ?? 5;
+    _settings.m4Key2      = prefs.getInt('m4Key2')      ?? 6;
+    _settings.m4Key3      = prefs.getInt('m4Key3')      ?? 13;
+    _settings.m4Key4      = prefs.getInt('m4Key4')      ?? 8;
     _settings.m4KeyBottom = prefs.getInt('m4KeyBottom') ?? 7;
     _settings.m4TapLeft   = prefs.getInt('m4TapLeft')   ?? 4;
     _settings.m4TapRight  = prefs.getInt('m4TapRight')  ?? 3;
 
     // Gaz swipe atamaları
     _settings.gasSwipeUp        = prefs.getInt('gasSwipeUp')        ?? -1;
-    _settings.gasSwipeDown      = prefs.getInt('gasSwipeDown')      ?? 0;
+    _settings.gasSwipeDown      = prefs.getInt('gasSwipeDown')      ?? -1;
     _settings.gasSwipeLeft      = prefs.getInt('gasSwipeLeft')      ?? 5;
-    _settings.gasSwipeRight     = prefs.getInt('gasSwipeRight')     ?? 6;
+    _settings.gasSwipeRight     = prefs.getInt('gasSwipeRight')     ?? 13;
     _settings.gasSwipeUpLeft    = prefs.getInt('gasSwipeUpLeft')    ?? 0;
     _settings.gasSwipeUpRight   = prefs.getInt('gasSwipeUpRight')   ?? 0;
     _settings.gasSwipeDownLeft  = prefs.getInt('gasSwipeDownLeft')  ?? 0;
@@ -73,8 +109,8 @@ class SettingsProvider with ChangeNotifier {
 
     // Fren swipe atamaları
     _settings.brakeSwipeUp        = prefs.getInt('brakeSwipeUp')        ?? -1;
-    _settings.brakeSwipeDown      = prefs.getInt('brakeSwipeDown')      ?? 0;
-    _settings.brakeSwipeLeft      = prefs.getInt('brakeSwipeLeft')      ?? 3;
+    _settings.brakeSwipeDown      = prefs.getInt('brakeSwipeDown')      ?? -2;
+    _settings.brakeSwipeLeft      = prefs.getInt('brakeSwipeLeft')      ?? 14;
     _settings.brakeSwipeRight     = prefs.getInt('brakeSwipeRight')     ?? 4;
     _settings.brakeSwipeUpLeft    = prefs.getInt('brakeSwipeUpLeft')    ?? 0;
     _settings.brakeSwipeUpRight   = prefs.getInt('brakeSwipeUpRight')   ?? 0;
@@ -117,6 +153,18 @@ class SettingsProvider with ChangeNotifier {
     if (_settings.customLayout5Json != null) {
       await prefs.setString('customLayout5Json', _settings.customLayout5Json!);
     }
+    if (_settings.activeLayout5Profile != null) {
+      await prefs.setString('activeLayout5Profile', _settings.activeLayout5Profile!);
+    }
+    await prefs.setString('layout5Profiles', jsonEncode(_settings.layout5Profiles));
+    await prefs.setInt('globalButtonPressMode', _settings.globalButtonPressMode);
+    await prefs.setInt('globalButtonPressDurationMs', _settings.globalButtonPressDurationMs);
+    
+    final mapStr = _settings.customButtonPressModes.map((key, value) => MapEntry(key.toString(), value));
+    await prefs.setString('customButtonPressModes', jsonEncode(mapStr));
+
+    final macrosMapStr = _settings.customMacros.map((key, value) => MapEntry(key.toString(), value));
+    await prefs.setString('customMacros', jsonEncode(macrosMapStr));
 
     // Donanım tuş atamaları
     await prefs.setInt('volumeUpAction',   _settings.volumeUpAction);

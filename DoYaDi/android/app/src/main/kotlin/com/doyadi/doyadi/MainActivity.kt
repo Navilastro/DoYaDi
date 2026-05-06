@@ -7,7 +7,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
 
-    private val CHANNEL = "com.doyadi.doyadi/volume_keys"
+    private val CHANNEL = "Navilastro.DoYaDi/volume_keys"
     private var channel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

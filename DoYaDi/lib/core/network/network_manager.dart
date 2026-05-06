@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 
@@ -76,8 +75,8 @@ class NetworkManager {
     }
   }
 
-  // Payload gönder (5 byte: temel, 9 byte: joystick dahil)
-  void sendPayload5Bytes(List<int> bytes) {
+  // Payload gönder (11 byte: temel, joystick, touchpad dahil)
+  void sendPayloadData(List<int> bytes) {
     if (bytes.isEmpty) return;
 
     if (isBluetoothConnected) {

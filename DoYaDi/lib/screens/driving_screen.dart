@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -24,9 +24,7 @@ class _PedalState {
   _PedalState(this.start, this.isGas);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Yardımcı: Tıklama alanı
-// ─────────────────────────────────────────────────────────────────────────────
 class _TapZone extends StatefulWidget {
   final String label;
   final Color color;
@@ -71,9 +69,7 @@ class _TapZoneState extends State<_TapZone> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Ana ekran
-// ─────────────────────────────────────────────────────────────────────────────
 class DrivingScreen extends StatefulWidget {
   const DrivingScreen({super.key});
 
@@ -89,18 +85,27 @@ class _DrivingScreenState extends State<DrivingScreen>
   double _gasPercentage = 0.0;
   double _brakePercentage = 0.0;
 
-  // Joystick verileri (Mod 5)
+  // Mode 5: joystick axes
   double _joy0x = 0.0;
   double _joy0y = 0.0;
   double _joy1x = 0.0;
   double _joy1y = 0.0;
-  // Mod 5 layoutunda joystick var mı? (_onTick payload boyutunu belirler)
-  bool _joystickPresent = false;
 
-  // İvmeölçerden hesaplanan pitch açısı (derece) — SteeringPainter'a aktarılır
+  // Mode 5: touchpad delta (accumulated each tick, reset after send)
+  double _touchpadDeltaX = 0.0;
+  double _touchpadDeltaY = 0.0;
+  int _tpClick = 0; // 0=none, 1=left, 2=right, 3=middle
+
+  // Mode 5 layout presence flags — determine whether to use 16-byte payload
+  bool _joystickPresent = false;
+  bool _touchpadPresent = false;
+  bool _keyboardKeysPresent =
+      false; // any button with keyIndex >= 100 (keyboard key)
+
+  // Pitch angle computed from accelerometer (degrees) — passed to SteeringPainter
   double _pitchDeg = 0.0;
 
-  // Mod 0: tek pointer yönetimi (gaz veya fren)
+  // Mode 0: single-pointer management (gas or brake)
   int? _mod0ActivePointer;
   bool _mod0IsGas = false;
 
@@ -125,7 +130,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     }
     final st = _PedalState(e.localPosition, isGas);
     if (forceBarAction) {
-      // Mod 5 barları: yön algılamaya gerek yok, doğrudan bar kontrolü
+      // Mod 5 barları: yön algılamaya gerek yok, doğrudan bar kontrol
       st.isLocked = true;
       st.isBarAction = true;
       st.direction = SwipeDir.up; // varsayılan: yukarı kaydırma = artar
@@ -225,16 +230,19 @@ class _DrivingScreenState extends State<DrivingScreen>
         }
 
         if (mappedKey == -1) {
-          // Bar Doldur ↑ (yukarı bazında kaydırma)
+          // Gaz bar aksiyonu: tespit edilen yonu koru, hangi bar dolacagini belirt
           state.isBarAction = true;
-          state.direction = SwipeDir.up;
+          state.isGas = true;
         } else if (mappedKey == -2) {
-          // Bar Doldur ↓ (aşağı bazında kaydırma)
+          // Fren bar aksiyonu: tespit edilen yonu koru
           state.isBarAction = true;
-          state.direction = SwipeDir.down;
+          state.isGas = false;
         } else if (mappedKey > 0) {
           state.activeKey = mappedKey;
           setState(() => _pressedKeys.add(mappedKey));
+        } else {
+          // mappedKey == 0 (Yok): herhangi bir yone kaydirmak bari doldurur
+          state.isBarAction = true;
         }
       }
     } else {
@@ -327,18 +335,18 @@ class _DrivingScreenState extends State<DrivingScreen>
   StreamSubscription? _accelerometerSub;
   StreamSubscription? _gyroscopeSub;
 
-  // ── Geliştirici (debug) modu ──────────────────────────────────────────────
+  // Geliştirici (debug) modu
   bool _debugMode = false;
   List<int> _lastPayload = [128, 0, 0, 0, 0];
 
-  static const _volumeChannel = MethodChannel('com.doyadi.doyadi/volume_keys');
+  static const _volumeChannel = MethodChannel('Navilastro.DoYaDi/volume_keys');
 
   @override
   void initState() {
     super.initState();
     WakelockPlus.enable();
 
-    // Hardware ses tuşu dinleyici
+    // Hardware ses tu┼şu dinleyici
     _volumeChannel.setMethodCallHandler((call) async {
       if (call.method == 'key_event') {
         final settings = Provider.of<SettingsProvider>(
@@ -369,35 +377,47 @@ class _DrivingScreenState extends State<DrivingScreen>
     ).settings;
 
     _accelerometerSub = accelerometerEventStream().listen((event) {
-      // Pitch hesaplama — zeroOrientation'a göre eksen seçimi
-      // 0: Auto / Ekran üstte (varsayılan): x²+z² tabanlı
-      // 1: Ekran üste bakıyor (aynı eksen)
-      // 2: Ekran vücuda bakıyor: z eksenini farklı yorumla
+      // 1. Gerçek Pitch (Eğim) Açısını Bulma
       double rawPitch;
       if (settings.zeroOrientation == 2) {
-        // Cihaz vücuda bakıyorken y ekseni aşağı doğru olur
         rawPitch = math.atan2(event.x.abs(), -event.z) * (180 / math.pi);
       } else {
         rawPitch = math.atan2(event.x.abs(), event.z) * (180 / math.pi);
       }
-      // Kalibrasyon offset'ini uygula
       rawPitch -= settings.calibPitchOffset;
 
-      // _pitchDeg'i güncelle (−180..+180 aralığında)
-      _pitchDeg = rawPitch.clamp(-90.0, 90.0);
+      // Pitch'i mutlak değer olarak alıyoruz ki hesaplamalar kolaylaşsın
+      double pitch = rawPitch.abs();
 
-      // Direksiyon normalizasyonu
-      double pitch = rawPitch.abs().clamp(0, 90);
-      double multiplier = 0.5;
-      if (pitch > 70 && pitch <= 110) {
-        double t = (pitch - 70) / (110 - 70);
-        multiplier = 0.5 + (t * 0.5);
-      } else if (pitch > 110) {
-        multiplier = 1.0;
+      // 2. Dinamik Hassasiyet Çarpanı (Multiplier) Hesaplama
+      double multiplier = 1.0; // Varsayılan: Normal Sürüş (70-110 arası)
+
+      // Hassasiyet sınırları (Kendine göre bu ayarları ufak ufak değiştirebilirsin)
+      double minMultiplier = 0.4; // En düşük hassasiyet (Ağır direksiyon)
+      double maxMultiplier = 2.5; // En yüksek hassasiyet (Hızlı direksiyon)
+
+      if (pitch >= 50.0 && pitch <= 70.0) {
+        // İnce Ayar Bölgesi: 50'de en düşük (0.4), 70'te normal (1.0) olur.
+        double t = (pitch - 50.0) / (70.0 - 50.0); // 0 ile 1 arası oran
+        multiplier = minMultiplier + (t * (1.0 - minMultiplier));
+      } else if (pitch >= 110.0 && pitch <= 130.0) {
+        // Agresif Dönüş Bölgesi: 110'da normal (1.0), 130'da en yüksek (2.5) olur.
+        double t = (pitch - 110.0) / (130.0 - 110.0); // 0 ile 1 arası oran
+        multiplier = 1.0 + (t * (maxMultiplier - 1.0));
+      } else if (pitch < 50.0) {
+        // Telefon 50'den de fazla yatırılırsa hassasiyet en düşükte kilitlensin
+        multiplier = minMultiplier;
+      } else if (pitch > 130.0) {
+        // Telefon 130'dan fazla yatırılırsa hassasiyet maksimumda kilitlensin
+        multiplier = maxMultiplier;
       }
 
+      // 3. Nihai Direksiyon Verisini Hesaplama ve Oyuna Gönderme
       double maxG = (settings.steeringAngle / 180.0) * 9.8;
+
+      // Roll (Y ekseni) verisini çarpan ile çarpıp -1.0 ile 1.0 arasına sıkıştırıyoruz (clamp)
       double normalized = ((event.y / maxG) * multiplier).clamp(-1.0, 1.0);
+
       _steeringAngle = normalized;
     });
 
@@ -408,7 +428,7 @@ class _DrivingScreenState extends State<DrivingScreen>
 
   void _onTick() {
     // 5-byte protocol
-    // Byte 0: Steering (-1.0 to 1.0) mapped to 0-255 (128 is center)
+    // Byte 0: Steering (-1.0 to 1.0) mapped to 0-255 (128 = center)
     int steerByte = ((_steeringAngle + 1.0) / 2.0 * 255).clamp(0, 255).toInt();
 
     // Byte 1: Gas (0.0 to 1.0) mapped to 0-255
@@ -417,19 +437,18 @@ class _DrivingScreenState extends State<DrivingScreen>
     // Byte 2: Brake (0.0 to 1.0) mapped to 0-255
     int brakeByte = (_brakePercentage * 255).clamp(0, 255).toInt();
 
-    // Byte 3: Keys 1 to 8 (bitmask)
+    // Byte 3: Keys 1-8 bitmask
     int keys1to8 = 0;
     for (int i = 1; i <= 8; i++) {
       if (_pressedKeys.contains(i)) keys1to8 |= (1 << (i - 1));
     }
 
-    // Byte 4: Keys 9 to 16 (bitmask)
+    // Byte 4: Keys 9-16 bitmask
     int keys9to16 = 0;
     for (int i = 9; i <= 16; i++) {
       if (_pressedKeys.contains(i)) keys9to16 |= (1 << (i - 9));
     }
 
-    // Temel 5-byte payload (her zaman gönderilir)
     final List<int> payload = [
       steerByte,
       gasByte,
@@ -438,9 +457,12 @@ class _DrivingScreenState extends State<DrivingScreen>
       keys9to16,
     ];
 
-    // Byte 5-8: Joystick eksenler — sadece Mod 5 + layout'ta joystick varsa eklenir
-    if (_joystickPresent) {
-      // Ölü bölge (deadzone) filtresi: 0.05 altındaki değerleri sıfırla
+    // Determine if we need the extended 16-byte Mode 5 payload
+    final bool useExtended =
+        _joystickPresent || _touchpadPresent || _keyboardKeysPresent;
+
+    if (useExtended) {
+      // Bytes 5-8: Joystick axes (128 = neutral when no joystick present)
       final double j0x = _joy0x.abs() < 0.05 ? 0.0 : _joy0x;
       final double j0y = _joy0y.abs() < 0.05 ? 0.0 : _joy0y;
       final double j1x = _joy1x.abs() < 0.05 ? 0.0 : _joy1x;
@@ -451,10 +473,31 @@ class _DrivingScreenState extends State<DrivingScreen>
         ((j1x + 1.0) / 2.0 * 255).clamp(0, 255).toInt(),
         ((j1y + 1.0) / 2.0 * 255).clamp(0, 255).toInt(),
       ]);
+
+      // Bytes 9-10: Touchpad mouse delta (128 = no movement)
+      final int mouseX = (128 + _touchpadDeltaX.clamp(-127, 127)).toInt();
+      final int mouseY = (128 + _touchpadDeltaY.clamp(-127, 127)).toInt();
+      payload.add(mouseX);
+      payload.add(mouseY);
+
+      // Byte 11: Mouse click (0=none, 1=left, 2=right, 3=middle)
+      payload.add(_tpClick);
+
+      // Bytes 12-15: Keyboard keys (VK codes for keys with ID >= 100, up to 4 simultaneous)
+      final List<int> kbKeys = _pressedKeys
+          .where((k) => k >= 100)
+          .take(4)
+          .toList();
+      while (kbKeys.length < 4) kbKeys.add(0);
+      payload.addAll(kbKeys);
+
+      // Reset touchpad deltas and click after sending
+      _touchpadDeltaX = 0.0;
+      _touchpadDeltaY = 0.0;
+      if (_tpClick != 0) setState(() => _tpClick = 0);
     }
 
-    NetworkManager().sendPayload5Bytes(payload);
-
+    NetworkManager().sendPayloadData(payload);
     if (mounted) setState(() => _lastPayload = payload);
   }
 
@@ -467,8 +510,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     super.dispose();
   }
 
-  // ── Key tetikleme ──────────────────────────────────────────────────────────
-
+  // Key tetikleme
   void _fireKey(int key) {
     setState(() => _pressedKeys.add(key));
     Future.delayed(const Duration(milliseconds: 80), () {
@@ -476,8 +518,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     });
   }
 
-  // ── UI ────────────────────────────────────────────────────────────────────
-
+  //UI
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context).settings;
@@ -490,7 +531,7 @@ class _DrivingScreenState extends State<DrivingScreen>
           // Ana layout
           Positioned.fill(child: _buildLayout(settings, size)),
 
-          // Direksiyon göstergesi — alt-orta, yüksekliğin %10'u
+          // Direksiyon göstergesi alt-orta, yüksekliğin %10'u
           Positioned(
             bottom: 0,
             left: 0,
@@ -510,7 +551,7 @@ class _DrivingScreenState extends State<DrivingScreen>
             ),
           ),
 
-          // ── Geliştirici debug paneli ────────────────────────────────────
+          // Geliştirici debug paneli
           if (_debugMode)
             Positioned(
               top: 40,
@@ -539,7 +580,7 @@ class _DrivingScreenState extends State<DrivingScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('── DEBUG LOG ──'),
+                        const Text('DEBUG LOG'),
                         Text(
                           'Steer : ${_lastPayload[0].toString().padLeft(3)}  (raw: ${_steeringAngle.toStringAsFixed(3)})',
                         ),
@@ -606,7 +647,7 @@ class _DrivingScreenState extends State<DrivingScreen>
                   ),
                 ),
                 child: Text(
-                  _debugMode ? 'DEV ✓' : 'DEV',
+                  _debugMode ? 'DEV LOG' : 'DEV',
                   style: TextStyle(
                     fontSize: 10,
                     color: _debugMode ? Colors.greenAccent : Colors.white38,
@@ -640,20 +681,17 @@ class _DrivingScreenState extends State<DrivingScreen>
     }
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // MOD 0: Tek ekran, orta çizgiden sağ=gaz sol=fren
-  //        Aynı anda sadece biri (gaz VEYA fren), ama tuşlara aynı anda basılabilir.
-  // ──────────────────────────────────────────────────────────────────────────
-  // ── Yardımcı: herhangi yöne kaydırmadan pedal delta hesapla ──────────────
-  //
+  // MOD 0: Tek ekran, orta ├ğizgiden sağ-gaz sol-fren
+  // Aynı anda sadece biri (gaz VEYA fren), ama tuşlara aynı anda basılabilir.
+  // Yardımcı: herhangi yöne kaydırmadan pedal delta hesapla
   // Parmak hangi yöne giderse gitsin hareketin büyüklüğünü al,
   // işaret olarak dikey bileşeni (dy) kullan.
-  // Yukarı → artı, Aşağı → eksi.  (Bar aşağıdan yukarı doluyor.)
+  // Yukarı doğru artı, Aşağı doğru eksi.  (Bar aşağıdan yukarı doğru doluyor.)
   double _pedalDelta(PointerMoveEvent e, double sensitivity) {
     final dx = e.delta.dx;
     final dy = e.delta.dy;
     final magnitude = math.sqrt(dx * dx + dy * dy);
-    // dy < 0 → yukarı → pedal artar (+), dy >= 0 → aşağı → pedal azalır (-)
+    // dy < 0 = upward = pedal increases (+), dy >= 0 = downward = pedal decreases (-)
     final sign = dy <= 0 ? 1.0 : -1.0;
     return sign * magnitude / sensitivity;
   }
@@ -661,7 +699,7 @@ class _DrivingScreenState extends State<DrivingScreen>
   Widget _buildMode0(AppSettings s, Size size) {
     return Stack(
       children: [
-        // Tam ekran Listener — gaz/fren
+        // Full-screen Listener for gas/brake
         Positioned.fill(
           child: Listener(
             onPointerDown: (e) =>
@@ -681,12 +719,13 @@ class _DrivingScreenState extends State<DrivingScreen>
                   bgColor: s.pedalBgColor,
                   yetsoreColor: s.yetsoreColor,
                 ),
+                child: const SizedBox.expand(),
               ),
             ),
           ),
         ),
 
-        // Sol yarı tap
+        // Left-half tap zone
         Positioned(
           left: 0,
           top: 0,
@@ -699,7 +738,7 @@ class _DrivingScreenState extends State<DrivingScreen>
           ),
         ),
 
-        // Sağ yarı tap
+        // Right-half tap zone
         Positioned(
           left: size.width / 2,
           top: 0,
@@ -712,7 +751,7 @@ class _DrivingScreenState extends State<DrivingScreen>
           ),
         ),
 
-        // Orta ayırıcı çizgi
+        // Center divider line
         Positioned(
           left: size.width / 2 - 1,
           top: 0,
@@ -724,26 +763,20 @@ class _DrivingScreenState extends State<DrivingScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // MOD 1: Sol=Fren, Sağ=Gaz — tam bağımsız, aynı anda ikisi
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildMode1(AppSettings s, Size size) {
     return Row(
       children: [
-        // Sol — Fren
+        // Left side - Brake
         Expanded(
           child: Stack(
             children: [
               Positioned.fill(
                 child: Listener(
-                  onPointerMove: (e) => setState(() {
-                    _brakePercentage =
-                        (_brakePercentage + _pedalDelta(e, s.swipeSensitivity))
-                            .clamp(0.0, 1.0);
-                  }),
-                  onPointerUp: (_) => setState(() => _brakePercentage = 0.0),
-                  onPointerCancel: (_) =>
-                      setState(() => _brakePercentage = 0.0),
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: (e) => _onPedalDown(e, false),
+                  onPointerMove: (e) => _onPedalMove(e, s),
+                  onPointerUp: _onPedalUp,
+                  onPointerCancel: _onPedalUp,
                   child: RepaintBoundary(
                     child: CustomPaint(
                       painter: PedalPainter(
@@ -752,6 +785,7 @@ class _DrivingScreenState extends State<DrivingScreen>
                         bgColor: s.pedalBgColor,
                         yetsoreColor: s.yetsoreColor,
                       ),
+                      child: const SizedBox.expand(),
                     ),
                   ),
                 ),
@@ -767,19 +801,17 @@ class _DrivingScreenState extends State<DrivingScreen>
             ],
           ),
         ),
-        // Sağ — Gaz
+        // Right side - Gas
         Expanded(
           child: Stack(
             children: [
               Positioned.fill(
                 child: Listener(
-                  onPointerMove: (e) => setState(() {
-                    _gasPercentage =
-                        (_gasPercentage + _pedalDelta(e, s.swipeSensitivity))
-                            .clamp(0.0, 1.0);
-                  }),
-                  onPointerUp: (_) => setState(() => _gasPercentage = 0.0),
-                  onPointerCancel: (_) => setState(() => _gasPercentage = 0.0),
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: (e) => _onPedalDown(e, true),
+                  onPointerMove: (e) => _onPedalMove(e, s),
+                  onPointerUp: _onPedalUp,
+                  onPointerCancel: _onPedalUp,
                   child: RepaintBoundary(
                     child: CustomPaint(
                       painter: PedalPainter(
@@ -788,11 +820,12 @@ class _DrivingScreenState extends State<DrivingScreen>
                         bgColor: s.pedalBgColor,
                         yetsoreColor: s.yetsoreColor,
                       ),
+                      child: const SizedBox.expand(),
                     ),
                   ),
                 ),
               ),
-              // Tap alanı
+              // Tap overlay
               Positioned.fill(
                 child: Listener(
                   behavior: HitTestBehavior.translucent,
@@ -807,9 +840,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // MOD 2: %30 Fren | %40 Orta 2×2 | %30 Gaz
-  // ──────────────────────────────────────────────────────────────────────────
+  // MOD 2: %30 Fren | %40 Orta 2x2 kare butonlar | %30 Gaz
   Widget _buildMode2(AppSettings s, Size size) {
     return Row(
       children: [
@@ -835,9 +866,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
   // MOD 3: Mod 2 + Orta alt ek tuş
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildMode3(AppSettings s, Size size) {
     return Row(
       children: [
@@ -864,9 +893,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
   // MOD 4: Mod 3 ama Tuş 7 ekran genişliğinde en altta
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildMode4(AppSettings s, Size size) {
     return Column(
       children: [
@@ -911,9 +938,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // MOD 5: Özel layout (JSON'dan)
-  // ──────────────────────────────────────────────────────────────────────────
+  // MOD 5: Özel Tasarım (JSON'dan)
   Widget _buildMode5(AppSettings s, Size size) {
     if (s.customLayout5Json == null || s.customLayout5Json!.isEmpty) {
       return Center(
@@ -933,21 +958,40 @@ class _DrivingScreenState extends State<DrivingScreen>
     } catch (_) {
       return Center(
         child: Text(
-          'Layout yüklenemedi. Lütfen tekrar düzenleyin.',
+          'Tasarım yüklenemedi. Lütfen tekrar düzenleyin.',
           style: TextStyle(color: s.detailColor),
         ),
       );
     }
 
-    // Joystick varlığını belirle (payload boyutunu etkiler)
+    // Detect which advanced items are present — determines whether to use 16-byte payload
     final bool hasJoy = items.any(
       (e) =>
           e.type == Layout5ItemType.leftJoystick ||
           e.type == Layout5ItemType.rightJoystick,
     );
-    if (_joystickPresent != hasJoy) {
+    final bool hasTouchpad = items.any(
+      (e) => e.type == Layout5ItemType.touchpad,
+    );
+    final bool hasKbKeys = items.any(
+      (e) =>
+          (e.type == Layout5ItemType.buttonSquare ||
+              e.type == Layout5ItemType.buttonSoft ||
+              e.type == Layout5ItemType.buttonCircle) &&
+          e.keyIndex >= 100,
+    );
+
+    if (_joystickPresent != hasJoy ||
+        _touchpadPresent != hasTouchpad ||
+        _keyboardKeysPresent != hasKbKeys) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _joystickPresent = hasJoy);
+        if (mounted) {
+          setState(() {
+            _joystickPresent = hasJoy;
+            _touchpadPresent = hasTouchpad;
+            _keyboardKeysPresent = hasKbKeys;
+          });
+        }
       });
     }
 
@@ -1041,9 +1085,6 @@ class _DrivingScreenState extends State<DrivingScreen>
 
         content = GestureDetector(
           onTapDown: (_) {
-            debugPrint(
-              'MOD5 DEBUG: Dokunma algılandı -> ${item.id} (Mod: ${item.mode.name})',
-            );
             if (item.mode == ButtonMode.key) {
               _fireKey(item.keyIndex);
             } else if (item.mode == ButtonMode.gasPct) {
@@ -1065,7 +1106,6 @@ class _DrivingScreenState extends State<DrivingScreen>
               setState(() => _gasPercentage = 0.0);
             if (item.mode == ButtonMode.brakePct)
               setState(() => _brakePercentage = 0.0);
-            // Makrolar için iptal (bırakma) durumunda özel bir eylem tanımlanmadı, sırayla çalışmaya devam eder.
           },
           child: Container(
             decoration: BoxDecoration(
@@ -1087,6 +1127,71 @@ class _DrivingScreenState extends State<DrivingScreen>
           ),
         );
         break;
+      case Layout5ItemType.touchpad:
+        // Touchpad: accumulates mouse delta; click type determined by finger count
+        int _tpFingers = 0;
+        bool _tpWasTwo = false;
+        bool _tpWasThree = false;
+        DateTime? _tpDownTime;
+        content = Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (e) {
+            _tpFingers++;
+            if (_tpFingers == 1) _tpDownTime = DateTime.now();
+            if (_tpFingers == 2) _tpWasTwo = true;
+            if (_tpFingers >= 3) _tpWasThree = true;
+          },
+          onPointerMove: (e) {
+            // Accumulate delta — sent in _onTick bytes 9-10
+            _touchpadDeltaX += e.delta.dx;
+            _touchpadDeltaY += e.delta.dy;
+          },
+          onPointerUp: (e) {
+            _tpFingers--;
+            if (_tpFingers <= 0) {
+              _tpFingers = 0;
+              final dur = _tpDownTime != null
+                  ? DateTime.now().difference(_tpDownTime!)
+                  : const Duration(seconds: 1);
+              if (dur.inMilliseconds < 250) {
+                // Short tap — determine click type by finger count
+                setState(() {
+                  if (_tpWasThree) {
+                    _tpClick = 3; // middle click
+                  } else if (_tpWasTwo) {
+                    _tpClick = 2; // right click
+                  } else {
+                    _tpClick = 1; // left click
+                  }
+                });
+              }
+              _tpWasTwo = false;
+              _tpWasThree = false;
+              _tpDownTime = null;
+            }
+          },
+          onPointerCancel: (e) {
+            _tpFingers = 0;
+            _tpWasTwo = false;
+            _tpWasThree = false;
+            _tpDownTime = null;
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: item.bgColor,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: item.textColor.withValues(alpha: 0.3)),
+            ),
+            child: Center(
+              child: Icon(
+                Icons.mouse,
+                color: item.textColor.withValues(alpha: 0.4),
+                size: math.min(w, h) * 0.35,
+              ),
+            ),
+          ),
+        );
+        break;
     }
 
     return Positioned(
@@ -1099,12 +1204,8 @@ class _DrivingScreenState extends State<DrivingScreen>
   }
 
   void _executeMacro(List<MacroAction> macro) async {
-    debugPrint('MOD5 DEBUG: Makro başlatılıyor (${macro.length} adım)');
     for (int i = 0; i < macro.length; i++) {
       final act = macro[i];
-      debugPrint(
-        'MOD5 DEBUG: Adım ${i + 1} -> Type: ${act.type.name}, Value: ${act.value}',
-      );
 
       if (act.type == MacroActionType.key) {
         _fireKey(act.value.toInt());
@@ -1116,12 +1217,9 @@ class _DrivingScreenState extends State<DrivingScreen>
         await Future.delayed(Duration(milliseconds: act.value.toInt()));
       }
     }
-    debugPrint('MOD5 DEBUG: Makro tamamlandı');
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Yardımcı: Pedal kolonu (fren veya gaz)
-  // ──────────────────────────────────────────────────────────────────────────
+  // Helper: Pedal column (brake or gas)
   Widget _buildPedalColumn(
     AppSettings s, {
     required bool isBrake,
@@ -1131,6 +1229,7 @@ class _DrivingScreenState extends State<DrivingScreen>
       children: [
         Positioned.fill(
           child: Listener(
+            behavior: HitTestBehavior.opaque,
             onPointerDown: (e) => _onPedalDown(e, !isBrake),
             onPointerMove: (e) => _onPedalMove(e, s),
             onPointerUp: _onPedalUp,
@@ -1143,6 +1242,7 @@ class _DrivingScreenState extends State<DrivingScreen>
                   bgColor: s.pedalBgColor,
                   yetsoreColor: s.yetsoreColor,
                 ),
+                child: const SizedBox.expand(),
               ),
             ),
           ),
@@ -1159,9 +1259,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Yardımcı: 2×2 orta grid (Tuş 3-6) + opsiyonel Tuş 7
-  // ──────────────────────────────────────────────────────────────────────────
+  // Helper: 2x2 center grid (Keys 3-6) + optional Key 7
   Widget _buildMiddle2x2(
     AppSettings s, {
     required int k1,
@@ -1226,9 +1324,7 @@ class _DrivingScreenState extends State<DrivingScreen>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Mod 0 özel painter — tam ekran, gaz veya fren rengi
-// ─────────────────────────────────────────────────────────────────────────────
+// Mod 0 özel painter ÔÇö tam ekran, gaz veya fren rengi
 class _Mode0Painter extends CustomPainter {
   final double gasPercentage;
   final double brakePercentage;

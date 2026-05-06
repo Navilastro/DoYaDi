@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/layout5_item.dart';
 import '../providers/settings_provider.dart';
+import '../core/widgets/searchable_key_picker.dart';
+import '../core/utils/keyboard_keys.dart';
 import '../widgets/joystick_widget.dart';
 import '../widgets/driving_painters.dart';
 
@@ -29,7 +31,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
     super.initState();
     final provider = Provider.of<SettingsProvider>(context, listen: false);
     final json = provider.settings.customLayout5Json;
-    if (json != null) {
+    if (json != null && json.isNotEmpty) {
       try {
         final list = jsonDecode(json) as List;
         _items = list.map((e) => Layout5Item.fromJson(e as Map<String, dynamic>)).toList();
@@ -40,6 +42,126 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
       _items = defaultLayout5();
     }
   }
+
+  void _showInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF12122A),
+        title: const Text('Tuş Karşılıkları', style: TextStyle(color: Colors.white)),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Tuş 1 = LB\nTuş 2 = RB\nTuş 3 = Steam Buton\nTuş 4 = ?\nTuş 5 = A\nTuş 6 = B\nTuş 7 = X\nTuş 8 = Y\nTuş 9 = D-Pad Yukarı\nTuş 10 = D-Pad Aşağı\nTuş 11 = D-Pad Sol\nTuş 12 = D-Pad Sağ\nTuş 13 = Start\nTuş 14 = Select\nTuş 15 = L3 (Sol Stick)\nTuş 16 = R3 (Sağ Stick)',
+                  style: TextStyle(color: Colors.white70, height: 1.5)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tamam', style: TextStyle(color: Color(0xFF40E0D0)))),
+        ],
+      ),
+    );
+  }
+
+  void _manageProfiles() {
+    final provider = Provider.of<SettingsProvider>(context, listen: false);
+    final s = provider.settings;
+    final profiles = s.layout5Profiles;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, ss) {
+          final isTr = Localizations.localeOf(ctx).languageCode == 'tr';
+          final ctrl = TextEditingController();
+          return AlertDialog(
+            backgroundColor: const Color(0xFF12122A),
+            title: Text(isTr ? 'Profiller' : 'Profiles', style: const TextStyle(color: Colors.white)),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (profiles.isNotEmpty) ...[
+                    DropdownButton<String>(
+                      value: s.activeLayout5Profile,
+                      dropdownColor: const Color(0xFF1A1A3E),
+                      style: const TextStyle(color: Colors.white),
+                      isExpanded: true,
+                      hint: Text(isTr ? 'Profil Seçin' : 'Select Profile', style: const TextStyle(color: Colors.white54)),
+                      items: profiles.keys.map((k) => DropdownMenuItem(value: k, child: Text(k))).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          s.activeLayout5Profile = val;
+                          s.customLayout5Json = profiles[val];
+                          provider.updateSettings(s);
+                          setState(() {
+                            final list = jsonDecode(s.customLayout5Json!) as List;
+                            _items = list.map((e) => Layout5Item.fromJson(e as Map<String, dynamic>)).toList();
+                            _selectedId = null;
+                          });
+                          Navigator.pop(ctx);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: ctrl,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: isTr ? 'Yeni Profil Adı' : 'New Profile Name',
+                            hintStyle: const TextStyle(color: Colors.white38),
+                            isDense: true,
+                            enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                            focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF40E0D0))),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: Color(0xFF40E0D0)),
+                        onPressed: () {
+                          if (ctrl.text.isNotEmpty) {
+                            final name = ctrl.text;
+                            final json = jsonEncode(_items.map((e) => e.toJson()).toList());
+                            s.layout5Profiles[name] = json;
+                            s.activeLayout5Profile = name;
+                            s.customLayout5Json = json;
+                            provider.updateSettings(s);
+                            ss(() {});
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              if (s.activeLayout5Profile != null)
+                TextButton(
+                  onPressed: () {
+                    s.layout5Profiles.remove(s.activeLayout5Profile);
+                    s.activeLayout5Profile = s.layout5Profiles.isNotEmpty ? s.layout5Profiles.keys.first : null;
+                    s.customLayout5Json = s.activeLayout5Profile != null ? s.layout5Profiles[s.activeLayout5Profile!] : null;
+                    provider.updateSettings(s);
+                    ss(() {});
+                  },
+                  child: Text(isTr ? 'Geçerli Profili Sil' : 'Delete Current Profile', style: const TextStyle(color: Colors.red)),
+                ),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isTr ? 'Kapat' : 'Close', style: const TextStyle(color: Colors.white54))),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
 
   void _save() {
     final provider = Provider.of<SettingsProvider>(context, listen: false);
@@ -133,16 +255,22 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        _topBtn('Profiller', Icons.folder, false, _manageProfiles, color: Colors.blueAccent),
+                        const SizedBox(width: 8),
                         _topBtn('Düzenle', Icons.edit, _editMode, () {
                           setState(() { _editMode = !_editMode; _removeMode = false; });
                         }),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         _topBtn('Kaydet', Icons.save, false, _save,
                             color: const Color(0xFF00C853)),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         _topBtn('Sıfırla', Icons.refresh, false, _reset,
                             color: Colors.orange),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.info_outline, color: Colors.white70),
+                          onPressed: _showInfoDialog,
+                        ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.white70),
                           onPressed: () => Navigator.pop(context),
@@ -261,9 +389,14 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
             double newLeft = (_items[idx].left + details.focalPointDelta.dx / size.width).clamp(0.0, 0.95);
             double newTop = (_items[idx].top + details.focalPointDelta.dy / size.height).clamp(0.0, 0.95);
             
+            // Sınırları belirle (Pedallar ekranın yarısına ve tam boyuna kadar çıkabilir)
+            bool isPedal = _items[idx].type == Layout5ItemType.gasBar || _items[idx].type == Layout5ItemType.brakeBar;
+            double maxW = isPedal ? 0.5 : 0.95;
+            double maxH = isPedal ? 1.0 : 0.95;
+
             // Boyutlandırma (Aspect Ratio korunarak)
-            double newW = (_initialScaleW * details.scale).clamp(0.05, 0.95);
-            double newH = (_initialScaleH * details.scale).clamp(0.05, 0.95);
+            double newW = (_initialScaleW * details.scale).clamp(0.05, maxW);
+            double newH = (_initialScaleH * details.scale).clamp(0.05, maxH);
             
             // Joystickler döndürülemesin (yön eksenleri bozulur)
             final isJoystick = _items[idx].type == Layout5ItemType.leftJoystick ||
@@ -380,6 +513,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
         const PopupMenuItem(value: Layout5ItemType.buttonSquare, child: Text('Kare Buton', style: TextStyle(color: Colors.white))),
         const PopupMenuItem(value: Layout5ItemType.buttonSoft, child: Text('Yumuşak Kare', style: TextStyle(color: Colors.white))),
         const PopupMenuItem(value: Layout5ItemType.buttonCircle, child: Text('Yuvarlak Buton', style: TextStyle(color: Colors.white))),
+        const PopupMenuItem(value: Layout5ItemType.touchpad, child: Text('Touchpad (Fare)', style: TextStyle(color: Colors.white))),
       ],
       onSelected: _addItem,
       child: Container(
@@ -589,22 +723,65 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
         const SizedBox(height: 8),
 
         if (item.mode == ButtonMode.key)
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Tuş Seçimi:', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              const SizedBox(width: 8),
-              DropdownButton<int>(
-                value: item.keyIndex,
-                dropdownColor: const Color(0xFF1A1A3E),
-                style: const TextStyle(color: Colors.white),
-                items: List.generate(16, (i) => DropdownMenuItem(
-                  value: i + 1,
-                  child: Text('Tuş ${i + 1}'),
-                )),
-                onChanged: (v) {
-                  if (v != null) _update(item.copyWith(keyIndex: v));
-                },
+              Row(
+                children: [
+                  const Text('Tuş Seçimi:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () async {
+                      final val = await showSearchableKeyPicker(context, item.keyIndex);
+                      if (val != null) _update(item.copyWith(keyIndex: val));
+                    },
+                    child: Text(
+                      item.keyIndex >= 2000 
+                        ? 'Makro ${item.keyIndex - 1999}' 
+                        : KeyboardKeys.appKeyMap.entries.firstWhere((e) => e.value == item.keyIndex, orElse: () => const MapEntry('Tuş Seç', 0)).key,
+                      style: const TextStyle(color: Color(0xFF40E0D0)),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Text('Basış Modu:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  const SizedBox(width: 8),
+                  DropdownButton<int?>(
+                    value: item.customPressMode,
+                    dropdownColor: const Color(0xFF1A1A3E),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('Genel Ayarı Kullan')),
+                      DropdownMenuItem(value: 0, child: Text('Anlık')),
+                      DropdownMenuItem(value: 1, child: Text('Süreli')),
+                      DropdownMenuItem(value: 2, child: Text('Toggle (Sınırsız)')),
+                      DropdownMenuItem(value: 3, child: Text('Hızlı (80ms)')),
+                    ],
+                    onChanged: (v) => _update(item.copyWith(customPressMode: v, clearCustomPressMode: v == null)),
+                  ),
+                ],
+              ),
+              if (item.customPressMode == 1)
+                Row(
+                  children: [
+                    const Text('Süre:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Expanded(
+                      child: Slider(
+                        value: (item.customPressDurationMs ?? 300).toDouble(),
+                        min: 50, max: 10000,
+                        divisions: 199,
+                        activeColor: const Color(0xFF40E0D0),
+                        inactiveColor: Colors.white12,
+                        onChanged: (v) => _update(item.copyWith(customPressDurationMs: v.toInt())),
+                      ),
+                    ),
+                    Text('${((item.customPressDurationMs ?? 300) / 1000.0).toStringAsFixed(1)}s',
+                        style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                  ],
+                ),
             ],
           ),
 

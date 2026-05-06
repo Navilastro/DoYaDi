@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/app_settings.dart';
 import 'custom_layout5_editor_screen.dart';
+import '../core/widgets/searchable_key_picker.dart';
+import '../core/utils/keyboard_keys.dart';
 
 // ── Direksiyon: 1'den 1080'e tüm değerler (Max level at 1) ─────────────────
 final _steeringAngles = {
@@ -85,8 +87,8 @@ const _zeroOrientationOptions = <String, int>{
 
 // ── Swipe atama seçenekleri ──────────────────────────────────────────────────
 const _swipeDirLabels = <String, int>{
-  'Bar Doldur ↑ (Yukarı Başlat)': -1,
-  'Bar Doldur ↓ (Aşağı Başlat)': -2,
+  'Gaz': -1,
+  'Fren': -2,
   'Yok (Devre Dışı)': 0,
   'Tuş 1': 1,
   'Tuş 2': 2,
@@ -106,25 +108,7 @@ const _swipeDirLabels = <String, int>{
   'Tuş 16': 16,
 };
 
-const _keyLabels = <String, int>{
-  'Yok (Devre Dışı)': 0,
-  'Tuş 1': 1,
-  'Tuş 2': 2,
-  'Tuş 3': 3,
-  'Tuş 4': 4,
-  'Tuş 5': 5,
-  'Tuş 6': 6,
-  'Tuş 7': 7,
-  'Tuş 8': 8,
-  'Tuş 9': 9,
-  'Tuş 10': 10,
-  'Tuş 11': 11,
-  'Tuş 12': 12,
-  'Tuş 13': 13,
-  'Tuş 14': 14,
-  'Tuş 15': 15,
-  'Tuş 16': 16,
-};
+
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -149,14 +133,19 @@ class _SettingsScreenState extends State<SettingsScreen>
     super.dispose();
   }
 
-  String _keyName(int v) => _keyLabels.entries
+  String _keyName(int v) {
+    if (v >= 2000) {
+      return 'Makro ${v - 1999}';
+    }
+    return KeyboardKeys.appKeyMap.entries
       .firstWhere((e) => e.value == v, orElse: () => const MapEntry('?', 0))
       .key;
+  }
 
   String _swipeName(int v) {
-    if (v == -1) return 'Bar ↑';
-    if (v == -2) return 'Bar ↓';
-    return _keyLabels.entries
+    if (v == -1) return 'Gaz';
+    if (v == -2) return 'Fren';
+    return KeyboardKeys.appKeyMap.entries
         .firstWhere((e) => e.value == v, orElse: () => const MapEntry('Yok', 0))
         .key;
   }
@@ -252,12 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       );
 
   Future<int?> _keyDialog(BuildContext ctx, String title, int current) =>
-      _radioDialog<int>(
-        ctx: ctx,
-        title: title,
-        current: current,
-        options: _keyLabels,
-      );
+      showSearchableKeyPicker(ctx, current, hideKeyboard: true);
 
   Future<Color?> _showRgbPicker(
     BuildContext ctx,
@@ -751,37 +735,95 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        _header('Sağ Pedal (Gaz) — Kaydırma Yönleri'),
+        _header('Tuş Basış Ayarları'),
+        _tile(
+          title: 'Genel Buton Basış Modu',
+          subtitle: 'Varsayılan buton davranışı',
+          trailing: Text(
+            ['Anlık (Varsayılan)', 'Süreli', 'Sınırsız (Toggle)', 'Hızlı (80ms)'][s.globalButtonPressMode],
+            style: TextStyle(color: ac, fontWeight: FontWeight.bold),
+          ),
+          onTap: () async {
+            final val = await _radioDialog<int>(
+              ctx: ctx,
+              title: 'Buton Basış Modu',
+              current: s.globalButtonPressMode,
+              options: const {
+                'Anlık (Varsayılan)': 0,
+                'Süreli': 1,
+                'Sınırsız (Toggle)': 2,
+                'Hızlı (80ms)': 3,
+              },
+            );
+            if (val != null) {
+              s.globalButtonPressMode = val;
+              prov.updateSettings(s);
+              setState(() {});
+            }
+          },
+        ),
+        if (s.globalButtonPressMode == 1)
+          _tile(
+            title: 'Süreli Basış Süresi',
+            subtitle: 'Buton kaç saniye basılı kalsın?',
+            trailing: Text(
+              '${(s.globalButtonPressDurationMs / 1000).toStringAsFixed(1)} sn',
+              style: TextStyle(color: ac, fontWeight: FontWeight.bold),
+            ),
+            onTap: () async {
+              final val = await _radioDialog<int>(
+                ctx: ctx,
+                title: 'Basış Süresi',
+                current: s.globalButtonPressDurationMs,
+                options: {
+                  for (var i = 1; i <= 20; i++) '${(i * 0.5).toStringAsFixed(1)} sn': i * 500,
+                },
+              );
+              if (val != null) {
+                s.globalButtonPressDurationMs = val;
+                prov.updateSettings(s);
+                setState(() {});
+              }
+            },
+          ),
+        _tile(
+          title: 'Tuşa özel Basış Modu',
+          subtitle: 'Her tuş için ayrı basış modu ayarlayın',
+          trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+          onTap: () => _showCustomPressModesDialog(ctx, prov, s),
+        ),
+        const Divider(color: Colors.white12, height: 24),
+        _header('Sağ Pedal'),
         _swipeTile(
           ac,
           '↑ Yukarı',
           _swipeName(s.gasSwipeUp),
-          () => pick('Gaz ↑ Yukarı', s.gasSwipeUp, (v) => s.gasSwipeUp = v),
+          () => pick('Sağ Pedal ↑ Yukarı', s.gasSwipeUp, (v) => s.gasSwipeUp = v),
         ),
         _swipeTile(
           ac,
           '↓ Aşağı',
           _swipeName(s.gasSwipeDown),
-          () => pick('Gaz ↓ Aşağı', s.gasSwipeDown, (v) => s.gasSwipeDown = v),
+          () => pick('Sağ Pedal ↓ Aşağı', s.gasSwipeDown, (v) => s.gasSwipeDown = v),
         ),
         _swipeTile(
           ac,
           '← Sol',
           _swipeName(s.gasSwipeLeft),
-          () => pick('Gaz ← Sol', s.gasSwipeLeft, (v) => s.gasSwipeLeft = v),
+          () => pick('Sağ Pedal ← Sol', s.gasSwipeLeft, (v) => s.gasSwipeLeft = v),
         ),
         _swipeTile(
           ac,
           '→ Sağ',
           _swipeName(s.gasSwipeRight),
-          () => pick('Gaz → Sağ', s.gasSwipeRight, (v) => s.gasSwipeRight = v),
+          () => pick('Sağ Pedal → Sağ', s.gasSwipeRight, (v) => s.gasSwipeRight = v),
         ),
         _swipeTile(
           ac,
           '↖ Sol Üst',
           _swipeName(s.gasSwipeUpLeft),
           () => pick(
-            'Gaz ↖ Sol Üst',
+            'Sağ Pedal ↖ Sol Üst',
             s.gasSwipeUpLeft,
             (v) => s.gasSwipeUpLeft = v,
           ),
@@ -791,7 +833,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           '↗ Sağ Üst',
           _swipeName(s.gasSwipeUpRight),
           () => pick(
-            'Gaz ↗ Sağ Üst',
+            'Sağ Pedal ↗ Sağ Üst',
             s.gasSwipeUpRight,
             (v) => s.gasSwipeUpRight = v,
           ),
@@ -801,7 +843,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           '↙ Sol Alt',
           _swipeName(s.gasSwipeDownLeft),
           () => pick(
-            'Gaz ↙ Sol Alt',
+            'Sağ Pedal ↙ Sol Alt',
             s.gasSwipeDownLeft,
             (v) => s.gasSwipeDownLeft = v,
           ),
@@ -811,27 +853,25 @@ class _SettingsScreenState extends State<SettingsScreen>
           '↘ Sağ Alt',
           _swipeName(s.gasSwipeDownRight),
           () => pick(
-            'Gaz ↘ Sağ Alt',
+            'Sağ Pedal ↘ Sağ Alt',
             s.gasSwipeDownRight,
             (v) => s.gasSwipeDownRight = v,
           ),
         ),
-
         const Divider(color: Colors.white12, height: 32),
-        _header('Sol Pedal (Fren) — Kaydırma Yönleri'),
+        _header('Sol Pedal'),
         _swipeTile(
           ac,
           '↑ Yukarı',
           _swipeName(s.brakeSwipeUp),
-          () =>
-              pick('Fren ↑ Yukarı', s.brakeSwipeUp, (v) => s.brakeSwipeUp = v),
+          () => pick('Sol Pedal ↑ Yukarı', s.brakeSwipeUp, (v) => s.brakeSwipeUp = v),
         ),
         _swipeTile(
           ac,
           '↓ Aşağı',
           _swipeName(s.brakeSwipeDown),
           () => pick(
-            'Fren ↓ Aşağı',
+            'Sol Pedal ↓ Aşağı',
             s.brakeSwipeDown,
             (v) => s.brakeSwipeDown = v,
           ),
@@ -840,15 +880,18 @@ class _SettingsScreenState extends State<SettingsScreen>
           ac,
           '← Sol',
           _swipeName(s.brakeSwipeLeft),
-          () =>
-              pick('Fren ← Sol', s.brakeSwipeLeft, (v) => s.brakeSwipeLeft = v),
+          () => pick(
+            'Sol Pedal ← Sol',
+            s.brakeSwipeLeft,
+            (v) => s.brakeSwipeLeft = v,
+          ),
         ),
         _swipeTile(
           ac,
           '→ Sağ',
           _swipeName(s.brakeSwipeRight),
           () => pick(
-            'Fren → Sağ',
+            'Sol Pedal → Sağ',
             s.brakeSwipeRight,
             (v) => s.brakeSwipeRight = v,
           ),
@@ -858,7 +901,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           '↖ Sol Üst',
           _swipeName(s.brakeSwipeUpLeft),
           () => pick(
-            'Fren ↖ Sol Üst',
+            'Sol Pedal ↖ Sol Üst',
             s.brakeSwipeUpLeft,
             (v) => s.brakeSwipeUpLeft = v,
           ),
@@ -868,7 +911,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           '↗ Sağ Üst',
           _swipeName(s.brakeSwipeUpRight),
           () => pick(
-            'Fren ↗ Sağ Üst',
+            'Sol Pedal ↗ Sağ Üst',
             s.brakeSwipeUpRight,
             (v) => s.brakeSwipeUpRight = v,
           ),
@@ -878,7 +921,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           '↙ Sol Alt',
           _swipeName(s.brakeSwipeDownLeft),
           () => pick(
-            'Fren ↙ Sol Alt',
+            'Sol Pedal ↙ Sol Alt',
             s.brakeSwipeDownLeft,
             (v) => s.brakeSwipeDownLeft = v,
           ),
@@ -888,7 +931,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           '↘ Sağ Alt',
           _swipeName(s.brakeSwipeDownRight),
           () => pick(
-            'Fren ↘ Sağ Alt',
+            'Sol Pedal ↘ Sağ Alt',
             s.brakeSwipeDownRight,
             (v) => s.brakeSwipeDownRight = v,
           ),
@@ -1300,17 +1343,17 @@ class _SettingsScreenState extends State<SettingsScreen>
                       } else if (mode == 3) {
                         s.m3Key1 = 5;
                         s.m3Key2 = 6;
-                        s.m3Key3 = 7;
+                        s.m3Key3 = 13;
                         s.m3Key4 = 8;
-                        s.m3Key5 = 9;
+                        s.m3Key5 = 7;
                         s.m3TapLeft = 4;
                         s.m3TapRight = 3;
                       } else if (mode == 4) {
                         s.m4Key1 = 5;
                         s.m4Key2 = 6;
-                        s.m4Key3 = 7;
+                        s.m4Key3 = 13;
                         s.m4Key4 = 8;
-                        s.m4KeyBottom = 9;
+                        s.m4KeyBottom = 7;
                         s.m4TapLeft = 4;
                         s.m4TapRight = 3;
                       }
@@ -1327,6 +1370,75 @@ class _SettingsScreenState extends State<SettingsScreen>
                     'Kapat',
                     style: TextStyle(color: Colors.white),
                   ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    prov.updateSettings(s);
+    setState(() {});
+  }
+
+  Future<void> _showCustomPressModesDialog(
+    BuildContext context,
+    SettingsProvider prov,
+    AppSettings s,
+  ) async {
+    await showDialog(
+      context: context,
+      builder: (dctx) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF12122A),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              title: const Text('Tuşa Özel Basış Modu', style: TextStyle(color: Colors.white, fontSize: 16)),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: 16,
+                  itemBuilder: (ctx, i) {
+                    final keyIndex = i + 1;
+                    final currentMode = s.customButtonPressModes[keyIndex] ?? s.globalButtonPressMode;
+                    String modeName = currentMode == 0 ? 'Anlık' : currentMode == 1 ? 'Süreli' : currentMode == 2 ? 'Toggle' : 'Hızlı';
+                    if (!s.customButtonPressModes.containsKey(keyIndex)) modeName += ' (Global)';
+
+                    return ListTile(
+                      title: Text('Tuş $keyIndex', style: const TextStyle(color: Colors.white)),
+                      subtitle: Text(modeName, style: const TextStyle(color: Colors.white54)),
+                      trailing: const Icon(Icons.edit, color: Colors.white38),
+                      onTap: () async {
+                        final val = await _radioDialog<int?>(
+                          ctx: context,
+                          title: 'Tuş $keyIndex Modu',
+                          current: s.customButtonPressModes[keyIndex],
+                          options: const {
+                            'Global Ayarı Kullan': -1,
+                            'Anlık (0)': 0,
+                            'Süreli (1)': 1,
+                            'Toggle (2)': 2,
+                            'Hızlı (3)': 3,
+                          },
+                        );
+                        if (val != null) {
+                          if (val == -1) {
+                            setStateDialog(() => s.customButtonPressModes.remove(keyIndex));
+                          } else {
+                            setStateDialog(() => s.customButtonPressModes[keyIndex] = val);
+                          }
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dctx),
+                  child: const Text('Kapat', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
