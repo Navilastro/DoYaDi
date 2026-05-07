@@ -50,10 +50,43 @@ class NetworkManager {
 
       List<int> bytes = utf8.encode("DOYADI_SEARCH");
       
-      // 3. Wi-Fi ağlarında tek UDP paketi kaybolabilir! 
-      // Garanti olması için peş peşe 3 kez arama paketi gönderiyoruz.
+      // 1. Cihazdaki aktif ağ arabirimlerini (Wi-Fi, USB Tethering vb.) al
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLinkLocal: true,
+      );
+
+      // Sadece wifi (wlan) ve tethering (rndis, usb) arabirimlerini filtrele
+      final targetInterfaces = interfaces.where((i) {
+        final name = i.name.toLowerCase();
+        return name.contains('wlan') || name.contains('rndis') || name.contains('usb');
+      }).toList();
+
+      // Eğer cihaz özel bir isim verdiyse kaçırmamak adına boş gelirse hepsini al
+      final interfacesToUse = targetInterfaces.isNotEmpty ? targetInterfaces : interfaces;
+
+      // 2. Garanti olması için peş peşe 3 kez arama paketi gönder
       for (int i = 0; i < 3; i++) {
-        socket.send(bytes, InternetAddress("255.255.255.255"), 8889);
+        for (var interface in interfacesToUse) {
+          for (var addr in interface.addresses) {
+            List<String> parts = addr.address.split('.');
+            if (parts.length == 4) {
+               // 2. ALT AĞ YAYIN ADRESİ: 255.255.255.255 yerine o ağın .255'i
+               parts[3] = '255';
+               String broadcastIp = parts.join('.');
+               socket.send(bytes, InternetAddress(broadcastIp), 8889);
+
+               // 3. MULTI-CAST SİGORTASI: USB Tethering'de PC genellikle .1 veya .2 alır
+               parts[3] = '1';
+               String gateway1 = parts.join('.');
+               socket.send(bytes, InternetAddress(gateway1), 8889);
+
+               parts[3] = '2';
+               String gateway2 = parts.join('.');
+               socket.send(bytes, InternetAddress(gateway2), 8889);
+            }
+          }
+        }
         await Future.delayed(const Duration(milliseconds: 100));
       }
 

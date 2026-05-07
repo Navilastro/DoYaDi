@@ -334,6 +334,84 @@ class _HomeScreenState extends State<HomeScreen> {
     await discoverySubscription?.cancel();
   }
 
+  void _showUsbTetheringDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0A0A20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: const Row(
+            children: [
+              Icon(Icons.cable, color: Colors.cyan, size: 28),
+              SizedBox(width: 10),
+              Text(
+                "USB ile Sıfır Gecikme",
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ListTile(
+                leading: Icon(Icons.looks_one, color: Colors.cyan),
+                title: Text("Telefonunuzu PC'ye USB kablosuyla bağlayın.", style: TextStyle(color: Colors.white70)),
+                contentPadding: EdgeInsets.zero,
+              ),
+              ListTile(
+                leading: Icon(Icons.looks_two, color: Colors.cyan),
+                title: Text("Telefon ayarlarından 'USB İnternet Paylaşımı' (USB Tethering) özelliğini açın.", style: TextStyle(color: Colors.white70)),
+                contentPadding: EdgeInsets.zero,
+              ),
+              ListTile(
+                leading: Icon(Icons.looks_3, color: Colors.cyan),
+                title: Text("PC'den DoYaDi sunucusunun açık olduğundan emin olun.", style: TextStyle(color: Colors.white70)),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text("İptal", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                
+                final connectionProvider = Provider.of<ConnectionProvider>(context, listen: false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Ağ taranıyor...'), duration: Duration(seconds: 1)),
+                );
+                String? foundIp = await NetworkManager().discoverServer();
+                if (foundIp != null) {
+                  connectionProvider.setWifiIp(foundIp);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('PC Bulundu! Bağlantı Hazır'), backgroundColor: Colors.green),
+                    );
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Ağda PC bulunamadı. Lütfen USB Tethering\'in açık olduğundan emin olun.'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.cyan,
+              ),
+              child: const Text("Tamam, Bağlan'a Başla", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context).settings;
@@ -421,6 +499,23 @@ class _HomeScreenState extends State<HomeScreen> {
               child: const Text(
                 'Bağlanılacak Cihazı Seç',
                 style: TextStyle(fontSize: 18),
+              ),
+            ),
+            const SizedBox(height: 15),
+            ElevatedButton.icon(
+              onPressed: () => _showUsbTetheringDialog(context),
+              icon: const Icon(Icons.cable, color: Colors.white),
+              label: const Text(
+                'Kablolu Bağlan (USB)',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: settings.detailColor.withValues(alpha: 0.15),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(color: settings.detailColor.withValues(alpha: 0.5), width: 1.5),
+                ),
               ),
             ),
             const SizedBox(height: 30),
