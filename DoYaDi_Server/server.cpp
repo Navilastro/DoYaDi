@@ -11,6 +11,7 @@
 #include <ViGEm/Client.h>
 #include <vector>
 #include <algorithm>
+#include <chrono>
 
 #pragma comment(lib, "ws2_32.lib")      
 #pragma comment(lib, "setupapi.lib")    
@@ -24,20 +25,136 @@ DEFINE_GUID(DoYaDi_SPP_UUID, 0x00001101, 0x0000, 0x1000, 0x80, 0x00, 0x00, 0x80,
 #define MAX_PACKET_SIZE 16
 
 bool isRunning = true;
-std::mutex vigemMutex;
+std::mutex serverMutex;
 PVIGEM_CLIENT client = nullptr;
-PVIGEM_TARGET pad = nullptr;
-
-// Global Dil Değişkeni (Varsayılan: tr)
 std::string appLang = "tr";
+int maxClients = 1;
 
-// Ortak XInput Güncelleme Fonksiyonu
-void UpdateGamepad(unsigned char* buffer, int bytesReceived, const char* source) {
-    std::lock_guard<std::mutex> lock(vigemMutex);
+// Her bağlantı (slot) için bireysel hafıza ve güvenlik yapısı
+struct ControllerSlot {
+    PVIGEM_TARGET pad = nullptr;
+    std::string endpointId = ""; // IP veya BT MAC adresi
+    bool isActive = false;
+    bool isConnectedToVigem = false;
+    bool inputActive = false; // Güvenlik freni için
+    std::chrono::steady_clock::time_point lastActiveTime;
+
+    // Klavyede ve Farede çakışmaları önlemek için bireysel hafıza
+    int lastMouseClick = 0;
+    std::vector<int> lastKeys;
+};
+
+std::vector<ControllerSlot> slots;
+
+// Bağlantıyı bulur veya yeni boş bir slot atar
+int GetOrAllocateSlot(const std::string& endpointId) {
+    std::lock_guard<std::mutex> lock(serverMutex);
+
+    // 1. Zaten kayıtlı bir cihaz mı?
+    for (int i = 0; i < maxClients; i++) {
+        if (slots[i].isActive && slots[i].endpointId == endpointId) {
+            slots[i].lastActiveTime = std::chrono::steady_clock::now();
+            slots[i].inputActive = true;
+            return i;
+        }
+    }
+
+    // 2. Yeni cihaz ise boş bir slot bul
+    for (int i = 0; i < maxClients; i++) {
+        if (!slots[i].isActive) {
+            slots[i].isActive = true;
+            slots[i].endpointId = endpointId;
+            slots[i].lastActiveTime = std::chrono::steady_clock::now();
+            slots[i].inputActive = false;
+            slots[i].lastMouseClick = 0;
+            slots[i].lastKeys.clear();
+
+            // ViGEm'e sadece ilk kullanımda bağla (optimizasyon)
+            if (!slots[i].isConnectedToVigem) {
+                vigem_target_add(client, slots[i].pad);
+                slots[i].isConnectedToVigem = true;
+            }
+
+            if (appLang == "english" || appLang == "en") {
+                std::cout << "[SYSTEM] Player " << (i + 1) << " connected! (" << endpointId << ")" << std::endl;
+            }
+            else {
+                std::cout << "[SISTEM] Oyuncu " << (i + 1) << " baglandi! (" << endpointId << ")" << std::endl;
+            }
+            return i;
+        }
+    }
+    return -1; // Slotlar dolu
+}
+
+// Güvenlik Freni: İletişim koptuğunda kontrolcüyü merkeze çeker
+void ResetSlotInputs(int slotIndex) {
     XUSB_REPORT report;
     XUSB_REPORT_INIT(&report);
-    static int lastMouseClick = 0;
-    static std::vector<int> lastKeys;
+    vigem_target_x360_update(client, slots[slotIndex].pad, report);
+
+    // Basılı kalan tuşları ve tıklamaları bırak
+    for (int oldKey : slots[slotIndex].lastKeys) {
+        INPUT keyUpInput = { 0 };
+        keyUpInput.type = INPUT_KEYBOARD;
+        keyUpInput.ki.wVk = oldKey;
+        keyUpInput.ki.dwFlags = KEYEVENTF_KEYUP;
+        SendInput(1, &keyUpInput, sizeof(INPUT));
+    }
+    slots[slotIndex].lastKeys.clear();
+    slots[slotIndex].lastMouseClick = 0;
+    slots[slotIndex].inputActive = false;
+}
+
+// 0. THREAD: Watchdog (Zaman Aşımı ve Slot Temizleyici)
+void WatchdogThread() {
+    while (isRunning) {
+        Sleep(100); // Saniyede 10 kez kontrol et (CPU'yu yormaz)
+
+        std::lock_guard<std::mutex> lock(serverMutex);
+        auto now = std::chrono::steady_clock::now();
+
+        for (int i = 0; i < maxClients; i++) {
+            if (slots[i].isActive) {
+                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - slots[i].lastActiveTime).count();
+
+                // 500ms bağlantı yoksa (Kablo koptu, ağ düştü) -> Arabayı durdur
+                if (ms > 500 && slots[i].inputActive) {
+                    ResetSlotInputs(i);
+                    slots[i].inputActive = false;
+                    if (appLang == "english" || appLang == "en") {
+                        std::cerr << "[WATCHDOG] Player " << (i + 1) << " timeout. Safety brake applied." << std::endl;
+                    }
+                    else {
+                        std::cerr << "[WATCHDOG] Oyuncu " << (i + 1) << " yanit vermiyor. Guvenlik freni devrede." << std::endl;
+                    }
+                }
+
+                // 10 saniye boyunca hiç geri dönmediyse -> Slotu boşa çıkar
+                if (ms > 10000) {
+                    slots[i].isActive = false;
+                    slots[i].endpointId = "";
+                    if (appLang == "english" || appLang == "en") {
+                        std::cout << "[SYSTEM] Player " << (i + 1) << " slot freed." << std::endl;
+                    }
+                    else {
+                        std::cout << "[SISTEM] Oyuncu " << (i + 1) << " slotu bosa cikarildi." << std::endl;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Ortak XInput Güncelleme Fonksiyonu
+void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
+    std::lock_guard<std::mutex> lock(serverMutex);
+    if (slotIndex < 0 || slotIndex >= maxClients || !slots[slotIndex].isActive) return;
+
+    ControllerSlot& slot = slots[slotIndex];
+    XUSB_REPORT report;
+    XUSB_REPORT_INIT(&report);
+
     // İlk 5 Bayt (Standart Gaz, Fren, Direksiyon ve Tuşlar)
     if (bytesReceived >= 5) {
         int steering = buffer[0];
@@ -82,34 +199,33 @@ void UpdateGamepad(unsigned char* buffer, int bytesReceived, const char* source)
 
         // --- 2. FARE TIKLAMALARI (Byte 11) ---
         int currentMouseClick = buffer[11];
-        if (currentMouseClick != lastMouseClick) {
+        if (currentMouseClick != slot.lastMouseClick) {
             INPUT clickInput = { 0 };
             clickInput.type = INPUT_MOUSE;
 
-            // Eğer yeni gelen 1 ise Sol Tık basıldı, eski 1 yeni 0 ise Sol Tık bırakıldı
             if (currentMouseClick == 1) clickInput.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-            else if (lastMouseClick == 1) clickInput.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+            else if (slot.lastMouseClick == 1) clickInput.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 
             if (currentMouseClick == 2) clickInput.mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
-            else if (lastMouseClick == 2) clickInput.mi.dwFlags = MOUSEEVENTF_RIGHTUP;
+            else if (slot.lastMouseClick == 2) clickInput.mi.dwFlags = MOUSEEVENTF_RIGHTUP;
 
             if (currentMouseClick == 3) clickInput.mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN;
-            else if (lastMouseClick == 3) clickInput.mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
+            else if (slot.lastMouseClick == 3) clickInput.mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
 
             SendInput(1, &clickInput, sizeof(INPUT));
-            lastMouseClick = currentMouseClick;
+            slot.lastMouseClick = currentMouseClick;
         }
 
         // --- 3. KLAVYE ANTI-GHOSTING (Byte 12-15) ---
         std::vector<int> currentKeys;
         for (int i = 12; i <= 15; i++) {
             if (buffer[i] != 0) {
-                currentKeys.push_back(buffer[i]); // Basılı olan tuşları listeye al
+                currentKeys.push_back(buffer[i]);
             }
         }
 
-        // Bırakılan Tuşları Bul (Eski listede var, yeni listede yoksa bırakılmıştır)
-        for (int oldKey : lastKeys) {
+        // Bırakılan Tuşları Bul
+        for (int oldKey : slot.lastKeys) {
             if (std::find(currentKeys.begin(), currentKeys.end(), oldKey) == currentKeys.end()) {
                 INPUT keyUpInput = { 0 };
                 keyUpInput.type = INPUT_KEYBOARD;
@@ -119,9 +235,9 @@ void UpdateGamepad(unsigned char* buffer, int bytesReceived, const char* source)
             }
         }
 
-        // Yeni Basılan Tuşları Bul (Yeni listede var, eski listede yoksa yeni basılmıştır)
+        // Yeni Basılan Tuşları Bul
         for (int newKey : currentKeys) {
-            if (std::find(lastKeys.begin(), lastKeys.end(), newKey) == lastKeys.end()) {
+            if (std::find(slot.lastKeys.begin(), slot.lastKeys.end(), newKey) == slot.lastKeys.end()) {
                 INPUT keyDownInput = { 0 };
                 keyDownInput.type = INPUT_KEYBOARD;
                 keyDownInput.ki.wVk = newKey;
@@ -130,11 +246,10 @@ void UpdateGamepad(unsigned char* buffer, int bytesReceived, const char* source)
             }
         }
 
-        lastKeys = currentKeys; // Hafızayı güncelle
+        slot.lastKeys = currentKeys;
     }
 
-    
-    vigem_target_x360_update(client, pad, report);
+    vigem_target_x360_update(client, slot.pad, report);
 }
 
 // 1. THREAD: Cihaz Keşfi 
@@ -145,18 +260,16 @@ void DiscoveryListener() {
     serverAddr.sin_port = htons(UDP_DISCOVERY_PORT);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
 
-    // PORT DOLU MU DİYE KONTROL EDİYORUZ
     if (bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-		if (appLang == "english" || appLang == "en") {
-            std::cerr << "\n[ERROR] Port 8889 is busy! Please close old DoYaDi instances from Task Manager." << std::endl;
+        if (appLang == "english" || appLang == "en") {
+            std::cerr << "\n[ERROR] Port 8889 is busy! Please close old DoYaDi instances." << std::endl;
         }
         else {
-            std::cerr << "\n[HATA] 8889 Portu mesgul! Gorev Yoneticisinden eski DoYaDi'leri kapatin." << std::endl;
+            std::cerr << "\n[HATA] 8889 Portu mesgul! Eski DoYaDi'leri kapatin." << std::endl;
         }
         closesocket(sock);
         return;
     }
-    bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr));
 
     char buffer[256];
     sockaddr_in clientAddr;
@@ -175,7 +288,7 @@ void DiscoveryListener() {
     closesocket(sock);
 }
 
-// 2. THREAD: Wi-Fi Dinleyici 
+// 2. THREAD: Wi-Fi ve USB Dinleyici 
 void UdpDataListener() {
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     sockaddr_in serverAddr;
@@ -184,189 +297,149 @@ void UdpDataListener() {
     serverAddr.sin_addr.s_addr = INADDR_ANY;
 
     if (bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-		if (appLang == "english" || appLang == "en") {
-            std::cerr << "\n[ERROR] Port 8888 is busy! Please close old DoYaDi instances from Task Manager." << std::endl;
+        if (appLang == "english" || appLang == "en") {
+            std::cerr << "\n[ERROR] Port 8888 is busy! Please close old DoYaDi instances." << std::endl;
         }
         else {
-            std::cerr << "\n[HATA] 8888 Portu mesgul! Gorev Yoneticisinden eski DoYaDi'leri kapatin." << std::endl;
+            std::cerr << "\n[HATA] 8888 Portu mesgul! Eski DoYaDi'leri kapatin." << std::endl;
         }
         closesocket(sock);
         return;
     }
 
-    // 500ms Zaman Aşımı (Güvenlik Freni)
+    // 500ms Socket Zaman Aşımı (Threadi kilitlememek için)
     DWORD timeout = 500;
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
 
     unsigned char buffer[MAX_PACKET_SIZE];
     sockaddr_in clientAddr;
     int clientAddrLen = sizeof(clientAddr);
-	if (appLang == "english" || appLang == "en") {
-        std::cout << "[WIFI] Searching for DoYaDi app (Port: 8889)..." << std::endl;
+
+    if (appLang == "english" || appLang == "en") {
+        std::cout << "[WIFI/USB] Searching for DoYaDi app (Port: 8889)..." << std::endl;
     }
     else {
-        std::cout << "[WIFI] Agda DoYaDi uygulamasi araniyor (Port: 8889)..." << std::endl;
+        std::cout << "[WIFI/USB] Agda DoYaDi uygulamasi araniyor (Port: 8889)..." << std::endl;
     }
-    bool isWifiActive = false;
+
     while (isRunning) {
         int bytes = recvfrom(sock, (char*)buffer, MAX_PACKET_SIZE, 0, (sockaddr*)&clientAddr, &clientAddrLen);
-        if (bytes == SOCKET_ERROR) {
-            int err = WSAGetLastError();
-            if (err == WSAETIMEDOUT) {
-                // Bağlantı koptu: Güvenlik paketi gönder (Direksiyon merkez, diğerleri sıfır)
-                if (isWifiActive) {
-					if (appLang == "english" || appLang == "en") {
-                        std::cerr << "[WIFI] Connection lost. Sending safety packet..." << std::endl;
-                    }
-                    else {
-                        std::cerr << "[WIFI] Baglantı koptu. Güvenlik paketi gönderiliyor..." << std::endl;
-                    }
-                    unsigned char safe_buffer[5] = { 128, 0, 0, 0, 0 };
-                    UpdateGamepad(safe_buffer, 5, "WIFI");
-					isWifiActive = false;
-                }
+
+        if (bytes > 0 && (bytes == 5 || bytes == 9 || bytes == 16)) {
+            char ipStr[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &(clientAddr.sin_addr), ipStr, INET_ADDRSTRLEN);
+            std::string endpointId = "UDP_" + std::string(ipStr);
+
+            int slotIndex = GetOrAllocateSlot(endpointId);
+            if (slotIndex != -1) {
+                UpdateGamepad(slotIndex, buffer, bytes);
             }
-        }
-        else if (bytes == 5 || bytes == 9 || bytes == 16) {
-            isWifiActive = true;
-            UpdateGamepad(buffer, bytes, "WIFI");
         }
     }
     closesocket(sock);
 }
 
-// 3. THREAD: Geliştirilmiş Bluetooth Dinleyici
+// Bluetooth Dinleyici
 void BluetoothListener() {
-    SOCKET bthSock = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
-    if (bthSock == INVALID_SOCKET) {
-		if (appLang == "english" || appLang == "en") {
-            std::cerr << "[BLUETOOTH] Bluetooth hardware not found." << std::endl;
-        }
-        else {
-            std::cerr << "[BLUETOOTH] Bluetooth donanimi bulunamadi." << std::endl;
-        }
-        return;
-    }
-
-    // Güvenlik ayarlarını esnet
-    ULONG auth = 0;
-    setsockopt(bthSock, SOL_RFCOMM, SO_BTH_AUTHENTICATE, (char*)&auth, sizeof(auth));
-
-    SOCKADDR_BTH bthAddr = { 0 };
-    bthAddr.addressFamily = AF_BTH;
-    bthAddr.port = BT_PORT_ANY;
-
-    if (bind(bthSock, (sockaddr*)&bthAddr, sizeof(bthAddr)) == SOCKET_ERROR) {
-		if (appLang == "english" || appLang == "en") {
-            std::cerr << "[BLUETOOTH] Bind error!" << std::endl;
-        }
-        else {
-            std::cerr << "[BLUETOOTH] Bind hatasi!" << std::endl;
-        }
-        closesocket(bthSock);
-        return;
-    }
-
-    // SDP Kaydı
-    int addrLen = sizeof(bthAddr);
-    getsockname(bthSock, (sockaddr*)&bthAddr, &addrLen);
-
-    CSADDR_INFO addrInfo = { 0 };
-    addrInfo.LocalAddr.lpSockaddr = (sockaddr*)&bthAddr;
-    addrInfo.LocalAddr.iSockaddrLength = sizeof(bthAddr);
-    addrInfo.iSocketType = SOCK_STREAM;
-    addrInfo.iProtocol = BTHPROTO_RFCOMM;
-
-    WSAQUERYSET qs = { 0 };
-    qs.dwSize = sizeof(qs);
-    qs.lpszServiceInstanceName = (LPWSTR)L"DoYaDi Server";
-    qs.lpServiceClassId = (LPGUID)&DoYaDi_SPP_UUID;
-    qs.dwNameSpace = NS_BTH;
-    qs.dwNumberOfCsAddrs = 1;
-    qs.lpcsaBuffer = &addrInfo;
-
-    if (WSASetService(&qs, RNRSERVICE_REGISTER, 0) == SOCKET_ERROR) {
-		if (appLang == "english" || appLang == "en") {
-            std::cerr << "[BLUETOOTH] SDP Service registration failed!" << std::endl;
-        }
-        else {
-            std::cerr << "[BLUETOOTH] SDP Servis kaydi basarisiz!" << std::endl;
-        }
-    }
-    else {
-		if (appLang == "english" || appLang == "en") {
-            std::cout << "[BLUETOOTH] SDP Service registered, waiting for connection..." << std::endl;
-        }
-        else {
-            std::cout << "[BLUETOOTH] SDP Servisi kaydedildi, baglanti bekleniyor..." << std::endl;
-        }
-    }
-
-    listen(bthSock, 1);
-
-    bool isBthActive = false;
-    
     while (isRunning) {
-        SOCKADDR_BTH clientAddr;
-        int clientAddrLen = sizeof(clientAddr);
-        SOCKET clientSock = accept(bthSock, (sockaddr*)&clientAddr, &clientAddrLen);
+        SOCKET bthSock = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
+        if (bthSock == INVALID_SOCKET) {
+            Sleep(3000); // Bluetooth kapalıysa uykuya yat, çökmek yok!
+            continue;
+        }
 
-        if (clientSock != INVALID_SOCKET) {
-            if(appLang== "english" || appLang == "en") {
-                std::cout << "\n[BLUETOOTH] Phone connected!" << std::endl;
+        ULONG auth = 0;
+        setsockopt(bthSock, SOL_RFCOMM, SO_BTH_AUTHENTICATE, (char*)&auth, sizeof(auth));
+
+        SOCKADDR_BTH bthAddr = { 0 };
+        bthAddr.addressFamily = AF_BTH;
+        bthAddr.port = BT_PORT_ANY;
+
+        if (bind(bthSock, (sockaddr*)&bthAddr, sizeof(bthAddr)) == SOCKET_ERROR) {
+            closesocket(bthSock);
+            Sleep(3000); // Başka bir sorun varsa bekle ve tekrar dene
+            continue;
+        }
+
+        int addrLen = sizeof(bthAddr);
+        getsockname(bthSock, (sockaddr*)&bthAddr, &addrLen);
+
+        CSADDR_INFO addrInfo = { 0 };
+        addrInfo.LocalAddr.lpSockaddr = (sockaddr*)&bthAddr;
+        addrInfo.LocalAddr.iSockaddrLength = sizeof(bthAddr);
+        addrInfo.iSocketType = SOCK_STREAM;
+        addrInfo.iProtocol = BTHPROTO_RFCOMM;
+
+        WSAQUERYSET qs = { 0 };
+        qs.dwSize = sizeof(qs);
+        qs.lpszServiceInstanceName = (LPWSTR)L"DoYaDi Server";
+        qs.lpServiceClassId = (LPGUID)&DoYaDi_SPP_UUID;
+        qs.dwNameSpace = NS_BTH;
+        qs.dwNumberOfCsAddrs = 1;
+        qs.lpcsaBuffer = &addrInfo;
+
+        if (WSASetService(&qs, RNRSERVICE_REGISTER, 0) != SOCKET_ERROR) {
+            if (appLang == "english" || appLang == "en") {
+                std::cout << "[BLUETOOTH] Ready. Waiting for connection..." << std::endl;
             }
             else {
-                std::cout << "\n[BLUETOOTH] Telefon baglandi!" << std::endl;
+                std::cout << "[BLUETOOTH] Hazir. Baglanti bekleniyor..." << std::endl;
             }
-            unsigned char buffer[MAX_PACKET_SIZE];
+        }
 
-            // 500ms Zaman Aşımı (Güvenlik Freni)
-            DWORD timeout = 500;
-            setsockopt(clientSock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+        listen(bthSock, 1);
 
-            while (isRunning) {
-                int bytes = recv(clientSock, (char*)buffer, MAX_PACKET_SIZE, 0);
+        while (isRunning) {
+            SOCKADDR_BTH clientAddr;
+            int clientAddrLen = sizeof(clientAddr);
+            SOCKET clientSock = accept(bthSock, (sockaddr*)&clientAddr, &clientAddrLen);
 
-                if (bytes == SOCKET_ERROR) {
-                    int err = WSAGetLastError();
-                    if (err == WSAETIMEDOUT) {
-                        if (isBthActive) {
-                            unsigned char safe_buffer[5] = { 128, 0, 0, 0, 0 };
-                            UpdateGamepad(safe_buffer, 5, "BTH ");
-                            isBthActive = false;
-                        }
-                    }
-                    else {
-						if (appLang == "english" || appLang == "en") {
-                            std::cout << "\n[BLUETOOTH] Connection lost or error." << std::endl;
+            if (clientSock != INVALID_SOCKET) {
+                std::string endpointId = "BT_" + std::to_string(clientAddr.btAddr);
+                int slotIndex = GetOrAllocateSlot(endpointId);
+
+                if (slotIndex == -1) {
+                    closesocket(clientSock); // Server dolu, reddet
+                    continue;
+                }
+
+                unsigned char buffer[MAX_PACKET_SIZE];
+                DWORD timeout = 500;
+                setsockopt(clientSock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+
+                while (isRunning) {
+                    int bytes = recv(clientSock, (char*)buffer, MAX_PACKET_SIZE, 0);
+
+                    if (bytes == SOCKET_ERROR) {
+                        int err = WSAGetLastError();
+                        if (err == WSAETIMEDOUT) {
+                            // Sadece 500ms sessizlik oldu, kopma yok. Dinlemeye devam et.
+                            // (Güvenlik frenini zaten Watchdog arka planda yapıyor)
+                            continue;
                         }
                         else {
-                            std::cout << "\n[BLUETOOTH] Baglanti koptu veya hata." << std::endl;
+                            break; // Gerçek bir kopma veya donanım hatası
                         }
-                        break;
+                    }
+                    else if (bytes == 0) {
+                        break; // Telefon bağlantıyı bilerek kapattı
+                    }
+                    else if (bytes == 5 || bytes == 9 || bytes == 16) {
+                        if (!slots[slotIndex].isActive) {
+                            slotIndex = GetOrAllocateSlot(endpointId);
+                            if (slotIndex == -1) break; // Sunucu aniden dolduysa döngüden çık
+                        }
+                        slots[slotIndex].lastActiveTime = std::chrono::steady_clock::now();
+                        slots[slotIndex].inputActive = true;
+                        UpdateGamepad(slotIndex, buffer, bytes);
                     }
                 }
-                else if (bytes == 5 || bytes == 9 || bytes == 16) {
-					isBthActive = true;
-                    UpdateGamepad(buffer, bytes, "BTH ");
-                }
-                else if (bytes == 0) {
-					if (appLang == "english" || appLang == "en") {
-                        std::cout << "\n[BLUETOOTH] Connection closed by client." << std::endl;
-                    }
-                    else {
-                        std::cout << "\n[BLUETOOTH] Baglanti kapatildi." << std::endl;
-                    }
-                    break;
-                }
+                closesocket(clientSock);
             }
-            closesocket(clientSock);
         }
+        WSASetService(&qs, RNRSERVICE_DEREGISTER, 0);
+        closesocket(bthSock);
     }
-
-    // Çıkışta SDP kaydını sil
-    WSASetService(&qs, RNRSERVICE_DEREGISTER, 0);
-    closesocket(bthSock);
 }
 
 int main() {
@@ -374,17 +447,25 @@ int main() {
     GetPrivateProfileStringA("Settings", "Language", "tr", langBuffer, 10, ".\\config.ini");
     appLang = std::string(langBuffer);
 
-    // 2. Dolaşımdaki konsol yazılarını dile göre bas
     if (appLang == "english" || appLang == "en") {
         std::cout << "========================================" << std::endl;
         std::cout << "          DoYaDi - PC SERVER            " << std::endl;
         std::cout << "========================================\n" << std::endl;
+        std::cout << "Enter max number of devices (1-4): ";
     }
     else {
         std::cout << "========================================" << std::endl;
         std::cout << "         DoYaDi - PC SUNUCUSU           " << std::endl;
         std::cout << "========================================\n" << std::endl;
+        std::cout << "Baglanacak maksimum cihaz sayisini girin (1-4): ";
     }
+
+    std::cin >> maxClients;
+    if (maxClients < 1) maxClients = 1;
+    if (maxClients > 4) maxClients = 4;
+
+    // Klavyede girilen \n (Enter) karakterini temizle ki sonda hemen kapanmasın
+    std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
 
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -393,33 +474,29 @@ int main() {
     const auto retval = vigem_connect(client);
 
     if (!VIGEM_SUCCESS(retval)) {
-		if (appLang == "english" || appLang == "en") {
-            std::cerr << "[ERROR] ViGEmBus Driver not found or connection error!" << std::endl;
-            std::cerr << "Please install Nefarius ViGEmBus Driver on your computer." << std::endl;
+        if (appLang == "english" || appLang == "en") {
+            std::cerr << "[ERROR] ViGEmBus Driver not found!" << std::endl;
         }
-    else {
-        std::cerr << "[HATA] ViGEmBus Surucusu bulunamadi veya baglanti hatasi!" << std::endl;
-        std::cerr << "Lutfen bilgisayariniza Nefarius ViGEmBus Driver kurun." << std::endl;
-    }
-
+        else {
+            std::cerr << "[HATA] ViGEmBus Surucusu bulunamadi!" << std::endl;
+        }
         system("pause");
         return -1;
     }
 
-    pad = vigem_target_x360_alloc();
-    vigem_target_add(client, pad);
-	if (appLang == "english" || appLang == "en") {
-        std::cout << "[SYSTEM] Virtual Xbox 360 controller is active." << std::endl;
-    }
-    else {
-        std::cout << "[SISTEM] Sanal Xbox 360 kontrolcusu aktif." << std::endl;
+    // Seçilen sayı kadar boş slot oluştur
+    for (int i = 0; i < maxClients; i++) {
+        ControllerSlot s;
+        s.pad = vigem_target_x360_alloc();
+        slots.push_back(s);
     }
 
+    std::thread watchdog(WatchdogThread);
     std::thread udpDiscovery(DiscoveryListener);
     std::thread udpData(UdpDataListener);
     std::thread btData(BluetoothListener);
 
-	if (appLang == "english" || appLang == "en") {
+    if (appLang == "english" || appLang == "en") {
         std::cout << ">>> Server is running. Press ENTER to stop... <<<" << std::endl;
     }
     else {
@@ -429,12 +506,18 @@ int main() {
     std::cin.get();
     isRunning = false;
 
-    vigem_target_remove(client, pad);
-    vigem_target_free(pad);
+    for (int i = 0; i < maxClients; i++) {
+        if (slots[i].isConnectedToVigem) {
+            vigem_target_remove(client, slots[i].pad);
+        }
+        vigem_target_free(slots[i].pad);
+    }
+
     vigem_disconnect(client);
     vigem_free(client);
     WSACleanup();
 
+    watchdog.detach();
     udpDiscovery.detach();
     udpData.detach();
     btData.detach();

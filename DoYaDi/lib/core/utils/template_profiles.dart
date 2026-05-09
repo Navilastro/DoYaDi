@@ -54,3 +54,69 @@ String getKeyboardMouseTemplate() {
   ];
   return jsonEncode(items.map((e) => e.toJson()).toList());
 }
+
+/// Tam gamepad düzeni: çift joystick, ABXY, D-Pad, LB/RB, LT/RT (gas/brake bar),
+/// Start ve Select tuşları.
+String getFullControllerTemplate() {
+  final items = [
+    // Sol joystick (sol alt)
+    Layout5Item(id: 'l_joy', type: Layout5ItemType.leftJoystick, left: 0.03, top: 0.52, width: 0.26, height: 0.45),
+    // Sağ joystick (sağ alt)
+    Layout5Item(id: 'r_joy', type: Layout5ItemType.rightJoystick, left: 0.71, top: 0.52, width: 0.26, height: 0.45),
+    // LT (sol tetik) — gaz bar olarak
+    Layout5Item(id: 'lt_bar', type: Layout5ItemType.gasBar, left: 0.00, top: 0.00, width: 0.12, height: 0.30),
+    // RT (sağ tetik) — fren bar olarak
+    Layout5Item(id: 'rt_bar', type: Layout5ItemType.brakeBar, left: 0.88, top: 0.00, width: 0.12, height: 0.30),
+    // LB
+    Layout5Item(id: 'btn_lb', type: Layout5ItemType.buttonSoft, left: 0.00, top: 0.30, width: 0.14, height: 0.14, label: 'LB', keyIndex: 1),
+    // RB
+    Layout5Item(id: 'btn_rb', type: Layout5ItemType.buttonSoft, left: 0.86, top: 0.30, width: 0.14, height: 0.14, label: 'RB', keyIndex: 2),
+    // D-Pad (sol orta)
+    Layout5Item(id: 'dp_up',   type: Layout5ItemType.buttonSquare, left: 0.27, top: 0.44, width: 0.09, height: 0.16, label: '↑', keyIndex: 9),
+    Layout5Item(id: 'dp_right',type: Layout5ItemType.buttonSquare, left: 0.36, top: 0.60, width: 0.09, height: 0.16, label: '→', keyIndex: 12),
+    Layout5Item(id: 'dp_down', type: Layout5ItemType.buttonSquare, left: 0.27, top: 0.76, width: 0.09, height: 0.16, label: '↓', keyIndex: 10),
+    Layout5Item(id: 'dp_left', type: Layout5ItemType.buttonSquare, left: 0.18, top: 0.60, width: 0.09, height: 0.16, label: '←', keyIndex: 11),
+    // ABXY (sağ orta)
+    Layout5Item(id: 'btn_y', type: Layout5ItemType.buttonCircle, left: 0.60, top: 0.28, width: 0.09, height: 0.16, label: 'Y', keyIndex: 8),
+    Layout5Item(id: 'btn_b', type: Layout5ItemType.buttonCircle, left: 0.69, top: 0.44, width: 0.09, height: 0.16, label: 'B', keyIndex: 6),
+    Layout5Item(id: 'btn_a', type: Layout5ItemType.buttonCircle, left: 0.60, top: 0.60, width: 0.09, height: 0.16, label: 'A', keyIndex: 5),
+    Layout5Item(id: 'btn_x', type: Layout5ItemType.buttonCircle, left: 0.51, top: 0.44, width: 0.09, height: 0.16, label: 'X', keyIndex: 7),
+    // Select & Start (merkez)
+    Layout5Item(id: 'btn_sel', type: Layout5ItemType.buttonSoft, left: 0.39, top: 0.07, width: 0.10, height: 0.12, label: 'Sel', keyIndex: 13),
+    Layout5Item(id: 'btn_start', type: Layout5ItemType.buttonSoft, left: 0.51, top: 0.07, width: 0.10, height: 0.12, label: 'Start', keyIndex: 14),
+  ];
+  return jsonEncode(items.map((e) => e.toJson()).toList());
+}
+
+/// Oyuncu klavye düzeni: WASD, Space, Shift, Ctrl, Q, E, R, F ve F1-F4.
+/// keyIndex >= 100 → C++ tarafı 1000 çıkarır → gerçek VK kodu.
+/// W=1087(VK87), A=1065(VK65), S=1083(VK83), D=1068(VK68)
+/// Q=1081, E=1069, R=1082, F=1070
+/// Space=1032(VK32), Shift=1016(VK16), Ctrl=1017(VK17)
+/// F1=1112, F2=1113, F3=1114, F4=1115
+String getGamerKeyboardTemplate() {
+  final items = [
+    // WASD grubu (sol üst)
+    Layout5Item(id: 'kb_w',     type: Layout5ItemType.buttonSquare, left: 0.16, top: 0.10, width: 0.09, height: 0.16, label: 'W',     keyIndex: 1087),
+    Layout5Item(id: 'kb_a',     type: Layout5ItemType.buttonSquare, left: 0.07, top: 0.26, width: 0.09, height: 0.16, label: 'A',     keyIndex: 1065),
+    Layout5Item(id: 'kb_s',     type: Layout5ItemType.buttonSquare, left: 0.16, top: 0.26, width: 0.09, height: 0.16, label: 'S',     keyIndex: 1083),
+    Layout5Item(id: 'kb_d',     type: Layout5ItemType.buttonSquare, left: 0.25, top: 0.26, width: 0.09, height: 0.16, label: 'D',     keyIndex: 1068),
+    // Q, E üst sıra
+    Layout5Item(id: 'kb_q',     type: Layout5ItemType.buttonSoft,   left: 0.07, top: 0.10, width: 0.09, height: 0.16, label: 'Q',     keyIndex: 1081),
+    Layout5Item(id: 'kb_e',     type: Layout5ItemType.buttonSoft,   left: 0.25, top: 0.10, width: 0.09, height: 0.16, label: 'E',     keyIndex: 1069),
+    // R, F eylem tuşları
+    Layout5Item(id: 'kb_r',     type: Layout5ItemType.buttonSoft,   left: 0.07, top: 0.42, width: 0.09, height: 0.16, label: 'R',     keyIndex: 1082),
+    Layout5Item(id: 'kb_f',     type: Layout5ItemType.buttonSoft,   left: 0.16, top: 0.42, width: 0.09, height: 0.16, label: 'F',     keyIndex: 1070),
+    // Space (geniş)
+    Layout5Item(id: 'kb_space', type: Layout5ItemType.buttonSquare, left: 0.07, top: 0.58, width: 0.28, height: 0.16, label: AppTranslations.getText('space'), keyIndex: 1032),
+    // Shift, Ctrl
+    Layout5Item(id: 'kb_shift', type: Layout5ItemType.buttonSoft,   left: 0.07, top: 0.74, width: 0.14, height: 0.14, label: AppTranslations.getText('shift'), keyIndex: 1016),
+    Layout5Item(id: 'kb_ctrl',  type: Layout5ItemType.buttonSoft,   left: 0.21, top: 0.74, width: 0.14, height: 0.14, label: 'Ctrl',  keyIndex: 1017),
+    // F1-F4 (sağ üst köşe, yatay)
+    Layout5Item(id: 'kb_f1',    type: Layout5ItemType.buttonSoft,   left: 0.60, top: 0.04, width: 0.09, height: 0.13, label: 'F1',    keyIndex: 1112),
+    Layout5Item(id: 'kb_f2',    type: Layout5ItemType.buttonSoft,   left: 0.70, top: 0.04, width: 0.09, height: 0.13, label: 'F2',    keyIndex: 1113),
+    Layout5Item(id: 'kb_f3',    type: Layout5ItemType.buttonSoft,   left: 0.80, top: 0.04, width: 0.09, height: 0.13, label: 'F3',    keyIndex: 1114),
+    Layout5Item(id: 'kb_f4',    type: Layout5ItemType.buttonSoft,   left: 0.90, top: 0.04, width: 0.09, height: 0.13, label: 'F4',    keyIndex: 1115),
+  ];
+  return jsonEncode(items.map((e) => e.toJson()).toList());
+}
