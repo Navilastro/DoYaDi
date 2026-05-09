@@ -122,9 +122,22 @@ class _DrivingScreenState extends State<DrivingScreen>
   }
 
   void _onTick() {
-    // 5-byte protocol
-    // Byte 0: Steering (-1.0 to 1.0) mapped to 0-255 (128 = center)
-    int steerByte = ((steeringAngle + 1.0) / 2.0 * 255).clamp(0, 255).toInt();
+    final settings = Provider.of<SettingsProvider>(context, listen: false).settings;
+    final int currentMode = settings.defaultDrivingMode;
+
+    // ── Sensör Bypass (Pil/CPU Optimizasyonu) ──────────────────────────────
+    // Mod 5'te ekranda joystick varsa ağır direksiyon hesabına gerek yok.
+    // joystickPresent bayrağı DrivingModeBuildMixin tarafından güncellenir.
+    final bool bypassSteering = (currentMode == 5) && joystickPresent;
+
+    // Byte 0: Steering
+    // bypass aktifse sabit 128 (merkez) gönder, sensör matematiğini çalıştırma.
+    int steerByte;
+    if (bypassSteering) {
+      steerByte = 128;
+    } else {
+      steerByte = ((steeringAngle + 1.0) / 2.0 * 255).clamp(0, 255).toInt();
+    }
 
     // Byte 1: Gas (0.0 to 1.0) mapped to 0-255
     int gasByte = (gasPercentage * 255).clamp(0, 255).toInt();
