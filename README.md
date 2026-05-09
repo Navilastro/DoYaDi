@@ -1,6 +1,6 @@
 <h1>DoYaDi: Ultimate PC Remote Controller & Virtual Racing Wheel</h1>
 
-<a href ="https://github.com/Navilastro/DoYaDi/blob/main/T%C3%BCrk%C3%A7e_README.md">🇹🇷 Türkçe dokümantasyon için tıklayın (Click for Turkish version)</a>
+<a href ="https://github.com/Navilastro/DoYaDi/blob/main/Turkish_README.md">🇹🇷 Türkçe dokümantasyon için tıklayın (Click for Turkish version)</a>
 
 DoYaDi is a hybrid control solution that transforms your mobile device into a high-precision virtual racing wheel, gamepad, and touchpad via Wi-Fi, with cable or Bluetooth. Unlike standard virtual steering apps, it aims to deliver a professional driving experience with low-latency data transmission and dynamic sensitivity algorithms.
 🚀 Key Features
@@ -20,6 +20,8 @@ DoYaDi is a hybrid control solution that transforms your mobile device into a hi
     Keyboard Macros & Anti-Ghosting: Trigger any PC key (F1-F12, Shift, Ctrl, etc.) directly from the device, supporting up to 4 simultaneous keystrokes.
 
     Safe Back Button Logic: Implements isExiting state control and IgnorePointer isolation to prevent accidental touches and unintended page navigation.
+
+    It allows up to four controller!
 
 <h2>🛠 Technical Architecture</h2>
     

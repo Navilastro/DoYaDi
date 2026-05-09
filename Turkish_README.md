@@ -20,6 +20,8 @@ DoYaDi, mobil cihazınızı Wi-Fi, kablo veya Bluetooth aracılığıyla yüksek
 
     Güvenli Geri Tuşu Mantığı: Yanlışlıkla dokunmaları ve istenmeyen sayfa geçişlerini önlemek için isExiting durum kontrolü ve IgnorePointer izolasyonu uygular.
 
+    Dört adede kadar kontrol cihazına izin verir!
+
 <h2>🛠 Teknik Mimari</h2>
 
 Proje, bir mobil istemci (Flutter) ve bir Windows sunucusundan (C++) oluşmaktadır.
