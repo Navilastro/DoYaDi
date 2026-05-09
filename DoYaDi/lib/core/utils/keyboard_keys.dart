@@ -21,8 +21,8 @@ class KeyboardKeys {
     '${AppTranslations.getText('key_prefix')} 16': 16,
     // Fare tuşları (temiz isimler)
     AppTranslations.getText('left_click'): 2001,
-    AppTranslations.getText('middle_click'): 2003,
-    AppTranslations.getText('right_click'): 2002,
+    AppTranslations.getText('middle_click'): 2002,
+    AppTranslations.getText('right_click'): 2003,
     // Klavye tuşları (temiz isimler ve küçük harfler)
     AppTranslations.getText('up_arrow'): 1038,
     AppTranslations.getText('down_arrow'): 1040,

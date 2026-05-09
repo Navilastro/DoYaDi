@@ -77,6 +77,8 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   // Basılı tuşlar bitmap (1-16)
   final Set<int> pressedKeys = {};
   final Map<int, Timer> _buttonTimers = {};
+  // Hızlı (mode 3): basılı tutulurken tekrar ateşlemeyi engelleyen kilit
+  final Set<int> _quickFireLocked = {};
 
   final Map<int, PedalTouchState> activePedals = {};
 
@@ -99,7 +101,12 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
       mod0ActivePointer = e.pointer;
       mod0IsGas = isGas;
     }
-    final st = PedalTouchState(e.localPosition, isGas, DateTime.now(), tapKey: tapKey);
+    final st = PedalTouchState(
+      e.localPosition,
+      isGas,
+      DateTime.now(),
+      tapKey: tapKey,
+    );
     if (forceBarAction) {
       // Mod 5 barları: yön algılamaya gerek yok, doğrudan bar kontrol
       st.isLocked = true;
@@ -293,9 +300,12 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
     if (state != null) {
       // TIKLAMAYI ONAYLAMA VEYA REDDETME
       if (!state.isLocked && state.tapKey != null) {
-        final settings = Provider.of<SettingsProvider>(context, listen: false).settings;
+        final settings = Provider.of<SettingsProvider>(
+          context,
+          listen: false,
+        ).settings;
         final dur = DateTime.now().difference(state.startTime);
-        
+
         if (dur.inMilliseconds < settings.clickMaxDuration * 1000) {
           handleButtonDown(state.tapKey!);
           Future.delayed(const Duration(milliseconds: 50), () {
@@ -360,15 +370,18 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
       // Süreli
       setState(() => pressedKeys.add(key));
       _buttonTimers[key]?.cancel();
-      final dur = s.customButtonPressDurationsMs[key] ?? s.globalButtonPressDurationMs;
+      final dur =
+          s.customButtonPressDurationsMs[key] ?? s.globalButtonPressDurationMs;
       _buttonTimers[key] = Timer(Duration(milliseconds: dur), () {
         if (mounted) setState(() => pressedKeys.remove(key));
       });
     } else if (mode == 3) {
-      // Hızlı (Tek Tık) - Yalnızca bir anlık basış gönderir
+      // Hızlı (Tek Tık) - Parmak basılı tutulduğu sürece tekrar ateşlemez
+      if (_quickFireLocked.contains(key)) return;
+      _quickFireLocked.add(key);
       setState(() => pressedKeys.add(key));
       _buttonTimers[key]?.cancel();
-      _buttonTimers[key] = Timer(const Duration(milliseconds: 30), () {
+      _buttonTimers[key] = Timer(const Duration(milliseconds: 80), () {
         if (mounted) setState(() => pressedKeys.remove(key));
       });
     } else {
@@ -386,10 +399,13 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
     if (mode == 0) {
       // Sadece Anlık modda parmak kalkınca hemen kapanır.
       setState(() => pressedKeys.remove(key));
+    } else if (mode == 3) {
+      // Hızlı modda: parmak/tuş kalkınca kilidi aç, yeni basışa izin ver
+      _quickFireLocked.remove(key);
     }
   }
 
-  // Makrolar için (eski 80ms)
+  // Makrolar için: anlık press + 80ms sonra release
   void fireKey(int key) {
     if (key <= 0) return;
     setState(() => pressedKeys.add(key));

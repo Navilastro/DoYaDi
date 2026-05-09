@@ -124,8 +124,7 @@ class _DrivingScreenState extends State<DrivingScreen>
   void _onTick() {
     // 5-byte protocol
     // Byte 0: Steering (-1.0 to 1.0) mapped to 0-255 (128 = center)
-    int steerByte =
-        ((steeringAngle + 1.0) / 2.0 * 255).clamp(0, 255).toInt();
+    int steerByte = ((steeringAngle + 1.0) / 2.0 * 255).clamp(0, 255).toInt();
 
     // Byte 1: Gas (0.0 to 1.0) mapped to 0-255
     int gasByte = (gasPercentage * 255).clamp(0, 255).toInt();
@@ -178,10 +177,15 @@ class _DrivingScreenState extends State<DrivingScreen>
 
       // Byte 11: Mouse click (0=none, 1=left, 2=right, 3=middle)
       int btnMouseClick = 0;
-      if (pressedKeys.contains(2001)) btnMouseClick = 1;
-      else if (pressedKeys.contains(2002)) btnMouseClick = 2;
-      else if (pressedKeys.contains(2003)) btnMouseClick = 3;
-      int finalMouseClick = tpClick != 0 ? tpClick : btnMouseClick; // Touchpad'in önceliği var
+      if (pressedKeys.contains(2001))
+        btnMouseClick = 1;
+      else if (pressedKeys.contains(2002))
+        btnMouseClick = 2;
+      else if (pressedKeys.contains(2003))
+        btnMouseClick = 3;
+      int finalMouseClick = tpClick != 0
+          ? tpClick
+          : btnMouseClick; // Touchpad'in önceliği var
       payload.add(finalMouseClick); // Byte 11 olarak ekle
 
       // Bytes 12-15: Keyboard keys (VK codes for keys with ID >= 100, up to 4 simultaneous)
@@ -226,7 +230,8 @@ class _DrivingScreenState extends State<DrivingScreen>
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         final now = DateTime.now();
-        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
           _lastBackPressTime = now;
           setState(() => _isExiting = true);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -251,127 +256,129 @@ class _DrivingScreenState extends State<DrivingScreen>
               // Ana layout
               Positioned.fill(child: buildLayout(settings, size)),
 
-          // Direksiyon göstergesi alt-orta, yüksekliğin %10'u
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: size.height * 0.10,
-            child: IgnorePointer(
-              child: RepaintBoundary(
-                child: CustomPaint(
-                  painter: SteeringPainter(
-                    angle: steeringAngle,
-                    pitch: pitchDeg,
-                    indicatorColor: settings.steeringIndicatorColor,
-                    bgColor: settings.steeringBgColor,
+              // Direksiyon göstergesi alt-orta, yüksekliğin %10'u
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: size.height * 0.10,
+                child: IgnorePointer(
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: SteeringPainter(
+                        angle: steeringAngle,
+                        pitch: pitchDeg,
+                        indicatorColor: settings.steeringIndicatorColor,
+                        bgColor: settings.steeringBgColor,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
 
-          // Geliştirici debug paneli
-          if (_debugMode)
-            Positioned(
-              top: 40,
-              left: 8,
-              child: IgnorePointer(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.greenAccent.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  child: DefaultTextStyle(
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 11,
-                      color: Colors.greenAccent,
-                      height: 1.5,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('DEBUG LOG'),
-                        Text(
-                          'Steer : ${_lastPayload[0].toString().padLeft(3)}  (raw: ${steeringAngle.toStringAsFixed(3)})',
+              // Geliştirici debug paneli
+              if (_debugMode)
+                Positioned(
+                  top: 40,
+                  left: 8,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.greenAccent.withValues(alpha: 0.6),
                         ),
-                        Text(
-                          'Gas   : ${_lastPayload[1].toString().padLeft(3)}  (${(gasPercentage * 100).toStringAsFixed(1)}%)',
+                      ),
+                      child: DefaultTextStyle(
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          color: Colors.greenAccent,
+                          height: 1.5,
                         ),
-                        Text(
-                          'Brake : ${_lastPayload[2].toString().padLeft(3)}  (${(brakePercentage * 100).toStringAsFixed(1)}%)',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('DEBUG LOG'),
+                            Text(
+                              'Steer : ${_lastPayload[0].toString().padLeft(3)}  (raw: ${steeringAngle.toStringAsFixed(3)})',
+                            ),
+                            Text(
+                              'Gas   : ${_lastPayload[1].toString().padLeft(3)}  (${(gasPercentage * 100).toStringAsFixed(1)}%)',
+                            ),
+                            Text(
+                              'Brake : ${_lastPayload[2].toString().padLeft(3)}  (${(brakePercentage * 100).toStringAsFixed(1)}%)',
+                            ),
+                            Text(
+                              'Keys1-8 : 0x${_lastPayload[3].toRadixString(16).padLeft(2, "0").toUpperCase()}  [${_lastPayload[3].toRadixString(2).padLeft(8, "0")}]',
+                            ),
+                            Text(
+                              'Keys9-16: 0x${_lastPayload[4].toRadixString(16).padLeft(2, "0").toUpperCase()}  [${_lastPayload[4].toRadixString(2).padLeft(8, "0")}]',
+                            ),
+                            if (_lastPayload.length >= 9) ...[
+                              Text(
+                                'Sol Joy X: ${_lastPayload[5].toString().padLeft(3)}  (${joy0x.toStringAsFixed(2)})',
+                              ),
+                              Text(
+                                'Sol Joy Y: ${_lastPayload[6].toString().padLeft(3)}  (${joy0y.toStringAsFixed(2)})',
+                              ),
+                              Text(
+                                'Sağ Joy X: ${_lastPayload[7].toString().padLeft(3)}  (${joy1x.toStringAsFixed(2)})',
+                              ),
+                              Text(
+                                'Sağ Joy Y: ${_lastPayload[8].toString().padLeft(3)}  (${joy1y.toStringAsFixed(2)})',
+                              ),
+                            ],
+                            Text('Bytes: [${_lastPayload.join(", ")}]'),
+                          ],
                         ),
-                        Text(
-                          'Keys1-8 : 0x${_lastPayload[3].toRadixString(16).padLeft(2, "0").toUpperCase()}  [${_lastPayload[3].toRadixString(2).padLeft(8, "0")}]',
-                        ),
-                        Text(
-                          'Keys9-16: 0x${_lastPayload[4].toRadixString(16).padLeft(2, "0").toUpperCase()}  [${_lastPayload[4].toRadixString(2).padLeft(8, "0")}]',
-                        ),
-                        if (_lastPayload.length >= 9) ...[
-                          Text(
-                            'Sol Joy X: ${_lastPayload[5].toString().padLeft(3)}  (${joy0x.toStringAsFixed(2)})',
-                          ),
-                          Text(
-                            'Sol Joy Y: ${_lastPayload[6].toString().padLeft(3)}  (${joy0y.toStringAsFixed(2)})',
-                          ),
-                          Text(
-                            'Sağ Joy X: ${_lastPayload[7].toString().padLeft(3)}  (${joy1x.toStringAsFixed(2)})',
-                          ),
-                          Text(
-                            'Sağ Joy Y: ${_lastPayload[8].toString().padLeft(3)}  (${joy1y.toStringAsFixed(2)})',
-                          ),
-                        ],
-                        Text('Bytes: [${_lastPayload.join(", ")}]'),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
 
-          // Debug toggle butonu
-          Positioned(
-            top: 8,
-            left: 8,
-            child: GestureDetector(
-              onTap: () => setState(() => _debugMode = !_debugMode),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _debugMode
-                      ? Colors.greenAccent.withValues(alpha: 0.25)
-                      : Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _debugMode ? Colors.greenAccent : Colors.white24,
-                  ),
-                ),
-                child: Text(
-                  _debugMode ? 'DEV LOG' : 'DEV',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: _debugMode ? Colors.greenAccent : Colors.white38,
-                    fontWeight: FontWeight.bold,
+              // Debug toggle butonu
+              Positioned(
+                top: 8,
+                left: 8,
+                child: GestureDetector(
+                  onTap: () => setState(() => _debugMode = !_debugMode),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _debugMode
+                          ? Colors.greenAccent.withValues(alpha: 0.25)
+                          : Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _debugMode ? Colors.greenAccent : Colors.white24,
+                      ),
+                    ),
+                    child: Text(
+                      _debugMode ? 'DEV LOG' : 'DEV',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: _debugMode ? Colors.greenAccent : Colors.white38,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
+    );
   }
 }
