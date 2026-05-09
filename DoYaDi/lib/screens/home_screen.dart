@@ -12,6 +12,7 @@ import 'settings_screen.dart';
 import 'driving_screen.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../core/utils/app_translations.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -46,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Bağlantı Ayarları'),
+          title: Text(AppTranslations.getText('connection_settings')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -55,9 +56,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: TextField(
                       controller: ipController,
-                      decoration: const InputDecoration(
-                        labelText: 'PC Yerel IP (Wi-Fi UDP)',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: AppTranslations.getText('pc_local_ip'),
+                        border: const OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
                       onChanged: (val) {
@@ -70,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onPressed: () async {
                       // Yükleniyor göstergesi
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Ağ taranıyor...'), duration: Duration(seconds: 1)),
+                        SnackBar(content: Text(AppTranslations.getText('scanning_network')), duration: const Duration(seconds: 1)),
                       );
                       String? foundIp = await NetworkManager().discoverServer();
                       if (foundIp != null) {
@@ -78,13 +79,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         connectionProvider.setWifiIp(foundIp);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('PC Bulundu! Bağlantı Hazır'), backgroundColor: Colors.green),
+                            SnackBar(content: Text(AppTranslations.getText('pc_found_ready')), backgroundColor: Colors.green),
                           );
                         }
                       } else {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Ağda PC bulunamadı.'), backgroundColor: Colors.red),
+                            SnackBar(content: Text(AppTranslations.getText('pc_not_found')), backgroundColor: Colors.red),
                           );
                         }
                       }
@@ -92,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                     ),
-                    child: const Text('Otomatik Bul'),
+                    child: Text(AppTranslations.getText('auto_find')),
                   ),
                 ],
               ),
@@ -102,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _showBluetoothDevicesDialog(context, connectionProvider);
                 },
                 icon: const Icon(Icons.bluetooth),
-                label: const Text('Bluetooth Cihazı Seç'),
+                label: Text(AppTranslations.getText('select_bt_device')),
                 style: ElevatedButton.styleFrom(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 ),
@@ -112,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Kapat'),
+              child: Text(AppTranslations.getText('close')),
             ),
           ],
         );
@@ -191,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const Icon(Icons.bluetooth_searching, color: Colors.blueAccent),
                   const SizedBox(width: 8),
-                  const Expanded(child: Text('Bluetooth Cihazları')),
+                  Expanded(child: Text(AppTranslations.getText('bt_devices'))),
                   if (isScanning)
                     const SizedBox(
                       width: 18,
@@ -204,13 +205,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.maxFinite,
                 height: 320,
                 child: devices.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text('Cihazlar aranıyor...'),
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text(AppTranslations.getText('searching_devices')),
                           ],
                         ),
                       )
@@ -227,11 +228,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: isBonded ? Colors.blueAccent : Colors.grey,
                             ),
                             title: Text(
-                              device.name ?? 'Bilinmeyen Cihaz',
+                              device.name ?? AppTranslations.getText('unknown_device'),
                               style: const TextStyle(fontWeight: FontWeight.w600),
                             ),
                             subtitle: Text(
-                              '${device.address}  •  ${isBonded ? "Eşleşmiş" : "Yeni Cihaz"}',
+                              '${device.address}  •  ${isBonded ? AppTranslations.getText('paired') : AppTranslations.getText('new_device')}',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isBonded ? Colors.blueAccent : Colors.orange,
@@ -251,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('${device.name ?? device.address} ile eşleşiliyor...'),
+                                      content: Text('${device.name ?? device.address}${AppTranslations.getText('pairing_with')}'),
                                       duration: const Duration(seconds: 5),
                                     ),
                                   );
@@ -267,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('${device.name ?? device.address} ile eşleşme başarısız.'),
+                                        content: Text('${device.name ?? device.address}${AppTranslations.getText('pairing_failed')}'),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
@@ -280,7 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('${device.name ?? device.address} bağlanıyor...'),
+                                    content: Text('${device.name ?? device.address}${AppTranslations.getText('connecting')}'),
                                   ),
                                 );
                               }
@@ -293,8 +294,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 connectionProvider.setWifiIp(''); // Wi-Fi UDP'yi devre dışı bırak
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Bluetooth Bağlantısı Başarılı! 🎮'),
+                                     SnackBar(
+                                      content: Text(AppTranslations.getText('bt_connection_success')),
                                       backgroundColor: Colors.green,
                                     ),
                                   );
@@ -302,8 +303,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               } else {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Bluetooth Bağlantısı Başarısız!'),
+                                     SnackBar(
+                                      content: Text(AppTranslations.getText('bt_connection_failed')),
                                       backgroundColor: Colors.red,
                                     ),
                                   );
@@ -321,7 +322,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     discoverySubscription = null;
                     if (dialogContext.mounted) Navigator.pop(dialogContext);
                   },
-                  child: Text(isScanning ? 'Taramayı Durdur' : 'Kapat'),
+                  child: Text(isScanning ? AppTranslations.getText('stop_scan') : AppTranslations.getText('close')),
                 ),
               ],
             );
@@ -341,33 +342,33 @@ class _HomeScreenState extends State<HomeScreen> {
         return AlertDialog(
           backgroundColor: const Color(0xFF0A0A20),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.cable, color: Colors.cyan, size: 28),
-              SizedBox(width: 10),
+              const Icon(Icons.cable, color: Colors.cyan, size: 28),
+              const SizedBox(width: 10),
               Text(
-                "USB ile Sıfır Gecikme",
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                AppTranslations.getText('usb_zero_delay'),
+                style: const TextStyle(color: Colors.white, fontSize: 18),
               ),
             ],
           ),
-          content: const Column(
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ListTile(
-                leading: Icon(Icons.looks_one, color: Colors.cyan),
-                title: Text("Telefonunuzu PC'ye USB kablosuyla bağlayın.", style: TextStyle(color: Colors.white70)),
+                leading: const Icon(Icons.looks_one, color: Colors.cyan),
+                title: Text(AppTranslations.getText('usb_step_1'), style: const TextStyle(color: Colors.white70)),
                 contentPadding: EdgeInsets.zero,
               ),
               ListTile(
-                leading: Icon(Icons.looks_two, color: Colors.cyan),
-                title: Text("Telefon ayarlarından 'USB İnternet Paylaşımı' (USB Tethering) özelliğini açın.", style: TextStyle(color: Colors.white70)),
+                leading: const Icon(Icons.looks_two, color: Colors.cyan),
+                title: Text(AppTranslations.getText('usb_step_2'), style: const TextStyle(color: Colors.white70)),
                 contentPadding: EdgeInsets.zero,
               ),
               ListTile(
-                leading: Icon(Icons.looks_3, color: Colors.cyan),
-                title: Text("PC'den DoYaDi sunucusunun açık olduğundan emin olun.", style: TextStyle(color: Colors.white70)),
+                leading: const Icon(Icons.looks_3, color: Colors.cyan),
+                title: Text(AppTranslations.getText('usb_step_3'), style: const TextStyle(color: Colors.white70)),
                 contentPadding: EdgeInsets.zero,
               ),
             ],
@@ -375,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text("İptal", style: TextStyle(color: Colors.grey)),
+              child: Text(AppTranslations.getText('cancel'), style: const TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -383,20 +384,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 
                 final connectionProvider = Provider.of<ConnectionProvider>(context, listen: false);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ağ taranıyor...'), duration: Duration(seconds: 1)),
+                  SnackBar(content: Text(AppTranslations.getText('scanning_network')), duration: const Duration(seconds: 1)),
                 );
                 String? foundIp = await NetworkManager().discoverServer();
                 if (foundIp != null) {
                   connectionProvider.setWifiIp(foundIp);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('PC Bulundu! Bağlantı Hazır'), backgroundColor: Colors.green),
+                      SnackBar(content: Text(AppTranslations.getText('pc_found_ready')), backgroundColor: Colors.green),
                     );
                   }
                 } else {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Ağda PC bulunamadı. Lütfen USB Tethering\'in açık olduğundan emin olun.'), backgroundColor: Colors.red),
+                      SnackBar(content: Text(AppTranslations.getText('pc_not_found_usb')), backgroundColor: Colors.red),
                     );
                   }
                 }
@@ -404,7 +405,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.cyan,
               ),
-              child: const Text("Tamam, Bağlan'a Başla", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              child: Text(AppTranslations.getText('ok_start_connect'), style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -437,17 +438,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   settingsProv.updateSettings(s);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Kalibrasyon başarılı!'),
-                        backgroundColor: Color(0xFF00C853),
-                        duration: Duration(seconds: 3),
+                      SnackBar(
+                        content: Text(AppTranslations.getText('calib_success')),
+                        backgroundColor: const Color(0xFF00C853),
+                        duration: const Duration(seconds: 3),
                       ),
                     );
                   }
                 } catch (_) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Sensör okunamadı.'), backgroundColor: Colors.red),
+                      SnackBar(content: Text(AppTranslations.getText('sensor_error')), backgroundColor: Colors.red),
                     );
                   }
                 }
@@ -459,22 +460,22 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'calibrate',
                 child: Row(children: [
-                  Icon(Icons.tune, color: Color(0xFF40E0D0), size: 20),
-                  SizedBox(width: 10),
-                  Text('İvmeölçeri Ayarla (Calibrate accelerometer)',
-                      style: TextStyle(color: Colors.white, fontSize: 14)),
+                  const Icon(Icons.tune, color: Color(0xFF40E0D0), size: 20),
+                  const SizedBox(width: 10),
+                  Text(AppTranslations.getText('calibrate_accel'),
+                      style: const TextStyle(color: Colors.white, fontSize: 14)),
                 ]),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'settings',
                 child: Row(children: [
-                  Icon(Icons.settings, color: Color(0xFF40E0D0), size: 20),
-                  SizedBox(width: 10),
-                  Text('Ayarlar',
-                      style: TextStyle(color: Colors.white, fontSize: 14)),
+                  const Icon(Icons.settings, color: Color(0xFF40E0D0), size: 20),
+                  const SizedBox(width: 10),
+                  Text(AppTranslations.getText('settings'),
+                      style: const TextStyle(color: Colors.white, fontSize: 14)),
                 ]),
               ),
             ],
@@ -496,18 +497,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   side: BorderSide(color: settings.detailColor, width: 2),
                 ),
               ),
-              child: const Text(
-                'Bağlanılacak Cihazı Seç',
-                style: TextStyle(fontSize: 18),
+              child: Text(
+                AppTranslations.getText('select_device_to_connect'),
+                style: const TextStyle(fontSize: 18),
               ),
             ),
             const SizedBox(height: 15),
             ElevatedButton.icon(
               onPressed: () => _showUsbTetheringDialog(context),
               icon: const Icon(Icons.cable, color: Colors.white),
-              label: const Text(
-                'Kablolu Bağlan (USB)',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+              label: Text(
+                AppTranslations.getText('wired_connect_usb'),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: settings.detailColor.withValues(alpha: 0.15),
@@ -526,10 +527,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 // 4. GÜVENLİK KONTROLÜ: Eğer ne IP girilmiş ne de Bluetooth bağlanmışsa engelle!
                 if (connection.wifiIp.isEmpty && !NetworkManager().isBluetoothConnected) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Lütfen önce "Bağlanılacak Cihazı Seç" menüsünden PC\'nizi bulun veya IP adresini girin.'),
+                    SnackBar(
+                      content: Text(AppTranslations.getText('please_select_device_first')),
                       backgroundColor: Colors.red,
-                      duration: Duration(seconds: 3),
+                      duration: const Duration(seconds: 3),
                     ),
                   );
                   return; // Uygulamanın sürüş ekranına geçmesini durdur
@@ -556,9 +557,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 elevation: 10,
                 shadowColor: settings.detailColor.withValues(alpha: 0.5),
               ),
-              child: const Text(
-                'Direksiyon Modunu Başlat',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              child: Text(
+                AppTranslations.getText('start_steering_mode'),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
             ),
           ],

@@ -323,6 +323,30 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   void handleButtonDown(int key) {
     if (key <= 0) return;
     final s = Provider.of<SettingsProvider>(context, listen: false).settings;
+
+    // Parallel Macro: ID >= 3000 olan tuşlar aynı anda basılır
+    if (key >= 3000) {
+      final macroKeys = s.customMacros[key];
+      if (macroKeys != null && macroKeys.isNotEmpty) {
+        setState(() {
+          for (final k in macroKeys) {
+            pressedKeys.add(k);
+          }
+        });
+        // Kısa süre sonra hepsini kaldır (Anlık mod gibi davranır)
+        Future.delayed(const Duration(milliseconds: 80), () {
+          if (mounted) {
+            setState(() {
+              for (final k in macroKeys) {
+                pressedKeys.remove(k);
+              }
+            });
+          }
+        });
+      }
+      return;
+    }
+
     final mode = s.customButtonPressModes[key] ?? s.globalButtonPressMode;
 
     if (mode == 2) {
@@ -341,10 +365,10 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
         if (mounted) setState(() => pressedKeys.remove(key));
       });
     } else if (mode == 3) {
-      // Hızlı
+      // Hızlı (Tek Tık) - Yalnızca bir anlık basış gönderir
       setState(() => pressedKeys.add(key));
       _buttonTimers[key]?.cancel();
-      _buttonTimers[key] = Timer(const Duration(milliseconds: 80), () {
+      _buttonTimers[key] = Timer(const Duration(milliseconds: 30), () {
         if (mounted) setState(() => pressedKeys.remove(key));
       });
     } else {
@@ -355,6 +379,8 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
 
   void handleButtonUp(int key) {
     if (key <= 0) return;
+    // Parallel Macro'lar kendi timer'larıyla kapanır, burada bir şey yapmaya gerek yok
+    if (key >= 3000) return;
     final s = Provider.of<SettingsProvider>(context, listen: false).settings;
     final mode = s.customButtonPressModes[key] ?? s.globalButtonPressMode;
     if (mode == 0) {

@@ -8,6 +8,7 @@ import '../core/widgets/searchable_key_picker.dart';
 import '../core/utils/keyboard_keys.dart';
 import '../widgets/joystick_widget.dart';
 import '../widgets/driving_painters.dart';
+import '../core/utils/app_translations.dart';
 
 class CustomLayout5EditorScreen extends StatefulWidget {
   const CustomLayout5EditorScreen({super.key});
@@ -51,17 +52,17 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF12122A),
-        title: const Text(
-          'Tuş Karşılıkları',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          AppTranslations.getText('key_mappings'),
+          style: const TextStyle(color: Colors.white),
         ),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Tuş 1 = LB\nTuş 2 = RB\nTuş 3 = Steam Buton\nTuş 4 = ?\nTuş 5 = A\nTuş 6 = B\nTuş 7 = X\nTuş 8 = Y\nTuş 9 = D-Pad Yukarı\nTuş 10 = D-Pad Aşağı\nTuş 11 = D-Pad Sol\nTuş 12 = D-Pad Sağ\nTuş 13 = Start\nTuş 14 = Select\nTuş 15 = L3 (Sol Stick)\nTuş 16 = R3 (Sağ Stick)',
-                style: TextStyle(color: Colors.white70, height: 1.5),
+                AppTranslations.getText('key_mapping_desc'),
+                style: const TextStyle(color: Colors.white70, height: 1.5),
               ),
             ],
           ),
@@ -69,9 +70,9 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Tamam',
-              style: TextStyle(color: Color(0xFF40E0D0)),
+            child: Text(
+              AppTranslations.getText('ok'),
+              style: const TextStyle(color: Color(0xFF40E0D0)),
             ),
           ),
         ],
@@ -88,12 +89,11 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, ss) {
-          final isTr = Localizations.localeOf(ctx).languageCode == 'tr';
           final ctrl = TextEditingController();
           return AlertDialog(
             backgroundColor: const Color(0xFF12122A),
             title: Text(
-              isTr ? 'Profiller' : 'Profiles',
+              AppTranslations.getText('profiles'),
               style: const TextStyle(color: Colors.white),
             ),
             content: SizedBox(
@@ -108,7 +108,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                       style: const TextStyle(color: Colors.white),
                       isExpanded: true,
                       hint: Text(
-                        isTr ? 'Profil Seçin' : 'Select Profile',
+                        AppTranslations.getText('select_profile'),
                         style: const TextStyle(color: Colors.white54),
                       ),
                       items: profiles.keys
@@ -146,9 +146,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                           controller: ctrl,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: isTr
-                                ? 'Yeni Profil Adı'
-                                : 'New Profile Name',
+                            hintText: AppTranslations.getText('new_profile_name'),
                             hintStyle: const TextStyle(color: Colors.white38),
                             isDense: true,
                             enabledBorder: const OutlineInputBorder(
@@ -199,14 +197,14 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                     ss(() {});
                   },
                   child: Text(
-                    isTr ? 'Geçerli Profili Sil' : 'Delete Current Profile',
+                    AppTranslations.getText('delete_current_profile'),
                     style: const TextStyle(color: Colors.red),
                   ),
                 ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text(
-                  isTr ? 'Kapat' : 'Close',
+                  AppTranslations.getText('close'),
                   style: const TextStyle(color: Colors.white54),
                 ),
               ),
@@ -222,9 +220,9 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
     final json = jsonEncode(_items.map((e) => e.toJson()).toList());
     provider.saveCustomLayout5(json);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Düzen kaydedildi'),
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: Text(AppTranslations.getText('layout_saved')),
+        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -339,14 +337,14 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _topBtn(
-                          'Profiller',
+                          AppTranslations.getText('profiles'),
                           Icons.folder,
                           false,
                           _manageProfiles,
                           color: Colors.blueAccent,
                         ),
                         const SizedBox(width: 8),
-                        _topBtn('Düzenle', Icons.edit, _editMode, () {
+                        _topBtn(AppTranslations.getText('edit'), Icons.edit, _editMode, () {
                           setState(() {
                             _editMode = !_editMode;
                             _removeMode = false;
@@ -354,7 +352,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                         }),
                         const SizedBox(width: 8),
                         _topBtn(
-                          'Kaydet',
+                          AppTranslations.getText('save'),
                           Icons.save,
                           false,
                           _save,
@@ -362,7 +360,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                         ),
                         const SizedBox(width: 8),
                         _topBtn(
-                          'Sıfırla',
+                          AppTranslations.getText('reset'),
                           Icons.refresh,
                           false,
                           _reset,
@@ -413,7 +411,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                         const SizedBox(width: 8),
                         // Kaldır
                         _topBtn(
-                          'Kaldır',
+                          AppTranslations.getText('remove'),
                           Icons.remove_circle,
                           _removeMode,
                           () {
@@ -424,7 +422,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                         const Spacer(),
                         if (_selected != null)
                           Text(
-                            'Seçili: ${_selected!.id.split('_').first}',
+                            '${AppTranslations.getText('selected')}: ${_selected!.id.split('_').first}',
                             style: const TextStyle(
                               color: Colors.white54,
                               fontSize: 12,
@@ -657,40 +655,40 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
       color: const Color(0xFF1A1A3E),
       itemBuilder: (_) => [
         if (!_hasLeftJoystick)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: Layout5ItemType.leftJoystick,
-            child: Text('Sol Joystick', style: TextStyle(color: Colors.white)),
+            child: Text(AppTranslations.getText('add_left_joystick'), style: const TextStyle(color: Colors.white)),
           ),
         if (!_hasRightJoystick)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: Layout5ItemType.rightJoystick,
-            child: Text('Sağ Joystick', style: TextStyle(color: Colors.white)),
+            child: Text(AppTranslations.getText('add_right_joystick'), style: const TextStyle(color: Colors.white)),
           ),
         if (!_hasGasBar)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: Layout5ItemType.gasBar,
-            child: Text('Gaz Barı', style: TextStyle(color: Colors.white)),
+            child: Text(AppTranslations.getText('add_gas_bar'), style: const TextStyle(color: Colors.white)),
           ),
         if (!_hasBrakeBar)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: Layout5ItemType.brakeBar,
-            child: Text('Fren Barı', style: TextStyle(color: Colors.white)),
+            child: Text(AppTranslations.getText('add_brake_bar'), style: const TextStyle(color: Colors.white)),
           ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: Layout5ItemType.buttonSquare,
-          child: Text('Kare Buton', style: TextStyle(color: Colors.white)),
+          child: Text(AppTranslations.getText('add_square_button'), style: const TextStyle(color: Colors.white)),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: Layout5ItemType.buttonSoft,
-          child: Text('Yumuşak Kare', style: TextStyle(color: Colors.white)),
+          child: Text(AppTranslations.getText('add_soft_button'), style: const TextStyle(color: Colors.white)),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: Layout5ItemType.buttonCircle,
-          child: Text('Yuvarlak Buton', style: TextStyle(color: Colors.white)),
+          child: Text(AppTranslations.getText('add_circle_button'), style: const TextStyle(color: Colors.white)),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: Layout5ItemType.touchpad,
-          child: Text('Touchpad (Fare)', style: TextStyle(color: Colors.white)),
+          child: Text(AppTranslations.getText('add_touchpad'), style: const TextStyle(color: Colors.white)),
         ),
       ],
       onSelected: _addItem,
@@ -701,14 +699,14 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: const Color(0xFF40E0D0)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.add, color: Color(0xFF40E0D0), size: 18),
-            SizedBox(width: 4),
+            const Icon(Icons.add, color: Color(0xFF40E0D0), size: 18),
+            const SizedBox(width: 4),
             Text(
-              'Ekle',
-              style: TextStyle(color: Color(0xFF40E0D0), fontSize: 13),
+              AppTranslations.getText('add'),
+              style: const TextStyle(color: Color(0xFF40E0D0), fontSize: 13),
             ),
           ],
         ),
@@ -803,9 +801,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
       child: ListView(
         padding: const EdgeInsets.all(10),
         children: [
-          const Text(
-            'Özellikler',
-            style: TextStyle(
+          Text(
+            AppTranslations.getText('properties'),
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
               letterSpacing: 1,
@@ -814,21 +812,21 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
           const SizedBox(height: 8),
 
           // Boyut
-          _label('Genişlik'),
+          _label(AppTranslations.getText('width')),
           _sizeSlider(
             item.width,
             0.05,
             0.95,
             (v) => _update(item.copyWith(width: v)),
           ),
-          _label('Yükseklik'),
+          _label(AppTranslations.getText('height')),
           _sizeSlider(
             item.height,
             0.05,
             0.95,
             (v) => _update(item.copyWith(height: v)),
           ),
-          _label('Döndürme (Derece)'),
+          _label(AppTranslations.getText('rotation_deg')),
           _sizeSlider(
             item.rotation * 180 / pi,
             -180.0,
@@ -839,30 +837,30 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
           const Divider(color: Colors.white12),
 
           // Arka plan rengi
-          _label('Arka Plan Rengi'),
+          _label(AppTranslations.getText('bg_color')),
           _colorPicker(item.bgColor, (c) => _update(item.copyWith(bgColor: c))),
           const SizedBox(height: 6),
 
           if (_isButton) ...[
-            _label('Yazı Rengi'),
+            _label(AppTranslations.getText('text_color')),
             _colorPicker(
               item.textColor,
               (c) => _update(item.copyWith(textColor: c)),
             ),
             const SizedBox(height: 6),
 
-            _label('Buton Yazısı'),
+            _label(AppTranslations.getText('button_text')),
             TextField(
               controller: _labelCtrl,
               style: const TextStyle(color: Colors.white, fontSize: 13),
-              decoration: const InputDecoration(
-                hintText: 'Boş → varsayılan',
-                hintStyle: TextStyle(color: Colors.white30),
+              decoration: InputDecoration(
+                hintText: AppTranslations.getText('empty_default'),
+                hintStyle: const TextStyle(color: Colors.white30),
                 isDense: true,
                 filled: true,
-                fillColor: Color(0xFF1A1A3E),
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
+                fillColor: const Color(0xFF1A1A3E),
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.symmetric(
                   horizontal: 8,
                   vertical: 6,
                 ),
@@ -876,7 +874,7 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
             ),
             const Divider(color: Colors.white12),
 
-            _label('Mod'),
+            _label(AppTranslations.getText('mode')),
             _modeSelector(item),
           ],
         ],
@@ -939,28 +937,28 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
         // Mode Seçimi (Radyo Butonları gibi veya Dropdown)
         Row(
           children: [
-            const Text(
-              'Aksiyon Modu:',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+            Text(
+              AppTranslations.getText('action_mode'),
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
             const SizedBox(width: 8),
             DropdownButton<ButtonMode>(
               value: item.mode,
               dropdownColor: const Color(0xFF1A1A3E),
               style: const TextStyle(color: Colors.white, fontSize: 12),
-              items: const [
-                DropdownMenuItem(value: ButtonMode.key, child: Text('Tek Tuş')),
+              items: [
+                DropdownMenuItem(value: ButtonMode.key, child: Text(AppTranslations.getText('mode_single_key'))),
                 DropdownMenuItem(
                   value: ButtonMode.gasPct,
-                  child: Text('Sabit Gaz'),
+                  child: Text(AppTranslations.getText('mode_fixed_gas')),
                 ),
                 DropdownMenuItem(
                   value: ButtonMode.brakePct,
-                  child: Text('Sabit Fren'),
+                  child: Text(AppTranslations.getText('mode_fixed_brake')),
                 ),
                 DropdownMenuItem(
                   value: ButtonMode.macro,
-                  child: Text('Makro (Sıralı)'),
+                  child: Text(AppTranslations.getText('mode_macro')),
                 ),
               ],
               onChanged: (v) {
@@ -977,9 +975,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
             children: [
               Row(
                 children: [
-                  const Text(
-                    'Tuş Seçimi:',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  Text(
+                    AppTranslations.getText('key_selection'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   const SizedBox(width: 8),
                   TextButton(
@@ -992,11 +990,11 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                     },
                     child: Text(
                       item.keyIndex >= 2000
-                          ? 'Makro ${item.keyIndex - 1999}'
+                          ? '${AppTranslations.getText('macro_prefix')}${item.keyIndex - 1999}'
                           : KeyboardKeys.appKeyMap.entries
                                 .firstWhere(
                                   (e) => e.value == item.keyIndex,
-                                  orElse: () => const MapEntry('Tuş Seç', 0),
+                                  orElse: () => MapEntry(AppTranslations.getText('select_key'), 0),
                                 )
                                 .key,
                       style: const TextStyle(color: Color(0xFF40E0D0)),
@@ -1007,27 +1005,27 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Text(
-                    'Basış Modu:',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  Text(
+                    AppTranslations.getText('press_mode'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   const SizedBox(width: 8),
                   DropdownButton<int?>(
                     value: item.customPressMode,
                     dropdownColor: const Color(0xFF1A1A3E),
                     style: const TextStyle(color: Colors.white, fontSize: 12),
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: null,
-                        child: Text('Genel Ayarı Kullan'),
+                        child: Text(AppTranslations.getText('press_mode_global')),
                       ),
-                      DropdownMenuItem(value: 0, child: Text('Anlık')),
-                      DropdownMenuItem(value: 1, child: Text('Süreli')),
+                      DropdownMenuItem(value: 0, child: Text(AppTranslations.getText('press_mode_instant'))),
+                      DropdownMenuItem(value: 1, child: Text(AppTranslations.getText('press_mode_duration'))),
                       DropdownMenuItem(
                         value: 2,
-                        child: Text('Toggle (Sınırsız)'),
+                        child: Text(AppTranslations.getText('press_mode_toggle')),
                       ),
-                      DropdownMenuItem(value: 3, child: Text('Hızlı (80ms)')),
+                      DropdownMenuItem(value: 3, child: Text(AppTranslations.getText('press_mode_fast'))),
                     ],
                     onChanged: (v) => _update(
                       item.copyWith(
@@ -1041,9 +1039,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
               if (item.customPressMode == 1)
                 Row(
                   children: [
-                    const Text(
-                      'Süre:',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    Text(
+                      AppTranslations.getText('duration'),
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                     Expanded(
                       child: Slider(
@@ -1073,9 +1071,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
         if (item.mode == ButtonMode.gasPct)
           Row(
             children: [
-              const Text(
-                'Gaz %:',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+              Text(
+                AppTranslations.getText('gas_pct'),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               Expanded(
                 child: Slider(
@@ -1097,9 +1095,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
         if (item.mode == ButtonMode.brakePct)
           Row(
             children: [
-              const Text(
-                'Fren %:',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+              Text(
+                AppTranslations.getText('brake_pct'),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               Expanded(
                 child: Slider(
@@ -1122,28 +1120,28 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Makro Adımları:',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+              Text(
+                AppTranslations.getText('macro_steps'),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               const SizedBox(height: 4),
               if (item.macro.isEmpty)
-                const Text(
-                  'Henüz adım eklenmedi.',
-                  style: TextStyle(color: Colors.white38, fontSize: 11),
+                Text(
+                  AppTranslations.getText('no_macro_steps_yet'),
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
                 ),
               ...item.macro.asMap().entries.map((e) {
                 final idx = e.key;
                 final act = e.value;
                 String txt = '';
                 if (act.type == MacroActionType.key) {
-                  txt = 'Tuş ${act.value.toInt()}';
+                  txt = '${AppTranslations.getText('key_prefix')} ${act.value.toInt()}';
                 } else if (act.type == MacroActionType.gasPct) {
-                  txt = 'Gaz %${(act.value * 100).toInt()}';
+                  txt = '${AppTranslations.getText('gas_pct')} ${(act.value * 100).toInt()}%';
                 } else if (act.type == MacroActionType.brakePct) {
-                  txt = 'Fren %${(act.value * 100).toInt()}';
+                  txt = '${AppTranslations.getText('brake_pct')} ${(act.value * 100).toInt()}%';
                 } else if (act.type == MacroActionType.delay) {
-                  txt = 'Bekle ${act.value.toInt()} ms';
+                  txt = '${AppTranslations.getText('step_delay')} ${act.value.toInt()} ms';
                 }
 
                 return Row(
@@ -1184,9 +1182,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                   minimumSize: const Size(0, 30),
                 ),
                 onPressed: () => _showAddMacroDialog(item),
-                child: const Text(
-                  'Adım Ekle',
-                  style: TextStyle(color: Color(0xFF40E0D0), fontSize: 11),
+                child: Text(
+                  AppTranslations.getText('add_step'),
+                  style: const TextStyle(color: Color(0xFF40E0D0), fontSize: 11),
                 ),
               ),
             ],
@@ -1205,9 +1203,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
         builder: (ctx, set) {
           return AlertDialog(
             backgroundColor: const Color(0xFF12122A),
-            title: const Text(
-              'Makro Adımı Ekle',
-              style: TextStyle(color: Colors.white, fontSize: 14),
+            title: Text(
+              AppTranslations.getText('add_macro_step'),
+              style: const TextStyle(color: Colors.white, fontSize: 14),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1216,22 +1214,22 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                   value: selectedType,
                   dropdownColor: const Color(0xFF1A1A3E),
                   style: const TextStyle(color: Colors.white),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: MacroActionType.key,
-                      child: Text('Tuş Bas'),
+                      child: Text(AppTranslations.getText('step_key_press')),
                     ),
                     DropdownMenuItem(
                       value: MacroActionType.gasPct,
-                      child: Text('Gaz Yüzdesi'),
+                      child: Text(AppTranslations.getText('step_gas_pct')),
                     ),
                     DropdownMenuItem(
                       value: MacroActionType.brakePct,
-                      child: Text('Fren Yüzdesi'),
+                      child: Text(AppTranslations.getText('step_brake_pct')),
                     ),
                     DropdownMenuItem(
                       value: MacroActionType.delay,
-                      child: Text('Gecikme (Bekle)'),
+                      child: Text(AppTranslations.getText('step_delay')),
                     ),
                   ],
                   onChanged: (v) {
@@ -1260,7 +1258,7 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                       16,
                       (i) => DropdownMenuItem(
                         value: (i + 1).toDouble(),
-                        child: Text('Tuş ${i + 1}'),
+                        child: Text('${AppTranslations.getText('key_prefix')} ${i + 1}'),
                       ),
                     ),
                     onChanged: (v) {
@@ -1289,9 +1287,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text(
-                  'İptal',
-                  style: TextStyle(color: Colors.white54),
+                child: Text(
+                  AppTranslations.getText('cancel'),
+                  style: const TextStyle(color: Colors.white54),
                 ),
               ),
               ElevatedButton(
@@ -1301,7 +1299,7 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                   _update(item.copyWith(macro: nm, mode: ButtonMode.macro));
                   Navigator.pop(ctx);
                 },
-                child: const Text('Ekle'),
+                child: Text(AppTranslations.getText('add')),
               ),
             ],
           );
@@ -1324,9 +1322,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            title: const Text(
-              'Renk',
-              style: TextStyle(color: Colors.white, fontSize: 15),
+            title: Text(
+              AppTranslations.getText('color'),
+              style: const TextStyle(color: Colors.white, fontSize: 15),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1390,17 +1388,17 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text(
-                  'İptal',
-                  style: TextStyle(color: Colors.white54),
+                child: Text(
+                  AppTranslations.getText('cancel'),
+                  style: const TextStyle(color: Colors.white54),
                 ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: c),
                 onPressed: () => Navigator.pop(ctx, c),
-                child: const Text(
-                  'Uygula',
-                  style: TextStyle(color: Colors.white),
+                child: Text(
+                  AppTranslations.getText('apply'),
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ],

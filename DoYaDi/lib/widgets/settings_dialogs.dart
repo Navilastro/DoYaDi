@@ -3,6 +3,7 @@ import '../providers/settings_provider.dart';
 import '../models/app_settings.dart';
 import '../core/widgets/searchable_key_picker.dart';
 import '../core/utils/keyboard_keys.dart';
+import '../core/utils/app_translations.dart';
 
 // ── Direksiyon: 1'den 1080'e tüm değerler ───────────────────────────────────
 final steeringAngles = {
@@ -106,7 +107,6 @@ const swipeDirLabels = <String, int>{
   'Tuş 16': 16,
 };
 
-
 // ────────────────────────────────────────────────────────────────────────────
 // Ortak dialog/helper mixin — SettingsScreen tarafından kullanılır.
 // ────────────────────────────────────────────────────────────────────────────
@@ -119,11 +119,16 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
   }
 
   String swipeName(int v) {
-    if (v == -1) return 'Gaz';
-    if (v == -2) return 'Fren';
+    if (v == -1)
+      return AppTranslations.getText('paired').isEmpty
+          ? 'Gaz'
+          : AppTranslations.currentLanguage == 'en'
+          ? 'Gas'
+          : 'Gaz';
+    if (v == -2)
+      return AppTranslations.currentLanguage == 'en' ? 'Brake' : 'Fren';
     return KeyboardKeys.appKeyMap.entries
-        .firstWhere(
-            (e) => e.value == v, orElse: () => const MapEntry('Yok', 0))
+        .firstWhere((e) => e.value == v, orElse: () => const MapEntry('Yok', 0))
         .key;
   }
 
@@ -142,9 +147,12 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             return AlertDialog(
               backgroundColor: const Color(0xFF12122A),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
-              title: Text(title,
-                  style: const TextStyle(color: Colors.white, fontSize: 15)),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: ListView(
@@ -155,7 +163,9 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                       onTap: () => ss(() => selected = e.value),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         child: Row(
                           children: [
                             Radio<R>(
@@ -183,8 +193,10 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dctx),
-                  child: const Text('İptal',
-                      style: TextStyle(color: Colors.white54)),
+                  child: Text(
+                    AppTranslations.getText('cancel'),
+                    style: const TextStyle(color: Colors.white54),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -192,7 +204,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                     foregroundColor: Colors.black,
                   ),
                   onPressed: () => Navigator.pop(dctx, selected),
-                  child: const Text('Uygula'),
+                  child: Text(AppTranslations.getText('apply')),
                 ),
               ],
             );
@@ -204,13 +216,20 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
 
   Future<int?> swipeDialog(BuildContext ctx, String title, int current) =>
       radioDialog<int>(
-          ctx: ctx, title: title, current: current, options: swipeDirLabels);
+        ctx: ctx,
+        title: title,
+        current: current,
+        options: swipeDirLabels,
+      );
 
   Future<int?> keyDialog(BuildContext ctx, String title, int current) =>
       showSearchableKeyPicker(ctx, current, hideKeyboard: true);
 
   Future<Color?> showRgbPicker(
-      BuildContext ctx, Color initial, String title) async {
+    BuildContext ctx,
+    Color initial,
+    String title,
+  ) async {
     int r = (initial.r * 255.0).round().clamp(0, 255);
     int g = (initial.g * 255.0).round().clamp(0, 255);
     int b = (initial.b * 255.0).round().clamp(0, 255);
@@ -222,9 +241,12 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
           return AlertDialog(
             backgroundColor: const Color(0xFF12122A),
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18)),
-            title: Text(title,
-                style: const TextStyle(color: Colors.white, fontSize: 15)),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            title: Text(
+              title,
+              style: const TextStyle(color: Colors.white, fontSize: 15),
+            ),
             content: SizedBox(
               width: double.maxFinite,
               child: SingleChildScrollView(
@@ -249,16 +271,19 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dctx),
-                child: const Text('İptal',
-                    style: TextStyle(color: Colors.white54)),
+                child: Text(
+                  AppTranslations.getText('cancel'),
+                  style: const TextStyle(color: Colors.white54),
+                ),
               ),
               ElevatedButton(
-                style:
-                    ElevatedButton.styleFrom(backgroundColor: preview),
+                style: ElevatedButton.styleFrom(backgroundColor: preview),
                 onPressed: () =>
                     Navigator.pop(dctx, Color.fromARGB(255, r, g, b)),
-                child: const Text('Uygula',
-                    style: TextStyle(color: Colors.white)),
+                child: Text(
+                  AppTranslations.getText('apply'),
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
             ],
           );
@@ -278,9 +303,14 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
       children: [
         SizedBox(
           width: 18,
-          child: Text(ch,
-              style: TextStyle(
-                  color: tc, fontWeight: FontWeight.bold, fontSize: 13)),
+          child: Text(
+            ch,
+            style: TextStyle(
+              color: tc,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
         ),
         Expanded(
           child: SliderTheme(
@@ -301,9 +331,11 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
         ),
         SizedBox(
           width: 34,
-          child: Text(val.toString(),
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
-              textAlign: TextAlign.end),
+          child: Text(
+            val.toString(),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            textAlign: TextAlign.end,
+          ),
         ),
       ],
     );
@@ -312,17 +344,17 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
   // ── Shared UI helpers ────────────────────────────────────────────────────
 
   Widget settingsHeader(String t) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Text(
-          t.toUpperCase(),
-          style: const TextStyle(
-            color: Colors.white38,
-            fontSize: 11,
-            letterSpacing: 1.4,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    child: Text(
+      t.toUpperCase(),
+      style: const TextStyle(
+        color: Colors.white38,
+        fontSize: 11,
+        letterSpacing: 1.4,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 
   Widget settingsTile({
     required String title,
@@ -331,30 +363,33 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
     VoidCallback? onTap,
   }) {
     return ListTile(
-      title: Text(title,
-          style: const TextStyle(color: Colors.white, fontSize: 15)),
+      title: Text(
+        title,
+        style: const TextStyle(color: Colors.white, fontSize: 15),
+      ),
       subtitle: subtitle != null
-          ? Text(subtitle,
-              style: const TextStyle(color: Colors.white38, fontSize: 12))
+          ? Text(
+              subtitle,
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
+            )
           : null,
       trailing: trailing,
       onTap: onTap,
     );
   }
 
-  Widget swipeTile(
-    Color ac,
-    String dir,
-    String assigned,
-    VoidCallback? onTap,
-  ) {
+  Widget swipeTile(Color ac, String dir, String assigned, VoidCallback? onTap) {
     final isFixed = onTap == null;
     return ListTile(
       dense: true,
-      leading: Text(dir.substring(0, 2),
-          style: const TextStyle(fontSize: 20, color: Colors.white70)),
-      title: Text(dir.substring(2).trim(),
-          style: const TextStyle(color: Colors.white, fontSize: 14)),
+      leading: Text(
+        dir.substring(0, 2),
+        style: const TextStyle(fontSize: 20, color: Colors.white70),
+      ),
+      title: Text(
+        dir.substring(2).trim(),
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+      ),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
@@ -363,8 +398,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
               : ac.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color:
-                isFixed ? Colors.white12 : ac.withValues(alpha: 0.4),
+            color: isFixed ? Colors.white12 : ac.withValues(alpha: 0.4),
           ),
         ),
         child: Text(
@@ -419,13 +453,16 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 14)),
+                    Text(
+                      label,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
                     Text(
                       'R:${(current.r * 255).round()}  G:${(current.g * 255).round()}  B:${(current.b * 255).round()}',
                       style: const TextStyle(
-                          color: Colors.white38, fontSize: 12),
+                        color: Colors.white38,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -454,8 +491,10 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
       void Function(int) onChanged,
     ) {
       return ListTile(
-        title: Text(label,
-            style: const TextStyle(color: Colors.white, fontSize: 14)),
+        title: Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+        ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
@@ -466,7 +505,10 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
           child: Text(
             keyName(currentVal),
             style: TextStyle(
-                color: ac, fontSize: 12, fontWeight: FontWeight.bold),
+              color: ac,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         onTap: () async {
@@ -484,111 +526,211 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             List<Widget> tiles = [];
             if (mode == -1) {
               tiles = [
-                const ListTile(
-                  title: Text('Sağ Pedal = Gaz',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold)),
+                ListTile(
+                  title: Text(
+                    AppTranslations.getText('right_pedal') +
+                        ' = ' +
+                        (AppTranslations.currentLanguage == 'en'
+                            ? 'Gas'
+                            : 'Gaz'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   subtitle: Text(
-                    'Sağ pedalın kaydırma yönleri "Atama" sekmesinde yapılandırılır.\n'
-                    'Varsayılan: ↑ Yukarı kaydırma = Bar Doldur ↑',
+                    AppTranslations.currentLanguage == 'en'
+                        ? 'Right pedal swipe directions are configured in the "Assignments" tab.\nDefault: ↑ Swipe Up = Fill Bar ↑'
+                        : 'Sağ pedalın kaydırma yönleri "Atama" sekmesinde yapılandırılır.\nVarsayılan: ↑ Yukarı kaydırma = Bar Doldur ↑',
                   ),
                 ),
-                buildKeyTile('Sağ Pedala Tıklanınca', s.gasTap, (v) => setStateDialog(() => s.gasTap = v)),
+                buildKeyTile(
+                  AppTranslations.currentLanguage == 'en'
+                      ? 'Right Pedal Tap'
+                      : 'Sağ Pedala Tıklanınca',
+                  s.gasTap,
+                  (v) => setStateDialog(() => s.gasTap = v),
+                ),
               ];
             } else if (mode == -2) {
               tiles = [
-                const ListTile(
-                  title: Text('Sol Pedal = Fren',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold)),
+                ListTile(
+                  title: Text(
+                    AppTranslations.getText('left_pedal') +
+                        ' = ' +
+                        (AppTranslations.currentLanguage == 'en'
+                            ? 'Brake'
+                            : 'Fren'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   subtitle: Text(
-                    'Sol pedalın kaydırma yönleri "Atama" sekmesinde yapılandırılır.\n'
-                    'Varsayılan: ↑ Yukarı kaydırma = Bar Doldur ↑',
+                    AppTranslations.currentLanguage == 'en'
+                        ? 'Left pedal swipe directions are configured in the "Assignments" tab.\nDefault: ↑ Swipe Up = Fill Bar ↑'
+                        : 'Sol pedalın kaydırma yönleri "Atama" sekmesinde yapılandırılır.\nVarsayılan: ↑ Yukarı kaydırma = Bar Doldur ↑',
                   ),
                 ),
-                buildKeyTile('Sol Pedala Tıklanınca', s.brakeTap, (v) => setStateDialog(() => s.brakeTap = v)),
+                buildKeyTile(
+                  AppTranslations.currentLanguage == 'en'
+                      ? 'Left Pedal Tap'
+                      : 'Sol Pedala Tıklanınca',
+                  s.brakeTap,
+                  (v) => setStateDialog(() => s.brakeTap = v),
+                ),
               ];
             } else if (mode == 0) {
               tiles = [
-                buildKeyTile('Ekran Sol Yarı Tıklama', s.m0TapLeft,
-                    (v) => setStateDialog(() => s.m0TapLeft = v)),
-                buildKeyTile('Ekran Sağ Yarı Tıklama', s.m0TapRight,
-                    (v) => setStateDialog(() => s.m0TapRight = v)),
+                buildKeyTile(
+                  'Ekran Sol Yarı Tıklama',
+                  s.m0TapLeft,
+                  (v) => setStateDialog(() => s.m0TapLeft = v),
+                ),
+                buildKeyTile(
+                  'Ekran Sağ Yarı Tıklama',
+                  s.m0TapRight,
+                  (v) => setStateDialog(() => s.m0TapRight = v),
+                ),
               ];
             } else if (mode == 1) {
               tiles = [
-                buildKeyTile('Sol Pedal Tıklama', s.m1TapLeft,
-                    (v) => setStateDialog(() => s.m1TapLeft = v)),
-                buildKeyTile('Sağ Pedal Tıklama', s.m1TapRight,
-                    (v) => setStateDialog(() => s.m1TapRight = v)),
+                buildKeyTile(
+                  'Sol Pedal Tıklama',
+                  s.m1TapLeft,
+                  (v) => setStateDialog(() => s.m1TapLeft = v),
+                ),
+                buildKeyTile(
+                  'Sağ Pedal Tıklama',
+                  s.m1TapRight,
+                  (v) => setStateDialog(() => s.m1TapRight = v),
+                ),
               ];
             } else if (mode == 2) {
               tiles = [
-                buildKeyTile('Üst-Sol Tuş', s.m2Key1,
-                    (v) => setStateDialog(() => s.m2Key1 = v)),
-                buildKeyTile('Üst-Sağ Tuş', s.m2Key2,
-                    (v) => setStateDialog(() => s.m2Key2 = v)),
-                buildKeyTile('Alt-Sol Tuş', s.m2Key3,
-                    (v) => setStateDialog(() => s.m2Key3 = v)),
-                buildKeyTile('Alt-Sağ Tuş', s.m2Key4,
-                    (v) => setStateDialog(() => s.m2Key4 = v)),
-                buildKeyTile('Fren Pedal Tıklama', s.m2TapLeft,
-                    (v) => setStateDialog(() => s.m2TapLeft = v)),
-                buildKeyTile('Gaz Pedal Tıklama', s.m2TapRight,
-                    (v) => setStateDialog(() => s.m2TapRight = v)),
+                buildKeyTile(
+                  'Üst-Sol Tuş',
+                  s.m2Key1,
+                  (v) => setStateDialog(() => s.m2Key1 = v),
+                ),
+                buildKeyTile(
+                  'Üst-Sağ Tuş',
+                  s.m2Key2,
+                  (v) => setStateDialog(() => s.m2Key2 = v),
+                ),
+                buildKeyTile(
+                  'Alt-Sol Tuş',
+                  s.m2Key3,
+                  (v) => setStateDialog(() => s.m2Key3 = v),
+                ),
+                buildKeyTile(
+                  'Alt-Sağ Tuş',
+                  s.m2Key4,
+                  (v) => setStateDialog(() => s.m2Key4 = v),
+                ),
+                buildKeyTile(
+                  'Fren Pedal Tıklama',
+                  s.m2TapLeft,
+                  (v) => setStateDialog(() => s.m2TapLeft = v),
+                ),
+                buildKeyTile(
+                  'Gaz Pedal Tıklama',
+                  s.m2TapRight,
+                  (v) => setStateDialog(() => s.m2TapRight = v),
+                ),
               ];
             } else if (mode == 3) {
               tiles = [
-                buildKeyTile('Üst-Sol Tuş', s.m3Key1,
-                    (v) => setStateDialog(() => s.m3Key1 = v)),
-                buildKeyTile('Üst-Sağ Tuş', s.m3Key2,
-                    (v) => setStateDialog(() => s.m3Key2 = v)),
-                buildKeyTile('Alt-Sol Tuş', s.m3Key3,
-                    (v) => setStateDialog(() => s.m3Key3 = v)),
-                buildKeyTile('Alt-Sağ Tuş', s.m3Key4,
-                    (v) => setStateDialog(() => s.m3Key4 = v)),
-                buildKeyTile('Orta Alt Tuş', s.m3Key5,
-                    (v) => setStateDialog(() => s.m3Key5 = v)),
-                buildKeyTile('Fren Pedal Tıklama', s.m3TapLeft,
-                    (v) => setStateDialog(() => s.m3TapLeft = v)),
-                buildKeyTile('Gaz Pedal Tıklama', s.m3TapRight,
-                    (v) => setStateDialog(() => s.m3TapRight = v)),
+                buildKeyTile(
+                  'Üst-Sol Tuş',
+                  s.m3Key1,
+                  (v) => setStateDialog(() => s.m3Key1 = v),
+                ),
+                buildKeyTile(
+                  'Üst-Sağ Tuş',
+                  s.m3Key2,
+                  (v) => setStateDialog(() => s.m3Key2 = v),
+                ),
+                buildKeyTile(
+                  'Alt-Sol Tuş',
+                  s.m3Key3,
+                  (v) => setStateDialog(() => s.m3Key3 = v),
+                ),
+                buildKeyTile(
+                  'Alt-Sağ Tuş',
+                  s.m3Key4,
+                  (v) => setStateDialog(() => s.m3Key4 = v),
+                ),
+                buildKeyTile(
+                  'Orta Alt Tuş',
+                  s.m3Key5,
+                  (v) => setStateDialog(() => s.m3Key5 = v),
+                ),
+                buildKeyTile(
+                  'Fren Pedal Tıklama',
+                  s.m3TapLeft,
+                  (v) => setStateDialog(() => s.m3TapLeft = v),
+                ),
+                buildKeyTile(
+                  'Gaz Pedal Tıklama',
+                  s.m3TapRight,
+                  (v) => setStateDialog(() => s.m3TapRight = v),
+                ),
               ];
             } else if (mode == 4) {
               tiles = [
-                buildKeyTile('Üst-Sol Tuş', s.m4Key1,
-                    (v) => setStateDialog(() => s.m4Key1 = v)),
-                buildKeyTile('Üst-Sağ Tuş', s.m4Key2,
-                    (v) => setStateDialog(() => s.m4Key2 = v)),
-                buildKeyTile('Alt-Sol Tuş', s.m4Key3,
-                    (v) => setStateDialog(() => s.m4Key3 = v)),
-                buildKeyTile('Alt-Sağ Tuş', s.m4Key4,
-                    (v) => setStateDialog(() => s.m4Key4 = v)),
-                buildKeyTile('Alt Tam Genişlik Tuş', s.m4KeyBottom,
-                    (v) => setStateDialog(() => s.m4KeyBottom = v)),
-                buildKeyTile('Fren Pedal Tıklama', s.m4TapLeft,
-                    (v) => setStateDialog(() => s.m4TapLeft = v)),
-                buildKeyTile('Gaz Pedal Tıklama', s.m4TapRight,
-                    (v) => setStateDialog(() => s.m4TapRight = v)),
+                buildKeyTile(
+                  'Üst-Sol Tuş',
+                  s.m4Key1,
+                  (v) => setStateDialog(() => s.m4Key1 = v),
+                ),
+                buildKeyTile(
+                  'Üst-Sağ Tuş',
+                  s.m4Key2,
+                  (v) => setStateDialog(() => s.m4Key2 = v),
+                ),
+                buildKeyTile(
+                  'Alt-Sol Tuş',
+                  s.m4Key3,
+                  (v) => setStateDialog(() => s.m4Key3 = v),
+                ),
+                buildKeyTile(
+                  'Alt-Sağ Tuş',
+                  s.m4Key4,
+                  (v) => setStateDialog(() => s.m4Key4 = v),
+                ),
+                buildKeyTile(
+                  'Alt Tam Genişlik Tuş',
+                  s.m4KeyBottom,
+                  (v) => setStateDialog(() => s.m4KeyBottom = v),
+                ),
+                buildKeyTile(
+                  'Fren Pedal Tıklama',
+                  s.m4TapLeft,
+                  (v) => setStateDialog(() => s.m4TapLeft = v),
+                ),
+                buildKeyTile(
+                  'Gaz Pedal Tıklama',
+                  s.m4TapRight,
+                  (v) => setStateDialog(() => s.m4TapRight = v),
+                ),
               ];
             }
 
             return AlertDialog(
               backgroundColor: const Color(0xFF12122A),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+                borderRadius: BorderRadius.circular(18),
+              ),
               title: Text(
                 mode == -1
-                    ? 'Sağ Pedal (Gaz)'
+                    ? '${AppTranslations.getText('right_pedal')} (${AppTranslations.currentLanguage == 'en' ? 'Gas' : 'Gaz'})'
                     : mode == -2
-                        ? 'Sol Pedal (Fren)'
-                        : 'Mod $mode Tuş Atamaları',
-                style:
-                    const TextStyle(color: Colors.white, fontSize: 16),
+                    ? '${AppTranslations.getText('left_pedal')} (${AppTranslations.currentLanguage == 'en' ? 'Brake' : 'Fren'})'
+                    : 'Mod $mode ${AppTranslations.currentLanguage == 'en' ? 'Key Assignments' : 'Tuş Atamaları'}',
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
               content: SizedBox(
                 width: double.maxFinite,
@@ -639,13 +781,17 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                       }
                     });
                   },
-                  child: const Text('Varsayılan',
-                      style: TextStyle(color: Colors.orange)),
+                  child: Text(
+                    AppTranslations.getText('default'),
+                    style: const TextStyle(color: Colors.orange),
+                  ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(dctx),
-                  child: const Text('Kapat',
-                      style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    AppTranslations.getText('close'),
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );
@@ -670,9 +816,12 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             return AlertDialog(
               backgroundColor: const Color(0xFF12122A),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
-              title: const Text('Tuşa Özel Basış Modu',
-                  style: TextStyle(color: Colors.white, fontSize: 16)),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Text(
+                AppTranslations.getText('custom_press_mode'),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: ListView.builder(
@@ -680,40 +829,52 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                   itemCount: 16,
                   itemBuilder: (ctx, i) {
                     final keyIndex = i + 1;
-                    final currentMode = s.customButtonPressModes[keyIndex] ??
+                    final currentMode =
+                        s.customButtonPressModes[keyIndex] ??
                         s.globalButtonPressMode;
                     String modeName = currentMode == 0
-                        ? 'Anlık'
+                        ? AppTranslations.getText('press_mode_instant')
                         : currentMode == 1
-                            ? 'Süreli'
-                            : currentMode == 2
-                                ? 'Toggle'
-                                : 'Hızlı';
+                        ? AppTranslations.getText('press_mode_duration')
+                        : currentMode == 2
+                        ? AppTranslations.getText('press_mode_toggle')
+                        : AppTranslations.getText('press_mode_fast');
                     if (!s.customButtonPressModes.containsKey(keyIndex)) {
-                      modeName += ' (Global)';
+                      modeName +=
+                          ' (${AppTranslations.currentLanguage == 'en' ? 'Global' : 'Genel'})';
                     } else if (currentMode == 1) {
-                      final dur = s.customButtonPressDurationsMs[keyIndex] ?? s.globalButtonPressDurationMs;
+                      final dur =
+                          s.customButtonPressDurationsMs[keyIndex] ??
+                          s.globalButtonPressDurationMs;
                       modeName += ' (${dur / 1000} sn)';
                     }
 
                     return ListTile(
-                      title: Text('Tuş $keyIndex',
-                          style: const TextStyle(color: Colors.white)),
-                      subtitle: Text(modeName,
-                          style:
-                              const TextStyle(color: Colors.white54)),
+                      title: Text(
+                        '${AppTranslations.getText('key_prefix')} $keyIndex',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        modeName,
+                        style: const TextStyle(color: Colors.white54),
+                      ),
                       trailing: const Icon(Icons.edit, color: Colors.white38),
                       onTap: () async {
                         final val = await radioDialog<int?>(
                           ctx: context,
-                          title: 'Tuş $keyIndex Modu',
+                          title:
+                              '${AppTranslations.getText('key_prefix')} $keyIndex ${AppTranslations.currentLanguage == 'en' ? 'Mode' : 'Modu'}',
                           current: s.customButtonPressModes[keyIndex],
-                          options: const {
-                            'Global Ayarı Kullan': -1,
-                            'Anlık (0)': 0,
-                            'Süreli (1)': 1,
-                            'Toggle (2)': 2,
-                            'Hızlı (3)': 3,
+                          options: {
+                            AppTranslations.getText('press_mode_global'): -1,
+                            '${AppTranslations.getText('press_mode_instant')} (0)':
+                                0,
+                            '${AppTranslations.getText('press_mode_duration')} (1)':
+                                1,
+                            '${AppTranslations.getText('press_mode_toggle')} (2)':
+                                2,
+                            '${AppTranslations.getText('press_mode_fast')} (3)':
+                                3,
                           },
                         );
                         if (val != null) {
@@ -723,22 +884,38 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                               s.customButtonPressDurationsMs.remove(keyIndex);
                             });
                           } else {
-                            setStateDialog(() => s.customButtonPressModes[keyIndex] = val);
+                            setStateDialog(
+                              () => s.customButtonPressModes[keyIndex] = val,
+                            );
                             if (val == 1) {
                               final duration = await radioDialog<int>(
                                 ctx: context,
-                                title: 'Süre (Tuş $keyIndex)',
-                                current: s.customButtonPressDurationsMs[keyIndex] ?? s.globalButtonPressDurationMs,
+                                title:
+                                    '${AppTranslations.getText('timed_press_duration')} (${AppTranslations.getText('key_prefix')} $keyIndex)',
+                                current:
+                                    s.customButtonPressDurationsMs[keyIndex] ??
+                                    s.globalButtonPressDurationMs,
                                 options: {
                                   for (var i = 1; i <= 20; i++)
-                                    '${(i * 0.5).toStringAsFixed(1)} sn': i * 500,
+                                    '${(i * 0.5).toStringAsFixed(1)} sn':
+                                        i * 500,
                                 },
                               );
                               if (duration != null) {
-                                setStateDialog(() => s.customButtonPressDurationsMs[keyIndex] = duration);
+                                setStateDialog(
+                                  () =>
+                                      s.customButtonPressDurationsMs[keyIndex] =
+                                          duration,
+                                );
                               } else {
-                                if (!s.customButtonPressDurationsMs.containsKey(keyIndex)) {
-                                  setStateDialog(() => s.customButtonPressDurationsMs[keyIndex] = s.globalButtonPressDurationMs);
+                                if (!s.customButtonPressDurationsMs.containsKey(
+                                  keyIndex,
+                                )) {
+                                  setStateDialog(
+                                    () =>
+                                        s.customButtonPressDurationsMs[keyIndex] =
+                                            s.globalButtonPressDurationMs,
+                                  );
                                 }
                               }
                             }
@@ -752,8 +929,10 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dctx),
-                  child: const Text('Kapat',
-                      style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    AppTranslations.getText('close'),
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );

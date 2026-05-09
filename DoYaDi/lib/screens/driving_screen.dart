@@ -177,11 +177,17 @@ class _DrivingScreenState extends State<DrivingScreen>
       payload.add(mouseY);
 
       // Byte 11: Mouse click (0=none, 1=left, 2=right, 3=middle)
-      payload.add(tpClick);
+      int btnMouseClick = 0;
+      if (pressedKeys.contains(2001)) btnMouseClick = 1;
+      else if (pressedKeys.contains(2002)) btnMouseClick = 2;
+      else if (pressedKeys.contains(2003)) btnMouseClick = 3;
+      int finalMouseClick = tpClick != 0 ? tpClick : btnMouseClick; // Touchpad'in önceliği var
+      payload.add(finalMouseClick); // Byte 11 olarak ekle
 
       // Bytes 12-15: Keyboard keys (VK codes for keys with ID >= 100, up to 4 simultaneous)
       final List<int> kbKeys = pressedKeys
-          .where((k) => k >= 100)
+          .where((k) => k >= 1000 && k < 2000)
+          .map((k) => k - 1000) // Gerçek VK koduna geri çevir (Örn 1013 -> 13)
           .take(4)
           .toList();
       while (kbKeys.length < 4) kbKeys.add(0);

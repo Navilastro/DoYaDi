@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings.dart';
 import '../core/utils/template_profiles.dart';
+import '../core/utils/app_translations.dart';
 
 class SettingsProvider with ChangeNotifier {
   AppSettings _settings = AppSettings();
@@ -11,8 +12,22 @@ class SettingsProvider with ChangeNotifier {
   Color get backgroundColor => _settings.backgroundColor;
   Color get primaryColor => _settings.detailColor;
 
+  String _currentLanguage = 'tr';
+  String get currentLanguage => _currentLanguage;
+
+  Future<void> updateLanguage(String langCode) async {
+    await AppTranslations.setLanguage(langCode);
+    _currentLanguage = langCode;
+    notifyListeners(); // Tüm uygulamaya 'dil değişti, kendini yenile' mesajı gönderir.
+  }
+
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Dili yükle ve AppTranslations'u başlat
+    final savedLang = prefs.getString('languageCode') ?? 'tr';
+    _currentLanguage = savedLang;
+    await AppTranslations.setLanguage(savedLang);
 
     _settings.useGyroscope = prefs.getBool('useGyroscope') ?? false;
     _settings.zeroOrientation = prefs.getInt('zeroOrientation') ?? 0;
@@ -120,7 +135,7 @@ class SettingsProvider with ChangeNotifier {
     _settings.gasSwipeUp = prefs.getInt('gasSwipeUp') ?? -1;
     _settings.gasSwipeDown = prefs.getInt('gasSwipeDown') ?? -1;
     _settings.gasSwipeLeft = prefs.getInt('gasSwipeLeft') ?? 5;
-    _settings.gasSwipeRight = prefs.getInt('gasSwipeRight') ?? 13;
+    _settings.gasSwipeRight = prefs.getInt('gasSwipeRight') ?? 16;
     _settings.gasSwipeUpLeft = prefs.getInt('gasSwipeUpLeft') ?? 0;
     _settings.gasSwipeUpRight = prefs.getInt('gasSwipeUpRight') ?? 0;
     _settings.gasSwipeDownLeft = prefs.getInt('gasSwipeDownLeft') ?? 0;
@@ -129,7 +144,7 @@ class SettingsProvider with ChangeNotifier {
     // Fren swipe atamaları
     _settings.brakeSwipeUp = prefs.getInt('brakeSwipeUp') ?? -1;
     _settings.brakeSwipeDown = prefs.getInt('brakeSwipeDown') ?? -2;
-    _settings.brakeSwipeLeft = prefs.getInt('brakeSwipeLeft') ?? 14;
+    _settings.brakeSwipeLeft = prefs.getInt('brakeSwipeLeft') ?? 15;
     _settings.brakeSwipeRight = prefs.getInt('brakeSwipeRight') ?? 4;
     _settings.brakeSwipeUpLeft = prefs.getInt('brakeSwipeUpLeft') ?? 0;
     _settings.brakeSwipeUpRight = prefs.getInt('brakeSwipeUpRight') ?? 0;

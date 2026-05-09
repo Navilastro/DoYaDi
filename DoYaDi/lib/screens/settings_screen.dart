@@ -4,6 +4,7 @@ import '../providers/settings_provider.dart';
 import '../models/app_settings.dart';
 import 'custom_layout5_editor_screen.dart';
 import '../widgets/settings_dialogs.dart';
+import '../core/utils/app_translations.dart';
 
 // Sabitler settings_dialogs.dart'tan geliyor:
 // steeringAngles, pedalDistances, swipeSensitivities,
@@ -45,8 +46,8 @@ class _SettingsScreenState extends State<SettingsScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
-        title: const Text('Ayarlar',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(AppTranslations.getText('settings'),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         bottom: TabBar(
           controller: _tab,
           indicatorColor: ac,
@@ -54,11 +55,11 @@ class _SettingsScreenState extends State<SettingsScreen>
           unselectedLabelColor: Colors.white38,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          tabs: const [
-            Tab(text: 'Ana'),
-            Tab(text: 'Direksiyon'),
-            Tab(text: 'Atama'),
-            Tab(text: 'Renkler'),
+          tabs: [
+            Tab(text: AppTranslations.getText('tab_main')),
+            Tab(text: AppTranslations.getText('tab_steering')),
+            Tab(text: AppTranslations.getText('tab_assign')),
+            Tab(text: AppTranslations.getText('tab_colors')),
           ],
         ),
       ),
@@ -85,15 +86,15 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        settingsHeader('Sürüş Modu'),
+        settingsHeader(AppTranslations.getText('driving_mode')),
         settingsTile(
-          title: 'Varsayılan sürüş modu',
+          title: AppTranslations.getText('default_driving_mode'),
           trailing: Text('Mod ${s.defaultDrivingMode}',
               style: TextStyle(color: ac, fontWeight: FontWeight.bold)),
           onTap: () async {
             final val = await radioDialog<int>(
               ctx: ctx,
-              title: 'Varsayılan sürüş modu',
+              title: AppTranslations.getText('default_driving_mode'),
               current: s.defaultDrivingMode,
               options: {for (var i = 0; i <= 5; i++) 'Mod $i': i},
             );
@@ -110,8 +111,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             icon: const Icon(Icons.edit),
             label: Text(
               s.defaultDrivingMode == 5
-                  ? 'Özel Düzeni Düzenle (Mod 5)'
-                  : 'Tuşları Düzenle (Mod ${s.defaultDrivingMode})',
+                  ? AppTranslations.getText('edit_custom_layout')
+                  : '${AppTranslations.getText('edit_keys')} (Mod ${s.defaultDrivingMode})',
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: ac,
@@ -133,31 +134,31 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         ),
         const Divider(color: Colors.white12, height: 24),
-        settingsHeader('Pedal'),
+        settingsHeader(AppTranslations.getText('pedal')),
         settingsTile(
-          title: 'Sağ Pedal',
-          subtitle: 'Varsayılan: Gaz — sağ taraf',
+          title: AppTranslations.getText('right_pedal'),
+          subtitle: AppTranslations.getText('right_pedal_desc'),
           trailing: const Icon(Icons.chevron_right, color: Colors.white38),
           onTap: () => showModeKeyAssignmentsDialog(ctx, prov, s, -1),
         ),
         settingsTile(
-          title: 'Sol Pedal',
-          subtitle: 'Varsayılan: Fren — sol taraf',
+          title: AppTranslations.getText('left_pedal'),
+          subtitle: AppTranslations.getText('left_pedal_desc'),
           trailing: const Icon(Icons.chevron_right, color: Colors.white38),
           onTap: () => showModeKeyAssignmentsDialog(ctx, prov, s, -2),
         ),
         const Divider(color: Colors.white12, height: 8),
         settingsTile(
-          title: 'İvmelenme ve Fren mesafesi',
-          subtitle: '%100 pedal için gereken mesafe',
+          title: AppTranslations.getText('accel_brake_dist'),
+          subtitle: AppTranslations.getText('100_percent_dist'),
           trailing: Text(
-            '${s.swipeSensitivity == 5 ? "5 mm (for pro)" : s.swipeSensitivity == 0 ? "0 mm" : "${s.swipeSensitivity.toInt()} mm"}',
+            s.swipeSensitivity == 5 ? '5 mm (for pro)' : s.swipeSensitivity == 0 ? '0 mm' : '${s.swipeSensitivity.toInt()} mm',
             style: TextStyle(color: ac, fontWeight: FontWeight.bold),
           ),
           onTap: () async {
             final val = await radioDialog<int>(
               ctx: ctx,
-              title: 'İvmelenme ve Fren Mesafesi',
+              title: AppTranslations.getText('accel_brake_dist'),
               current: s.swipeSensitivity.toInt(),
               options: pedalDistances,
             );
@@ -169,8 +170,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           },
         ),
         settingsTile(
-          title: 'Kaydırma hassasiyeti (tıklama)',
-          subtitle: 'Bu mesafeden az kayarsa tıklama sayılır',
+          title: AppTranslations.getText('swipe_sens'),
+          subtitle: AppTranslations.getText('swipe_sens_desc'),
           trailing: Text(
             s.clickMaxDistance == 0 ? '0 mm' : '${s.clickMaxDistance} mm',
             style: TextStyle(color: ac, fontWeight: FontWeight.bold),
@@ -178,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           onTap: () async {
             final val = await radioDialog<double>(
               ctx: ctx,
-              title: 'Kaydırma Hassasiyeti',
+              title: AppTranslations.getText('swipe_sens'),
               current: s.clickMaxDistance,
               options: swipeSensitivities,
             );
@@ -190,8 +191,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           },
         ),
         settingsTile(
-          title: 'Tıklama üst (maksimum) süresi',
-          subtitle: 'Bu süreden kısa dokunma = tıklama',
+          title: AppTranslations.getText('max_click_dur'),
+          subtitle: AppTranslations.getText('max_click_dur_desc'),
           trailing: Text(
             s.clickMaxDuration >= 9999
                 ? 'unlimited'
@@ -201,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           onTap: () async {
             final val = await radioDialog<double>(
               ctx: ctx,
-              title: 'Tıklama üst süresi',
+              title: AppTranslations.getText('max_click_dur'),
               current: s.clickMaxDuration,
               options: clickDurations,
             );
@@ -213,13 +214,13 @@ class _SettingsScreenState extends State<SettingsScreen>
           },
         ),
         const Divider(color: Colors.white12, height: 24),
-        settingsHeader('Donanım Tuşları'),
+        settingsHeader(AppTranslations.getText('hw_keys')),
         settingsTile(
-          title: 'Ses Açma → Tuş',
+          title: AppTranslations.getText('vol_up_action'),
           trailing: Text(keyName(s.volumeUpAction),
               style: TextStyle(color: ac, fontWeight: FontWeight.bold)),
           onTap: () async {
-            final val = await keyDialog(ctx, 'Ses Açma eylemi', s.volumeUpAction);
+            final val = await keyDialog(ctx, AppTranslations.getText('vol_up_action_title'), s.volumeUpAction);
             if (val != null) {
               s.volumeUpAction = val;
               prov.updateSettings(s);
@@ -228,12 +229,12 @@ class _SettingsScreenState extends State<SettingsScreen>
           },
         ),
         settingsTile(
-          title: 'Ses Kısma → Tuş',
+          title: AppTranslations.getText('vol_down_action'),
           trailing: Text(keyName(s.volumeDownAction),
               style: TextStyle(color: ac, fontWeight: FontWeight.bold)),
           onTap: () async {
             final val =
-                await keyDialog(ctx, 'Ses Kısma eylemi', s.volumeDownAction);
+                await keyDialog(ctx, AppTranslations.getText('vol_down_action_title'), s.volumeDownAction);
             if (val != null) {
               s.volumeDownAction = val;
               prov.updateSettings(s);
@@ -241,9 +242,87 @@ class _SettingsScreenState extends State<SettingsScreen>
             }
           },
         ),
+        const Divider(color: Colors.white12, height: 24),
+        settingsHeader(AppTranslations.getText('language')),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              children: [
+                _langTile(
+                  ctx: ctx,
+                  prov: prov,
+                  langCode: 'tr',
+                  label: 'Türkçe',
+                  flag: '🇹🇷',
+                  ac: ac,
+                ),
+                const Divider(color: Colors.white12, height: 1, indent: 16),
+                _langTile(
+                  ctx: ctx,
+                  prov: prov,
+                  langCode: 'en',
+                  label: 'English',
+                  flag: '🇬🇧',
+                  ac: ac,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }
+
+  Widget _langTile({
+    required BuildContext ctx,
+    required SettingsProvider prov,
+    required String langCode,
+    required String label,
+    required String flag,
+    required Color ac,
+  }) {
+    final isSelected = prov.currentLanguage == langCode;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () async {
+        if (isSelected) return;
+        await prov.updateLanguage(langCode);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Text(flag, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? ac : Colors.white70,
+                  fontSize: 15,
+                  fontWeight:
+                      isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle, color: ac, size: 20)
+            else
+              const Icon(Icons.radio_button_unchecked,
+                  color: Colors.white24, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   // ── Direksiyon Tab ───────────────────────────────────────────────────────
 
@@ -256,12 +335,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        settingsHeader('Sensör'),
+        settingsHeader(AppTranslations.getText('sensor')),
         SwitchListTile(
-          title: const Text('Jiroskop kullan',
-              style: TextStyle(color: Colors.white, fontSize: 15)),
-          subtitle: const Text('İvmeölçer ve jiroskopu birleştirir',
-              style: TextStyle(color: Colors.white38, fontSize: 12)),
+          title: Text(AppTranslations.getText('use_gyro'),
+              style: const TextStyle(color: Colors.white, fontSize: 15)),
+          subtitle: Text(AppTranslations.getText('use_gyro_desc'),
+              style: const TextStyle(color: Colors.white38, fontSize: 12)),
           value: s.useGyroscope,
           activeThumbColor: ac,
           onChanged: (val) {
@@ -270,7 +349,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           },
         ),
         settingsTile(
-          title: 'Phone orientation for zero position',
+          title: AppTranslations.getText('phone_orientation'),
           subtitle: zeroOrientationOptions.entries
               .firstWhere((e) => e.value == s.zeroOrientation,
                   orElse: () => const MapEntry('Auto', 0))
@@ -279,7 +358,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           onTap: () async {
             final val = await radioDialog<int>(
               ctx: ctx,
-              title: 'Phone orientation for zero position',
+              title: AppTranslations.getText('phone_orientation'),
               current: s.zeroOrientation,
               options: zeroOrientationOptions,
             );
@@ -291,10 +370,10 @@ class _SettingsScreenState extends State<SettingsScreen>
           },
         ),
         const Divider(color: Colors.white12, height: 24),
-        settingsHeader('Direksiyon Hassasiyeti'),
+        settingsHeader(AppTranslations.getText('steering_sens')),
         settingsTile(
-          title: 'Direksiyon açısı',
-          subtitle: 'Küçük değer = daha hassas',
+          title: AppTranslations.getText('steering_angle'),
+          subtitle: AppTranslations.getText('smaller_more_sens'),
           trailing: Text(
             s.steeringAngle <= 1
                 ? 'Max level at 1 (1°)'
@@ -305,7 +384,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           onTap: () async {
             final val = await radioDialog<int>(
               ctx: ctx,
-              title: 'Direksiyon açısı',
+              title: AppTranslations.getText('steering_angle'),
               current: s.steeringAngle.toInt(),
               options: steeringAngles,
             );
@@ -325,20 +404,16 @@ class _SettingsScreenState extends State<SettingsScreen>
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white12),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Nasıl çalışır',
-                    style: TextStyle(
+                Text(AppTranslations.getText('how_it_works'),
+                    style: const TextStyle(
                         color: Colors.white70, fontWeight: FontWeight.bold)),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
-                  '1° — Max level at 1 (ultra duyarlı)\n'
-                  '75° — ultra hassas (simülasyon)\n'
-                  '180° — dengeli (varsayılan)\n'
-                  '540° — gerçekçi araba hissi\n'
-                  '1080° — kamyon / simülatör',
-                  style: TextStyle(
+                  AppTranslations.getText('how_it_works_desc'),
+                  style: const TextStyle(
                       color: Colors.white38, fontSize: 12, height: 1.6),
                 ),
               ],
@@ -373,24 +448,29 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        settingsHeader('Tuş Basış Ayarları'),
+        settingsHeader(AppTranslations.getText('key_press_settings')),
         settingsTile(
-          title: 'Genel Buton Basış Modu',
-          subtitle: 'Varsayılan buton davranışı',
+          title: AppTranslations.getText('global_press_mode'),
+          subtitle: AppTranslations.getText('default_button_behavior'),
           trailing: Text(
-            ['Anlık (Varsayılan)', 'Süreli', 'Sınırsız (Toggle)', 'Hızlı (80ms)'][s.globalButtonPressMode],
+            [
+              AppTranslations.getText('press_mode_instant'),
+              AppTranslations.getText('press_mode_duration'),
+              AppTranslations.getText('press_mode_toggle'),
+              AppTranslations.getText('press_mode_fast'),
+            ][s.globalButtonPressMode],
             style: TextStyle(color: ac, fontWeight: FontWeight.bold),
           ),
           onTap: () async {
             final val = await radioDialog<int>(
               ctx: ctx,
-              title: 'Buton Basış Modu',
+              title: AppTranslations.getText('global_press_mode'),
               current: s.globalButtonPressMode,
-              options: const {
-                'Anlık (Varsayılan)': 0,
-                'Süreli': 1,
-                'Sınırsız (Toggle)': 2,
-                'Hızlı (80ms)': 3,
+              options: {
+                AppTranslations.getText('press_mode_instant'): 0,
+                AppTranslations.getText('press_mode_duration'): 1,
+                AppTranslations.getText('press_mode_toggle'): 2,
+                AppTranslations.getText('press_mode_fast'): 3,
               },
             );
             if (val != null) {
@@ -402,8 +482,8 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         if (s.globalButtonPressMode == 1)
           settingsTile(
-            title: 'Süreli Basış Süresi',
-            subtitle: 'Buton kaç saniye basılı kalsın?',
+            title: AppTranslations.getText('timed_press_duration'),
+            subtitle: AppTranslations.getText('timed_press_desc'),
             trailing: Text(
               '${(s.globalButtonPressDurationMs / 1000).toStringAsFixed(1)} sn',
               style: TextStyle(color: ac, fontWeight: FontWeight.bold),
@@ -411,7 +491,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             onTap: () async {
               final val = await radioDialog<int>(
                 ctx: ctx,
-                title: 'Basış Süresi',
+                title: AppTranslations.getText('timed_press_duration'),
                 current: s.globalButtonPressDurationMs,
                 options: {
                   for (var i = 1; i <= 20; i++)
@@ -426,47 +506,47 @@ class _SettingsScreenState extends State<SettingsScreen>
             },
           ),
         settingsTile(
-          title: 'Tuşa özel Basış Modu',
-          subtitle: 'Her tuş için ayrı basış modu ayarlayın',
+          title: AppTranslations.getText('custom_press_mode'),
+          subtitle: AppTranslations.getText('custom_press_desc'),
           trailing: const Icon(Icons.chevron_right, color: Colors.white38),
           onTap: () => showCustomPressModesDialog(ctx, prov, s),
         ),
         const Divider(color: Colors.white12, height: 24),
-        settingsHeader('Sağ Pedal'),
-        swipeTile(ac, '↑ Yukarı', swipeName(s.gasSwipeUp),
-            () => pick('Sağ Pedal ↑ Yukarı', s.gasSwipeUp, (v) => s.gasSwipeUp = v)),
-        swipeTile(ac, '↓ Aşağı', swipeName(s.gasSwipeDown),
-            () => pick('Sağ Pedal ↓ Aşağı', s.gasSwipeDown, (v) => s.gasSwipeDown = v)),
-        swipeTile(ac, '← Sol', swipeName(s.gasSwipeLeft),
-            () => pick('Sağ Pedal ← Sol', s.gasSwipeLeft, (v) => s.gasSwipeLeft = v)),
-        swipeTile(ac, '→ Sağ', swipeName(s.gasSwipeRight),
-            () => pick('Sağ Pedal → Sağ', s.gasSwipeRight, (v) => s.gasSwipeRight = v)),
-        swipeTile(ac, '↖ Sol Üst', swipeName(s.gasSwipeUpLeft),
-            () => pick('Sağ Pedal ↖ Sol Üst', s.gasSwipeUpLeft, (v) => s.gasSwipeUpLeft = v)),
-        swipeTile(ac, '↗ Sağ Üst', swipeName(s.gasSwipeUpRight),
-            () => pick('Sağ Pedal ↗ Sağ Üst', s.gasSwipeUpRight, (v) => s.gasSwipeUpRight = v)),
-        swipeTile(ac, '↙ Sol Alt', swipeName(s.gasSwipeDownLeft),
-            () => pick('Sağ Pedal ↙ Sol Alt', s.gasSwipeDownLeft, (v) => s.gasSwipeDownLeft = v)),
-        swipeTile(ac, '↘ Sağ Alt', swipeName(s.gasSwipeDownRight),
-            () => pick('Sağ Pedal ↘ Sağ Alt', s.gasSwipeDownRight, (v) => s.gasSwipeDownRight = v)),
+        settingsHeader(AppTranslations.getText('right_pedal')),
+        swipeTile(ac, AppTranslations.getText('swipe_up'), swipeName(s.gasSwipeUp),
+            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_up')}', s.gasSwipeUp, (v) => s.gasSwipeUp = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_down'), swipeName(s.gasSwipeDown),
+            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_down')}', s.gasSwipeDown, (v) => s.gasSwipeDown = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_left'), swipeName(s.gasSwipeLeft),
+            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_left')}', s.gasSwipeLeft, (v) => s.gasSwipeLeft = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_right'), swipeName(s.gasSwipeRight),
+            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_right')}', s.gasSwipeRight, (v) => s.gasSwipeRight = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_ul'), swipeName(s.gasSwipeUpLeft),
+            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_ul')}', s.gasSwipeUpLeft, (v) => s.gasSwipeUpLeft = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_ur'), swipeName(s.gasSwipeUpRight),
+            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_ur')}', s.gasSwipeUpRight, (v) => s.gasSwipeUpRight = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_dl'), swipeName(s.gasSwipeDownLeft),
+            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_dl')}', s.gasSwipeDownLeft, (v) => s.gasSwipeDownLeft = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_dr'), swipeName(s.gasSwipeDownRight),
+            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_dr')}', s.gasSwipeDownRight, (v) => s.gasSwipeDownRight = v)),
         const Divider(color: Colors.white12, height: 32),
-        settingsHeader('Sol Pedal'),
-        swipeTile(ac, '↑ Yukarı', swipeName(s.brakeSwipeUp),
-            () => pick('Sol Pedal ↑ Yukarı', s.brakeSwipeUp, (v) => s.brakeSwipeUp = v)),
-        swipeTile(ac, '↓ Aşağı', swipeName(s.brakeSwipeDown),
-            () => pick('Sol Pedal ↓ Aşağı', s.brakeSwipeDown, (v) => s.brakeSwipeDown = v)),
-        swipeTile(ac, '← Sol', swipeName(s.brakeSwipeLeft),
-            () => pick('Sol Pedal ← Sol', s.brakeSwipeLeft, (v) => s.brakeSwipeLeft = v)),
-        swipeTile(ac, '→ Sağ', swipeName(s.brakeSwipeRight),
-            () => pick('Sol Pedal → Sağ', s.brakeSwipeRight, (v) => s.brakeSwipeRight = v)),
-        swipeTile(ac, '↖ Sol Üst', swipeName(s.brakeSwipeUpLeft),
-            () => pick('Sol Pedal ↖ Sol Üst', s.brakeSwipeUpLeft, (v) => s.brakeSwipeUpLeft = v)),
-        swipeTile(ac, '↗ Sağ Üst', swipeName(s.brakeSwipeUpRight),
-            () => pick('Sol Pedal ↗ Sağ Üst', s.brakeSwipeUpRight, (v) => s.brakeSwipeUpRight = v)),
-        swipeTile(ac, '↙ Sol Alt', swipeName(s.brakeSwipeDownLeft),
-            () => pick('Sol Pedal ↙ Sol Alt', s.brakeSwipeDownLeft, (v) => s.brakeSwipeDownLeft = v)),
-        swipeTile(ac, '↘ Sağ Alt', swipeName(s.brakeSwipeDownRight),
-            () => pick('Sol Pedal ↘ Sağ Alt', s.brakeSwipeDownRight, (v) => s.brakeSwipeDownRight = v)),
+        settingsHeader(AppTranslations.getText('left_pedal')),
+        swipeTile(ac, AppTranslations.getText('swipe_up'), swipeName(s.brakeSwipeUp),
+            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_up')}', s.brakeSwipeUp, (v) => s.brakeSwipeUp = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_down'), swipeName(s.brakeSwipeDown),
+            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_down')}', s.brakeSwipeDown, (v) => s.brakeSwipeDown = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_left'), swipeName(s.brakeSwipeLeft),
+            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_left')}', s.brakeSwipeLeft, (v) => s.brakeSwipeLeft = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_right'), swipeName(s.brakeSwipeRight),
+            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_right')}', s.brakeSwipeRight, (v) => s.brakeSwipeRight = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_ul'), swipeName(s.brakeSwipeUpLeft),
+            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_ul')}', s.brakeSwipeUpLeft, (v) => s.brakeSwipeUpLeft = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_ur'), swipeName(s.brakeSwipeUpRight),
+            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_ur')}', s.brakeSwipeUpRight, (v) => s.brakeSwipeUpRight = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_dl'), swipeName(s.brakeSwipeDownLeft),
+            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_dl')}', s.brakeSwipeDownLeft, (v) => s.brakeSwipeDownLeft = v)),
+        swipeTile(ac, AppTranslations.getText('swipe_dr'), swipeName(s.brakeSwipeDownRight),
+            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_dr')}', s.brakeSwipeDownRight, (v) => s.brakeSwipeDownRight = v)),
       ],
     );
   }
@@ -479,40 +559,40 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        settingsHeader('Genel'),
-        row('Arka plan', s.backgroundColor, (c) {
+        settingsHeader(AppTranslations.getText('general')),
+        row(AppTranslations.getText('bg_color'), s.backgroundColor, (c) {
           s.backgroundColor = c;
           prov.updateSettings(s);
         }),
-        row('Vurgu / Detay', s.detailColor, (c) {
+        row(AppTranslations.getText('accent_color'), s.detailColor, (c) {
           s.detailColor = c;
           prov.updateSettings(s);
         }),
         const Divider(color: Colors.white12, height: 24),
-        settingsHeader('Direksiyon göstergesi'),
-        row('Gösterge rengi', s.steeringIndicatorColor, (c) {
+        settingsHeader(AppTranslations.getText('steering_indicator')),
+        row(AppTranslations.getText('indicator_color'), s.steeringIndicatorColor, (c) {
           s.steeringIndicatorColor = c;
           prov.updateSettings(s);
         }),
-        row('Gösterge arka planı', s.steeringBgColor, (c) {
+        row(AppTranslations.getText('indicator_bg'), s.steeringBgColor, (c) {
           s.steeringBgColor = c;
           prov.updateSettings(s);
         }),
         const Divider(color: Colors.white12, height: 24),
-        settingsHeader('Pedallar'),
-        row('Gaz rengi', s.gasColor, (c) {
+        settingsHeader(AppTranslations.getText('pedals')),
+        row(AppTranslations.getText('gas_color'), s.gasColor, (c) {
           s.gasColor = c;
           prov.updateSettings(s);
         }),
-        row('Fren rengi', s.brakeColor, (c) {
+        row(AppTranslations.getText('brake_color'), s.brakeColor, (c) {
           s.brakeColor = c;
           prov.updateSettings(s);
         }),
-        row('Geri bildirim (>%70)', s.yetsoreColor, (c) {
+        row(AppTranslations.getText('feedback_color'), s.yetsoreColor, (c) {
           s.yetsoreColor = c;
           prov.updateSettings(s);
         }),
-        row('Pedal arka planı', s.pedalBgColor, (c) {
+        row(AppTranslations.getText('pedal_bg'), s.pedalBgColor, (c) {
           s.pedalBgColor = c;
           prov.updateSettings(s);
         }),

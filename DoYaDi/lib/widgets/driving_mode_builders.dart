@@ -7,6 +7,7 @@ import '../widgets/driving_painters.dart';
 import '../widgets/driving_tap_zone.dart';
 import '../widgets/joystick_widget.dart';
 import '../screens/driving_screen_state.dart';
+import '../core/utils/app_translations.dart';
 
 /// Tüm mod build metodlarını barındıran mixin.
 /// DrivingInputMixin ile birlikte kullanılır.
@@ -238,7 +239,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
         SizedBox(
           height: size.height * 0.18,
           child: TapZone(
-            label: 'Tuş ${s.m4KeyBottom}',
+            label: '${AppTranslations.getText('key_prefix')} ${s.m4KeyBottom}',
             color: s.detailColor,
             onDown: () => handleButtonDown(s.m4KeyBottom),
             onUp: () => handleButtonUp(s.m4KeyBottom),
@@ -255,7 +256,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
     if (s.customLayout5Json == null || s.customLayout5Json!.isEmpty) {
       return Center(
         child: Text(
-          'Lütfen ayarlar ekranından\nMod 5 düzenlemesi yapın ve kaydedin.',
+          AppTranslations.getText('please_edit_mod5'),
           style: TextStyle(color: s.detailColor, fontSize: 18),
           textAlign: TextAlign.center,
         ),
@@ -270,7 +271,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
     } catch (_) {
       return Center(
         child: Text(
-          'Tasarım yüklenemedi. Lütfen tekrar düzenleyin.',
+          AppTranslations.getText('design_load_error'),
           style: TextStyle(color: s.detailColor),
         ),
       );
@@ -385,7 +386,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
       case Layout5ItemType.buttonSquare:
       case Layout5ItemType.buttonSoft:
       case Layout5ItemType.buttonCircle:
-        final label = item.label ?? 'Buton';
+        final label = item.label ?? AppTranslations.getText('button_text');
         BorderRadius radius;
         if (item.type == Layout5ItemType.buttonSoft) {
           radius = BorderRadius.circular(16);
@@ -588,7 +589,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
             children: [
               Expanded(
                 child: TapZone(
-                  label: 'Tuş $k1',
+                  label: '${AppTranslations.getText('key_prefix')} $k1',
                   color: color,
                   onDown: () => handleButtonDown(k1),
                   onUp: () => handleButtonUp(k1),
@@ -596,7 +597,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
               ),
               Expanded(
                 child: TapZone(
-                  label: 'Tuş $k2',
+                  label: '${AppTranslations.getText('key_prefix')} $k2',
                   color: color,
                   onDown: () => handleButtonDown(k2),
                   onUp: () => handleButtonUp(k2),
@@ -610,7 +611,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
             children: [
               Expanded(
                 child: TapZone(
-                  label: 'Tuş $k3',
+                  label: '${AppTranslations.getText('key_prefix')} $k3',
                   color: color,
                   onDown: () => handleButtonDown(k3),
                   onUp: () => handleButtonUp(k3),
@@ -618,7 +619,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
               ),
               Expanded(
                 child: TapZone(
-                  label: 'Tuş $k4',
+                  label: '${AppTranslations.getText('key_prefix')} $k4',
                   color: color,
                   onDown: () => handleButtonDown(k4),
                   onUp: () => handleButtonUp(k4),
@@ -630,7 +631,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
         if (k5 != null)
           Expanded(
             child: TapZone(
-              label: 'Tuş $k5',
+              label: '${AppTranslations.getText('key_prefix')} $k5',
               color: color,
               onDown: () => handleButtonDown(k5),
               onUp: () => handleButtonUp(k5),

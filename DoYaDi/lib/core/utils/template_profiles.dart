@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../models/layout5_item.dart';
+import 'app_translations.dart';
 
 String getGameTemplate1() {
   final items = [
@@ -48,8 +49,8 @@ String getKeyboardMouseTemplate() {
     Layout5Item(id: 'btn_a', type: Layout5ItemType.buttonSquare, left: 0.07, top: 0.48, width: 0.08, height: 0.18, label: 'A', keyIndex: 165),
     Layout5Item(id: 'btn_s', type: Layout5ItemType.buttonSquare, left: 0.15, top: 0.48, width: 0.08, height: 0.18, label: 'S', keyIndex: 183),
     Layout5Item(id: 'btn_d', type: Layout5ItemType.buttonSquare, left: 0.23, top: 0.48, width: 0.08, height: 0.18, label: 'D', keyIndex: 168),
-    Layout5Item(id: 'btn_space', type: Layout5ItemType.buttonSquare, left: 0.07, top: 0.66, width: 0.24, height: 0.18, label: 'Space', keyIndex: 132),
-    Layout5Item(id: 'btn_shift', type: Layout5ItemType.buttonSquare, left: 0.07, top: 0.84, width: 0.16, height: 0.15, label: 'Shift', keyIndex: 116),
+    Layout5Item(id: 'btn_space', type: Layout5ItemType.buttonSquare, left: 0.07, top: 0.66, width: 0.24, height: 0.18, label: AppTranslations.getText('space'), keyIndex: 132),
+    Layout5Item(id: 'btn_shift', type: Layout5ItemType.buttonSquare, left: 0.07, top: 0.84, width: 0.16, height: 0.15, label: AppTranslations.getText('shift'), keyIndex: 116),
   ];
   return jsonEncode(items.map((e) => e.toJson()).toList());
 }
