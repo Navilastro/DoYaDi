@@ -169,6 +169,12 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
 
     // Eğer paket 9 baytsa (Joystick verileri eklenmişse)
     if (bytesReceived >= 9) {
+        //Taşma önleyici lambda fonksiyonu
+        auto ClampShort = [](int val) -> SHORT {
+            if (val > 32767) return 32767;
+            if (val < -32768) return -32768;
+            return (SHORT)val;
+            };
         // Sol Joystick jiroskopu ezmek için kullanılıyorsa
         if (buffer[5] != 128 || buffer[6] != 128) {
             report.sThumbLX = (SHORT)((buffer[5] - 128) * 256);

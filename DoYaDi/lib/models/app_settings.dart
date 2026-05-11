@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 
 /// Swipe yönleri (8 yön + merkez/yok)
-enum SwipeDir { none, up, down, left, right, upLeft, upRight, downLeft, downRight }
+enum SwipeDir {
+  none,
+  up,
+  down,
+  left,
+  right,
+  upLeft,
+  upRight,
+  downLeft,
+  downRight,
+}
 
 class AppSettings {
   // ── Arka plan ve genel renkler ──────────────────────────────────────────────
@@ -15,8 +25,8 @@ class AppSettings {
   // ── Pedal renkleri ──────────────────────────────────────────────────────────
   Color gasColor;
   Color brakeColor;
-  Color yetsoreColor;  // %70+ geri bildirim rengi
-  Color pedalBgColor;  // Pedal arka plan rengi
+  Color yetsoreColor; // %70+ geri bildirim rengi
+  Color pedalBgColor; // Pedal arka plan rengi
 
   // ── İvmeölçer kalibrasyonu ─────────────────────────────────────────────────
   /// 0: Auto, 1: Ekran üstte, 2: Ekran vücuda bakıyor
@@ -26,11 +36,11 @@ class AppSettings {
 
   // ── Direksiyon / Hareket ayarları ───────────────────────────────────────────
   bool useGyroscope;
-  double steeringAngle;      // 75° – 1080°
-  double swipeSensitivity;   // Pedal %100 için gereken mm mesafesi
-  double clickMaxDistance;   // Dokunma sayılmak için maks. mm kayma
-  double clickMaxDuration;   // Dokunma sayılmak için maks. süre (saniye)
-  int defaultDrivingMode;    // 0–5
+  double steeringAngle; // 75° – 1080°
+  double swipeSensitivity; // Pedal %100 için gereken mm mesafesi
+  double clickMaxDistance; // Dokunma sayılmak için maks. mm kayma
+  double clickMaxDuration; // Dokunma sayılmak için maks. süre (saniye)
+  int defaultDrivingMode; // 0–5
 
   // ── Mod 5 özel layout & Profiller ──────────────────────────────────────────
   String? customLayout5Json;
@@ -44,29 +54,28 @@ class AppSettings {
   Map<int, int> customButtonPressDurationsMs; // Key -> Duration ms
   Map<int, List<int>> customMacros; // MacroID (>= 2000) -> List of keys
 
-
   // ── Donanım tuş ataması (1-16, 0 = devre dışı) ─────────────────────────────
   int volumeUpAction;
   int volumeDownAction;
 
   // ── Mod 0 tuş atamaları ─────────────────────────────────────────────────────
   // Ekranın sol yarısına tıklama / sağ yarısına tıklama
-  int m0TapLeft;   // varsayılan 4
-  int m0TapRight;  // varsayılan 3
+  int m0TapLeft; // varsayılan 4
+  int m0TapRight; // varsayılan 3
 
   // ── Mod 1 tuş atamaları ─────────────────────────────────────────────────────
   // Sol pedal tıklama / Sağ pedal tıklama
-  int m1TapLeft;   // varsayılan 4
-  int m1TapRight;  // varsayılan 3
+  int m1TapLeft; // varsayılan 4
+  int m1TapRight; // varsayılan 3
 
   // ── Mod 2 tuş atamaları ─────────────────────────────────────────────────────
   // 2×2 grid + pedal tıklama (mod2 = mod3 base)
-  int m2Key1;      // üst-sol  → varsayılan 3
-  int m2Key2;      // üst-sağ  → varsayılan 4
-  int m2Key3;      // alt-sol  → varsayılan 5
-  int m2Key4;      // alt-sağ  → varsayılan 6
-  int m2TapLeft;   // fren pedal tıklama → varsayılan 4
-  int m2TapRight;  // gaz pedal tıklama  → varsayılan 3
+  int m2Key1; // üst-sol  → varsayılan 3
+  int m2Key2; // üst-sağ  → varsayılan 4
+  int m2Key3; // alt-sol  → varsayılan 5
+  int m2Key4; // alt-sağ  → varsayılan 6
+  int m2TapLeft; // fren pedal tıklama → varsayılan 4
+  int m2TapRight; // gaz pedal tıklama  → varsayılan 3
 
   // ── Mod 3 tuş atamaları ─────────────────────────────────────────────────────
   // Mod 2'nin aynısı + orta alt tuş
@@ -74,7 +83,7 @@ class AppSettings {
   int m3Key2;
   int m3Key3;
   int m3Key4;
-  int m3Key5;      // orta alt tuş → varsayılan 7
+  int m3Key5; // orta alt tuş → varsayılan 7
   int m3TapLeft;
   int m3TapRight;
 
@@ -113,80 +122,80 @@ class AppSettings {
   int brakeTap;
 
   AppSettings({
-    this.backgroundColor        = const Color(0xFF050510),
-    this.detailColor            = const Color(0xFF40E0D0),
+    this.backgroundColor = const Color(0xFF050510),
+    this.detailColor = const Color(0xFF40E0D0),
     this.steeringIndicatorColor = const Color(0xFF40E0D0),
-    this.steeringBgColor        = const Color(0xFF0A0A20),
-    this.gasColor               = const Color(0xFF00C853),
-    this.brakeColor             = const Color(0xFFD50000),
-    this.yetsoreColor           = const Color(0xFFFFD600),
-    this.pedalBgColor           = const Color(0xFF050525),
-    this.zeroOrientation        = 0,
-    this.calibPitchOffset       = 0.0,
-    this.calibRollOffset        = 0.0,
-    this.useGyroscope           = false,
-    this.steeringAngle          = 180.0,
-    this.swipeSensitivity       = 50.0,
-    this.clickMaxDistance       = 2.0,
-    this.clickMaxDuration       = 0.30,
-    this.defaultDrivingMode     = 0,
+    this.steeringBgColor = const Color(0xFF0A0A20),
+    this.gasColor = const Color(0xFF00C853),
+    this.brakeColor = const Color(0xFFD50000),
+    this.yetsoreColor = const Color(0xFFFFD600),
+    this.pedalBgColor = const Color(0xFF050525),
+    this.zeroOrientation = 0,
+    this.calibPitchOffset = 0.0,
+    this.calibRollOffset = 0.0,
+    this.useGyroscope = false,
+    this.steeringAngle = 180.0,
+    this.swipeSensitivity = 50.0,
+    this.clickMaxDistance = 2.0,
+    this.clickMaxDuration = 0.30,
+    this.defaultDrivingMode = 0,
     this.customLayout5Json,
-    this.layout5Profiles        = const {},
+    this.layout5Profiles = const {},
     this.activeLayout5Profile,
-    this.globalButtonPressMode  = 0,
+    this.globalButtonPressMode = 0,
     this.globalButtonPressDurationMs = 2000,
     this.customButtonPressModes = const {},
     this.customButtonPressDurationsMs = const {},
     this.customMacros = const {},
     // Donanım tuşları
-    this.volumeUpAction   = 2,
+    this.volumeUpAction = 2,
     this.volumeDownAction = 1,
     // Mod 0
-    this.m0TapLeft  = 4,
+    this.m0TapLeft = 4,
     this.m0TapRight = 3,
     // Mod 1
-    this.m1TapLeft  = 4,
+    this.m1TapLeft = 4,
     this.m1TapRight = 3,
     // Mod 2
-    this.m2Key1     = 5,
-    this.m2Key2     = 6,
-    this.m2Key3     = 7,
-    this.m2Key4     = 8,
-    this.m2TapLeft  = 4,
+    this.m2Key1 = 5,
+    this.m2Key2 = 6,
+    this.m2Key3 = 7,
+    this.m2Key4 = 8,
+    this.m2TapLeft = 4,
     this.m2TapRight = 3,
     // Mod 3
-    this.m3Key1     = 5,
-    this.m3Key2     = 6,
-    this.m3Key3     = 13,
-    this.m3Key4     = 8,
-    this.m3Key5     = 7,
-    this.m3TapLeft  = 4,
+    this.m3Key1 = 5,
+    this.m3Key2 = 6,
+    this.m3Key3 = 14,
+    this.m3Key4 = 8,
+    this.m3Key5 = 7,
+    this.m3TapLeft = 4,
     this.m3TapRight = 3,
     // Mod 4
-    this.m4Key1      = 5,
-    this.m4Key2      = 6,
-    this.m4Key3      = 13,
-    this.m4Key4      = 8,
+    this.m4Key1 = 5,
+    this.m4Key2 = 6,
+    this.m4Key3 = 14,
+    this.m4Key4 = 8,
     this.m4KeyBottom = 7,
-    this.m4TapLeft   = 4,
-    this.m4TapRight  = 3,
+    this.m4TapLeft = 4,
+    this.m4TapRight = 3,
     // Gaz swipe atamaları (0 = devre dışı, -1 = Gaz, -2 = Fren)
-    this.gasSwipeUp        = 0,
-    this.gasSwipeDown      = -1,
-    this.gasSwipeLeft      = 10,
-    this.gasSwipeRight     = 11,
-    this.gasSwipeUpLeft    = 0,
-    this.gasSwipeUpRight   = 0,
-    this.gasSwipeDownLeft  = 0,
+    this.gasSwipeUp = -1,
+    this.gasSwipeDown = -1,
+    this.gasSwipeLeft = 10,
+    this.gasSwipeRight = 11,
+    this.gasSwipeUpLeft = 0,
+    this.gasSwipeUpRight = 0,
+    this.gasSwipeDownLeft = 0,
     this.gasSwipeDownRight = 0,
     // Fren swipe atamaları
-    this.brakeSwipeUp      = -2,
-    this.brakeSwipeDown    = 0,
-    this.brakeSwipeLeft    = 12,
-    this.brakeSwipeRight   = 13,
-    this.brakeSwipeUpLeft  = 0,
+    this.brakeSwipeUp = -2,
+    this.brakeSwipeDown = -2,
+    this.brakeSwipeLeft = 12,
+    this.brakeSwipeRight = 13,
+    this.brakeSwipeUpLeft = 0,
     this.brakeSwipeUpRight = 0,
-    this.brakeSwipeDownLeft  = 0,
+    this.brakeSwipeDownLeft = 0,
     this.brakeSwipeDownRight = 0,
     this.gasTap = 3,
     this.brakeTap = 4,
