@@ -22,6 +22,9 @@ class KeyboardKeys {
       '${AppTranslations.getText('key_prefix')} 14': 14,
       '${AppTranslations.getText('key_prefix')} 15': 15,
       '${AppTranslations.getText('key_prefix')} 16': 16,
+      // Xbox L3 / R3 (Analog Stick Click)
+      AppTranslations.getText('btn_l3'): 17,
+      AppTranslations.getText('btn_r3'): 18,
       // Fare tuşları (temiz isimler)
       AppTranslations.getText('left_click'): 2001,
       AppTranslations.getText('middle_click'): 2002,

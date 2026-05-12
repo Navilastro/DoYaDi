@@ -192,6 +192,8 @@ class AppTranslations {
       'right_arrow': 'Sağ Ok',
       'space': 'Boşluk (Space)',
       'shift': 'Shift',
+      'btn_l3': 'L3 (Sol Analog Tık)',
+      'btn_r3': 'R3 (Sağ Analog Tık)',
 
       // ── LAYOUT EDITOR ──
       'key_mappings': 'Tuş Karşılıkları',
@@ -439,6 +441,8 @@ class AppTranslations {
       'right_arrow': 'Right Arrow',
       'space': 'Space',
       'shift': 'Shift',
+      'btn_l3': 'L3 (Left Stick Click)',
+      'btn_r3': 'R3 (Right Stick Click)',
 
       // ── LAYOUT EDITOR ──
       'key_mappings': 'Key Mappings',

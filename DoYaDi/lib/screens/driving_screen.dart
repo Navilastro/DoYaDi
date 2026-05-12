@@ -7,6 +7,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../core/network/network_manager.dart';
+import '../core/utils/app_translations.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/driving_painters.dart';
 import '../widgets/driving_mode_builders.dart';
@@ -145,24 +146,53 @@ class _DrivingScreenState extends State<DrivingScreen>
     // Byte 2: Brake (0.0 to 1.0) mapped to 0-255
     int brakeByte = (brakePercentage * 255).clamp(0, 255).toInt();
 
-    // Byte 3: Keys 1-8 bitmask
-    int keys1to8 = 0;
-    for (int i = 1; i <= 8; i++) {
-      if (pressedKeys.contains(i)) keys1to8 |= (1 << (i - 1));
-    }
+    // ── XUSB_BUTTON Bitmask (Xbox 360 / XInput Standardı) ─────────────────
+    // Yalnızca Xbox tuşları (1-18) dahil edilir.
+    // Fare (2000s) ve Klavye (1000s) bu hesaba KESİNLİKLE girmez.
+    //
+    // XUSB_GAMEPAD_* sabitleri:
+    //   DPAD_UP    0x0001  → keyIndex 9
+    //   DPAD_DOWN  0x0002  → keyIndex 10
+    //   DPAD_LEFT  0x0004  → keyIndex 11
+    //   DPAD_RIGHT 0x0008  → keyIndex 12
+    //   START      0x0010  → keyIndex 13
+    //   BACK       0x0020  → keyIndex 14
+    //   L3         0x0040  → keyIndex 17
+    //   R3         0x0080  → keyIndex 18
+    //   LB         0x0100  → keyIndex 1
+    //   RB         0x0200  → keyIndex 2
+    //   GUIDE      0x0400  → keyIndex 3
+    //   A          0x1000  → keyIndex 5
+    //   B          0x2000  → keyIndex 6
+    //   X          0x4000  → keyIndex 7
+    //   Y          0x8000  → keyIndex 8
+    int buttons = 0;
+    if (pressedKeys.contains(9))  buttons |= 0x0001; // DPAD_UP
+    if (pressedKeys.contains(10)) buttons |= 0x0002; // DPAD_DOWN
+    if (pressedKeys.contains(11)) buttons |= 0x0004; // DPAD_LEFT
+    if (pressedKeys.contains(12)) buttons |= 0x0008; // DPAD_RIGHT
+    if (pressedKeys.contains(13)) buttons |= 0x0010; // START
+    if (pressedKeys.contains(14)) buttons |= 0x0020; // BACK / SELECT
+    if (pressedKeys.contains(17)) buttons |= 0x0040; // L3 (Sol Analog Tık)
+    if (pressedKeys.contains(18)) buttons |= 0x0080; // R3 (Sağ Analog Tık)
+    if (pressedKeys.contains(1))  buttons |= 0x0100; // LB
+    if (pressedKeys.contains(2))  buttons |= 0x0200; // RB
+    if (pressedKeys.contains(3))  buttons |= 0x0400; // GUIDE / Steam
+    if (pressedKeys.contains(5))  buttons |= 0x1000; // A
+    if (pressedKeys.contains(6))  buttons |= 0x2000; // B
+    if (pressedKeys.contains(7))  buttons |= 0x4000; // X
+    if (pressedKeys.contains(8))  buttons |= 0x8000; // Y
 
-    // Byte 4: Keys 9-16 bitmask
-    int keys9to16 = 0;
-    for (int i = 9; i <= 16; i++) {
-      if (pressedKeys.contains(i)) keys9to16 |= (1 << (i - 9));
-    }
+    // Byte 3: High Byte, Byte 4: Low Byte
+    final int buttonsHigh = (buttons >> 8) & 0xFF;
+    final int buttonsLow  = buttons & 0xFF;
 
     final List<int> payload = [
       steerByte,
       gasByte,
       brakeByte,
-      keys1to8,
-      keys9to16,
+      buttonsHigh, // Byte 3 — XUSB High Byte
+      buttonsLow,  // Byte 4 — XUSB Low Byte
     ];
 
     // Determine if we need the extended 16-byte Mode 5 payload
@@ -248,9 +278,9 @@ class _DrivingScreenState extends State<DrivingScreen>
           _lastBackPressTime = now;
           setState(() => _isExiting = true);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Çıkmak için tekrar geri tuşuna basın'),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: Text(AppTranslations.getText('press_back_again')),
+              duration: const Duration(seconds: 2),
             ),
           );
           Future.delayed(const Duration(seconds: 2), () {

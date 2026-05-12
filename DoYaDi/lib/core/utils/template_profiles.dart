@@ -84,6 +84,9 @@ String getFullControllerTemplate() {
     // Select & Start (merkez)
     Layout5Item(id: 'btn_sel', type: Layout5ItemType.buttonSoft, left: 0.39, top: 0.07, width: 0.10, height: 0.12, label: 'Sel', keyIndex: 13),
     Layout5Item(id: 'btn_start', type: Layout5ItemType.buttonSoft, left: 0.51, top: 0.07, width: 0.10, height: 0.12, label: 'Start', keyIndex: 14),
+    // L3 & R3 (Analog Stick Click — XUSB 0x0040 / 0x0080)
+    Layout5Item(id: 'btn_l3', type: Layout5ItemType.buttonSquare, left: 0.28, top: 0.20, width: 0.08, height: 0.15, label: 'L3', keyIndex: 17),
+    Layout5Item(id: 'btn_r3', type: Layout5ItemType.buttonSquare, left: 0.64, top: 0.20, width: 0.08, height: 0.15, label: 'R3', keyIndex: 18),
   ];
   return jsonEncode(items.map((e) => e.toJson()).toList());
 }
