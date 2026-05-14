@@ -9,6 +9,7 @@ import '../core/utils/keyboard_keys.dart';
 import '../widgets/joystick_widget.dart';
 import '../widgets/driving_painters.dart';
 import '../core/utils/app_translations.dart';
+import '../core/utils/template_profiles.dart';
 
 class CustomLayout5EditorScreen extends StatefulWidget {
   const CustomLayout5EditorScreen({super.key});
@@ -146,7 +147,9 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                           controller: ctrl,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: AppTranslations.getText('new_profile_name'),
+                            hintText: AppTranslations.getText(
+                              'new_profile_name',
+                            ),
                             hintStyle: const TextStyle(color: Colors.white38),
                             isDense: true,
                             enabledBorder: const OutlineInputBorder(
@@ -232,6 +235,154 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
       _items = defaultLayout5();
       _selectedId = null;
     });
+  }
+
+  void _applyTemplate(String json) {
+    try {
+      final list = jsonDecode(json) as List;
+      setState(() {
+        _items = list
+            .map((e) => Layout5Item.fromJson(e as Map<String, dynamic>))
+            .toList();
+        _selectedId = null;
+      });
+    } catch (_) {}
+  }
+
+  void _showTemplateDialog() {
+    final templates = <Map<String, dynamic>>[
+      {
+        'name': AppTranslations.getText('tmpl_game'),
+        'desc': AppTranslations.getText('tmpl_game_desc'),
+        'icon': Icons.sports_esports,
+        'color': const Color(0xFF00C853),
+        'json': getGameTemplate1(),
+      },
+      {
+        'name': AppTranslations.getText('tmpl_dual_joy'),
+        'desc': AppTranslations.getText('tmpl_dual_joy_desc'),
+        'icon': Icons.gamepad,
+        'color': const Color(0xFF40E0D0),
+        'json': getControllerTemplate2(),
+      },
+      {
+        'name': AppTranslations.getText('tmpl_kb_mouse'),
+        'desc': AppTranslations.getText('tmpl_kb_mouse_desc'),
+        'icon': Icons.keyboard,
+        'color': Colors.amber,
+        'json': getKeyboardMouseTemplate(),
+      },
+      {
+        'name': AppTranslations.getText('tmpl_full_pad'),
+        'desc': AppTranslations.getText('tmpl_full_pad_desc'),
+        'icon': Icons.videogame_asset,
+        'color': Colors.deepPurpleAccent,
+        'json': getFullControllerTemplate(),
+      },
+      {
+        'name': AppTranslations.getText('tmpl_gamer_kb'),
+        'desc': AppTranslations.getText('tmpl_gamer_kb_desc'),
+        'icon': Icons.keyboard_alt,
+        'color': Colors.orangeAccent,
+        'json': getGamerKeyboardTemplate(),
+      },
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF12122A),
+        title: Text(
+          AppTranslations.getText('select_template'),
+          style: const TextStyle(color: Colors.white),
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: templates.length,
+            separatorBuilder: (_, __) =>
+                const Divider(color: Colors.white12, height: 1),
+            itemBuilder: (ctx, i) {
+              final t = templates[i];
+              final color = t['color'] as Color;
+              return InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _applyTemplate(t['json'] as String);
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Icon(
+                          t['icon'] as IconData,
+                          color: color,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t['name'] as String,
+                              style: TextStyle(
+                                color: color,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              t['desc'] as String,
+                              style: const TextStyle(
+                                color: Colors.white38,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: Colors.white24,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              AppTranslations.getText('cancel'),
+              style: const TextStyle(color: Colors.white54),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   bool get _hasGasBar => _items.any((e) => e.type == Layout5ItemType.gasBar);
@@ -344,12 +495,25 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                           color: Colors.blueAccent,
                         ),
                         const SizedBox(width: 8),
-                        _topBtn(AppTranslations.getText('edit'), Icons.edit, _editMode, () {
-                          setState(() {
-                            _editMode = !_editMode;
-                            _removeMode = false;
-                          });
-                        }),
+                        _topBtn(
+                          AppTranslations.getText('templates'),
+                          Icons.dashboard_customize,
+                          false,
+                          _showTemplateDialog,
+                          color: Colors.deepPurpleAccent,
+                        ),
+                        const SizedBox(width: 8),
+                        _topBtn(
+                          AppTranslations.getText('edit'),
+                          Icons.edit,
+                          _editMode,
+                          () {
+                            setState(() {
+                              _editMode = !_editMode;
+                              _removeMode = false;
+                            });
+                          },
+                        ),
                         const SizedBox(width: 8),
                         _topBtn(
                           AppTranslations.getText('save'),
@@ -618,7 +782,9 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
   }
 
   Widget _buildButtonContent(Layout5Item item, double w, double h) {
-    final label = item.label ?? '${_items.indexOf(item) + 1} Buton';
+    final label =
+        item.label ??
+        '${_items.indexOf(item) + 1} ${AppTranslations.getText('btn_label_default')}';
     BorderRadius radius;
     switch (item.type) {
       case Layout5ItemType.buttonSoft:
@@ -657,38 +823,62 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
         if (!_hasLeftJoystick)
           PopupMenuItem(
             value: Layout5ItemType.leftJoystick,
-            child: Text(AppTranslations.getText('add_left_joystick'), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              AppTranslations.getText('add_left_joystick'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         if (!_hasRightJoystick)
           PopupMenuItem(
             value: Layout5ItemType.rightJoystick,
-            child: Text(AppTranslations.getText('add_right_joystick'), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              AppTranslations.getText('add_right_joystick'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         if (!_hasGasBar)
           PopupMenuItem(
             value: Layout5ItemType.gasBar,
-            child: Text(AppTranslations.getText('add_gas_bar'), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              AppTranslations.getText('add_gas_bar'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         if (!_hasBrakeBar)
           PopupMenuItem(
             value: Layout5ItemType.brakeBar,
-            child: Text(AppTranslations.getText('add_brake_bar'), style: const TextStyle(color: Colors.white)),
+            child: Text(
+              AppTranslations.getText('add_brake_bar'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         PopupMenuItem(
           value: Layout5ItemType.buttonSquare,
-          child: Text(AppTranslations.getText('add_square_button'), style: const TextStyle(color: Colors.white)),
+          child: Text(
+            AppTranslations.getText('add_square_button'),
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
         PopupMenuItem(
           value: Layout5ItemType.buttonSoft,
-          child: Text(AppTranslations.getText('add_soft_button'), style: const TextStyle(color: Colors.white)),
+          child: Text(
+            AppTranslations.getText('add_soft_button'),
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
         PopupMenuItem(
           value: Layout5ItemType.buttonCircle,
-          child: Text(AppTranslations.getText('add_circle_button'), style: const TextStyle(color: Colors.white)),
+          child: Text(
+            AppTranslations.getText('add_circle_button'),
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
         PopupMenuItem(
           value: Layout5ItemType.touchpad,
-          child: Text(AppTranslations.getText('add_touchpad'), style: const TextStyle(color: Colors.white)),
+          child: Text(
+            AppTranslations.getText('add_touchpad'),
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
       ],
       onSelected: _addItem,
@@ -947,7 +1137,10 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
               dropdownColor: const Color(0xFF1A1A3E),
               style: const TextStyle(color: Colors.white, fontSize: 12),
               items: [
-                DropdownMenuItem(value: ButtonMode.key, child: Text(AppTranslations.getText('mode_single_key'))),
+                DropdownMenuItem(
+                  value: ButtonMode.key,
+                  child: Text(AppTranslations.getText('mode_single_key')),
+                ),
                 DropdownMenuItem(
                   value: ButtonMode.gasPct,
                   child: Text(AppTranslations.getText('mode_fixed_gas')),
@@ -994,7 +1187,10 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                           : KeyboardKeys.appKeyMap.entries
                                 .firstWhere(
                                   (e) => e.value == item.keyIndex,
-                                  orElse: () => MapEntry(AppTranslations.getText('select_key'), 0),
+                                  orElse: () => MapEntry(
+                                    AppTranslations.getText('select_key'),
+                                    0,
+                                  ),
                                 )
                                 .key,
                       style: const TextStyle(color: Color(0xFF40E0D0)),
@@ -1017,15 +1213,32 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                     items: [
                       DropdownMenuItem(
                         value: null,
-                        child: Text(AppTranslations.getText('press_mode_global')),
+                        child: Text(
+                          AppTranslations.getText('press_mode_global'),
+                        ),
                       ),
-                      DropdownMenuItem(value: 0, child: Text(AppTranslations.getText('press_mode_instant'))),
-                      DropdownMenuItem(value: 1, child: Text(AppTranslations.getText('press_mode_duration'))),
+                      DropdownMenuItem(
+                        value: 0,
+                        child: Text(
+                          AppTranslations.getText('press_mode_instant'),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 1,
+                        child: Text(
+                          AppTranslations.getText('press_mode_duration'),
+                        ),
+                      ),
                       DropdownMenuItem(
                         value: 2,
-                        child: Text(AppTranslations.getText('press_mode_toggle')),
+                        child: Text(
+                          AppTranslations.getText('press_mode_toggle'),
+                        ),
                       ),
-                      DropdownMenuItem(value: 3, child: Text(AppTranslations.getText('press_mode_fast'))),
+                      DropdownMenuItem(
+                        value: 3,
+                        child: Text(AppTranslations.getText('press_mode_fast')),
+                      ),
                     ],
                     onChanged: (v) => _update(
                       item.copyWith(
@@ -1041,7 +1254,10 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                   children: [
                     Text(
                       AppTranslations.getText('duration'),
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                     Expanded(
                       child: Slider(
@@ -1135,13 +1351,17 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                 final act = e.value;
                 String txt = '';
                 if (act.type == MacroActionType.key) {
-                  txt = '${AppTranslations.getText('key_prefix')} ${act.value.toInt()}';
+                  txt =
+                      '${AppTranslations.getText('key_prefix')} ${act.value.toInt()}';
                 } else if (act.type == MacroActionType.gasPct) {
-                  txt = '${AppTranslations.getText('gas_pct')} ${(act.value * 100).toInt()}%';
+                  txt =
+                      '${AppTranslations.getText('gas_pct')} ${(act.value * 100).toInt()}%';
                 } else if (act.type == MacroActionType.brakePct) {
-                  txt = '${AppTranslations.getText('brake_pct')} ${(act.value * 100).toInt()}%';
+                  txt =
+                      '${AppTranslations.getText('brake_pct')} ${(act.value * 100).toInt()}%';
                 } else if (act.type == MacroActionType.delay) {
-                  txt = '${AppTranslations.getText('step_delay')} ${act.value.toInt()} ms';
+                  txt =
+                      '${AppTranslations.getText('step_delay')} ${act.value.toInt()} ms';
                 }
 
                 return Row(
@@ -1184,7 +1404,10 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                 onPressed: () => _showAddMacroDialog(item),
                 child: Text(
                   AppTranslations.getText('add_step'),
-                  style: const TextStyle(color: Color(0xFF40E0D0), fontSize: 11),
+                  style: const TextStyle(
+                    color: Color(0xFF40E0D0),
+                    fontSize: 11,
+                  ),
                 ),
               ),
             ],
@@ -1258,7 +1481,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                       16,
                       (i) => DropdownMenuItem(
                         value: (i + 1).toDouble(),
-                        child: Text('${AppTranslations.getText('key_prefix')} ${i + 1}'),
+                        child: Text(
+                          '${AppTranslations.getText('key_prefix')} ${i + 1}',
+                        ),
                       ),
                     ),
                     onChanged: (v) {

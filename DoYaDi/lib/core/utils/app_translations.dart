@@ -192,13 +192,28 @@ class AppTranslations {
       'right_arrow': 'Sağ Ok',
       'space': 'Boşluk (Space)',
       'shift': 'Shift',
+      'btn_a': 'A',
+      'btn_b': 'B',
+      'btn_x': 'X',
+      'btn_y': 'Y',
+      'btn_lb': 'LB',
+      'btn_rb': 'RB',
+      'btn_lt_analog': 'LT',
+      'btn_rt_analog': 'RT',
+      'btn_guide': 'Ana Menü / Steam',
+      'btn_dpad_up': 'D-Pad Yukarı',
+      'btn_dpad_down': 'D-Pad Aşağı',
+      'btn_dpad_left': 'D-Pad Sol',
+      'btn_dpad_right': 'D-Pad Sağ',
+      'btn_start': 'Başlat',
+      'btn_back': 'Seç / Geri',
       'btn_l3': 'L3 (Sol Analog Tık)',
       'btn_r3': 'R3 (Sağ Analog Tık)',
 
       // ── LAYOUT EDITOR ──
       'key_mappings': 'Tuş Karşılıkları',
       'key_mapping_desc':
-          'Tuş 1 = LB\nTuş 2 = RB\nTuş 3 = Steam Buton\nTuş 4 = ?\nTuş 5 = A\nTuş 6 = B\nTuş 7 = X\nTuş 8 = Y\nTuş 9 = D-Pad Yukarı\nTuş 10 = D-Pad Aşağı\nTuş 11 = D-Pad Sol\nTuş 12 = D-Pad Sağ\nTuş 13 = Start\nTuş 14 = Select\nTuş 15 = L3 (Sol Stick)\nTuş 16 = R3 (Sağ Stick)',
+          'A, B, X, Y = Ana Butonlar\nLB, RB = Omuz Butonları\nL3, R3 = Analog Tıklama\nD-Pad = Yön Tuşları\nStart, Back = Menü Tuşları',
       'ok': 'Tamam',
       'profiles': 'Profiller',
       'select_profile': 'Profil Seçin',
@@ -267,6 +282,23 @@ class AppTranslations {
       // ── DRIVING SCREEN ──
       'press_back_again': 'Çıkmak için tekrar geri tuşuna basın',
       'touch_mouse_tab': 'Dokunmatik Fare',
+
+      // ── TEMPLATE DIALOG ──
+      'templates': 'Şablonlar',
+      'select_template': 'Şablon Seç',
+      'tmpl_game': 'Oyun Şablonu',
+      'tmpl_game_desc': 'Gaz/fren barı + ABXY + D-Pad',
+      'tmpl_dual_joy': 'Çift Joystick',
+      'tmpl_dual_joy_desc': 'Sol/sağ joystick + ABXY + D-Pad + LB/RB',
+      'tmpl_kb_mouse': 'Klavye + Fare',
+      'tmpl_kb_mouse_desc': 'Dokunmatik ped + WASD + Space + Shift',
+      'tmpl_full_pad': 'Tam Gamepad',
+      'tmpl_full_pad_desc':
+          'LT/RT + LB/RB + Çift joystick + ABXY + D-Pad + Start + Sel + L3/R3',
+      'tmpl_gamer_kb': 'Oyuncu Klavyesi',
+      'tmpl_gamer_kb_desc': 'WASD + Q/E/R/F + Space + Shift + Ctrl + F1–F4',
+      'parallel_combo_hint': 'Ctrl+S gibi kombinasyon',
+      'btn_label_default': 'Buton',
     },
     'en': {
       // ── GENERAL ──
@@ -441,13 +473,28 @@ class AppTranslations {
       'right_arrow': 'Right Arrow',
       'space': 'Space',
       'shift': 'Shift',
+      'btn_a': 'A',
+      'btn_b': 'B',
+      'btn_x': 'X',
+      'btn_y': 'Y',
+      'btn_lb': 'LB',
+      'btn_rb': 'RB',
+      'btn_lt_analog': 'LT',
+      'btn_rt_analog': 'RT',
+      'btn_guide': 'Guide/Steam',
+      'btn_dpad_up': 'D-Pad Up',
+      'btn_dpad_down': 'D-Pad Down',
+      'btn_dpad_left': 'D-Pad Left',
+      'btn_dpad_right': 'D-Pad Right',
+      'btn_start': 'Start',
+      'btn_back': 'Select/Back',
       'btn_l3': 'L3 (Left Stick Click)',
       'btn_r3': 'R3 (Right Stick Click)',
 
       // ── LAYOUT EDITOR ──
       'key_mappings': 'Key Mappings',
       'key_mapping_desc':
-          'Key 1 = LB\nKey 2 = RB\nKey 3 = Steam Button\nKey 4 = ?\nKey 5 = A\nKey 6 = B\nKey 7 = X\nKey 8 = Y\nKey 9 = D-Pad Up\nKey 10 = D-Pad Down\nKey 11 = D-Pad Left\nKey 12 = D-Pad Right\nKey 13 = Start\nKey 14 = Select\nKey 15 = L3 (Left Stick)\nKey 16 = R3 (Right Stick)',
+          'A, B, X, Y = Face Buttons\nLB - RB = Bumper Buttons\nL3 - R3 = Stick Clicks\nD-Pad = Directional Pad\nStart, Select/Back = Menu Buttons',
       'ok': 'OK',
       'profiles': 'Profiles',
       'select_profile': 'Select Profile',
@@ -515,6 +562,23 @@ class AppTranslations {
       // ── DRIVING SCREEN ──
       'press_back_again': 'Press back again to exit',
       'touch_mouse_tab': 'Touch Mouse',
+
+      // ── TEMPLATE DIALOG ──
+      'templates': 'Templates',
+      'select_template': 'Select Template',
+      'tmpl_game': 'Game Template',
+      'tmpl_game_desc': 'Gas/brake bar + ABXY + D-Pad',
+      'tmpl_dual_joy': 'Dual Joystick',
+      'tmpl_dual_joy_desc': 'Left/right joystick + ABXY + D-Pad + LB/RB',
+      'tmpl_kb_mouse': 'Keyboard + Mouse',
+      'tmpl_kb_mouse_desc': 'Touchpad + WASD + Space + Shift',
+      'tmpl_full_pad': 'Full Gamepad',
+      'tmpl_full_pad_desc':
+          'LT/RT + LB/RB + Dual joystick + ABXY + D-Pad + Start + Sel + L3/R3',
+      'tmpl_gamer_kb': 'Gamer Keyboard',
+      'tmpl_gamer_kb_desc': 'WASD + Q/E/R/F + Space + Shift + Ctrl + F1–F4',
+      'parallel_combo_hint': 'Combo like Ctrl+S',
+      'btn_label_default': 'Button',
     },
   };
 

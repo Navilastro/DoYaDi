@@ -159,14 +159,13 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
   /// Parallel Macro: tuşlar aynı anda basılır (Ctrl+S gibi kombolar)
   void _createParallelMacro(BuildContext context, SettingsProvider prov) async {
     // Parallel makro için özel bir ID aralığı kullanıyoruz: 3000+
-    final newMacroId = prov.settings.customMacros.keys
-            .where((k) => k >= 3000)
-            .isEmpty
+    final newMacroId =
+        prov.settings.customMacros.keys.where((k) => k >= 3000).isEmpty
         ? 3000
         : prov.settings.customMacros.keys
-                .where((k) => k >= 3000)
-                .reduce((a, b) => a > b ? a : b) +
-            1;
+                  .where((k) => k >= 3000)
+                  .reduce((a, b) => a > b ? a : b) +
+              1;
 
     List<int> selectedKeys = [];
     await showDialog(
@@ -188,7 +187,10 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
                   Text(
                     AppTranslations.getText('parallel_macro_desc'),
                     style: const TextStyle(
-                        color: Colors.amber, fontSize: 12, height: 1.5),
+                      color: Colors.amber,
+                      fontSize: 12,
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -207,12 +209,15 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
                           )
                           .key;
                       return Chip(
-                        backgroundColor:
-                            const Color(0xFF40E0D0).withValues(alpha: 0.2),
+                        backgroundColor: const Color(
+                          0xFF40E0D0,
+                        ).withValues(alpha: 0.2),
                         label: Text(
                           kName,
                           style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF40E0D0)),
+                            fontSize: 12,
+                            color: Color(0xFF40E0D0),
+                          ),
                         ),
                         onDeleted: () {
                           setDialogState(() => selectedKeys.remove(k));
@@ -281,12 +286,12 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
     final prov = Provider.of<SettingsProvider>(context);
     final Map<String, int> allKeys = KeyboardKeys.appKeyMap;
 
-
-    // Tuşlar sekmesi: (e.value < 1000 || e.value >= 2000) -> Xbox ve Fare tuşları
+    // Tuşlar sekmesi: sadece e.value < 1000 → Xbox / gamepad tuşları (L3, R3 dahil)
+    // Fare tuşları (2001-2003) Dokunmatik Fare sekmesine aittir, buraya gelmez.
     final tuslarKeys = allKeys.entries
         .where(
           (e) =>
-              (e.value < 1000 || e.value >= 2000) &&
+              e.value < 1000 &&
               e.key.toLowerCase().contains(_searchQuery.toLowerCase()),
         )
         .toList();
@@ -505,8 +510,9 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                         child: Text(
-                          AppTranslations.getText('create_new_macro')
-                              .toUpperCase(),
+                          AppTranslations.getText(
+                            'create_new_macro',
+                          ).toUpperCase(),
                           style: const TextStyle(
                             color: Color(0xFF40E0D0),
                             fontSize: 11,
@@ -515,16 +521,19 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
                           ),
                         ),
                       ),
-                      ...seqMacros.map((entry) =>
-                          _buildMacroTile(entry, prov, isParallel: false)),
+                      ...seqMacros.map(
+                        (entry) =>
+                            _buildMacroTile(entry, prov, isParallel: false),
+                      ),
                     ],
                     // Parallel Macros section
                     if (parMacros.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                         child: Text(
-                          AppTranslations.getText('parallel_macro')
-                              .toUpperCase(),
+                          AppTranslations.getText(
+                            'parallel_macro',
+                          ).toUpperCase(),
                           style: const TextStyle(
                             color: Colors.amber,
                             fontSize: 11,
@@ -533,8 +542,10 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
                           ),
                         ),
                       ),
-                      ...parMacros.map((entry) =>
-                          _buildMacroTile(entry, prov, isParallel: true)),
+                      ...parMacros.map(
+                        (entry) =>
+                            _buildMacroTile(entry, prov, isParallel: true),
+                      ),
                     ],
                   ],
                 ),
@@ -544,8 +555,10 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
   }
 
   Widget _buildMacroTile(
-      MapEntry<int, List<int>> entry, SettingsProvider prov,
-      {required bool isParallel}) {
+    MapEntry<int, List<int>> entry,
+    SettingsProvider prov, {
+    required bool isParallel,
+  }) {
     final mId = entry.key;
     final mKeys = entry.value;
     final isSelected = mId == widget.currentKey;
@@ -567,17 +580,12 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
     return InkWell(
       onTap: () => Navigator.pop(context, mId),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
               ? accentColor.withValues(alpha: 0.1)
               : Colors.transparent,
-          border: const Border(
-            bottom: BorderSide(color: Colors.white12),
-          ),
+          border: const Border(bottom: BorderSide(color: Colors.white12)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -610,8 +618,7 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
             ),
             Row(
               children: [
-                if (isSelected)
-                  Icon(Icons.check, color: accentColor, size: 20),
+                if (isSelected) Icon(Icons.check, color: accentColor, size: 20),
                 IconButton(
                   icon: const Icon(
                     Icons.delete,

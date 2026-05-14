@@ -61,17 +61,26 @@ class SettingsProvider with ChangeNotifier {
       prefs.setBool('templatesInitialized', true);
     } else {
       // Mevcut profillere yeni şablonlar eksikse ekle (güncelleme uyumluluğu)
+      // Ayrıca built-in şablonları her zaman en güncel halleriyle güncelle
       bool changed = false;
-      if (!_settings.layout5Profiles.containsKey('Tam Gamepad')) {
-        _settings.layout5Profiles['Tam Gamepad'] = getFullControllerTemplate();
-        changed = true;
-      }
-      if (!_settings.layout5Profiles.containsKey('Oyuncu Klavyesi')) {
-        _settings.layout5Profiles['Oyuncu Klavyesi'] = getGamerKeyboardTemplate();
-        changed = true;
+      final builtins = {
+        'Oyun Şablonu 1': getGameTemplate1(),
+        'Oyuncu şablonu 2': getControllerTemplate2(),
+        'Klavye fare dizilimi': getKeyboardMouseTemplate(),
+        'Tam Gamepad': getFullControllerTemplate(),
+        'Oyuncu Klavyesi': getGamerKeyboardTemplate(),
+      };
+      for (final entry in builtins.entries) {
+        if (!_settings.layout5Profiles.containsKey(entry.key)) {
+          _settings.layout5Profiles[entry.key] = entry.value;
+          changed = true;
+        }
       }
       if (changed) {
-        await prefs.setString('layout5Profiles', jsonEncode(_settings.layout5Profiles));
+        await prefs.setString(
+          'layout5Profiles',
+          jsonEncode(_settings.layout5Profiles),
+        );
       }
     }
     _settings.globalButtonPressMode =
