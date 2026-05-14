@@ -526,25 +526,6 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             List<Widget> tiles = [];
             if (mode == -1) {
               tiles = [
-                ListTile(
-                  title: Text(
-                    AppTranslations.getText('right_pedal') +
-                        ' = ' +
-                        (AppTranslations.currentLanguage == 'en'
-                            ? 'Gas'
-                            : 'Gaz'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    AppTranslations.currentLanguage == 'en'
-                        ? 'Right pedal swipe directions are configured in the "Assignments" tab.\nDefault: ↑ Swipe Up = Fill Bar ↑'
-                        : 'Sağ pedalın kaydırma yönleri "Atama" sekmesinde yapılandırılır.\nVarsayılan: ↑ Yukarı kaydırma = Bar Doldur ↑',
-                  ),
-                ),
                 buildKeyTile(
                   AppTranslations.currentLanguage == 'en'
                       ? 'Right Pedal Tap'
@@ -555,25 +536,6 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
               ];
             } else if (mode == -2) {
               tiles = [
-                ListTile(
-                  title: Text(
-                    AppTranslations.getText('left_pedal') +
-                        ' = ' +
-                        (AppTranslations.currentLanguage == 'en'
-                            ? 'Brake'
-                            : 'Fren'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    AppTranslations.currentLanguage == 'en'
-                        ? 'Left pedal swipe directions are configured in the "Assignments" tab.\nDefault: ↑ Swipe Up = Fill Bar ↑'
-                        : 'Sol pedalın kaydırma yönleri "Atama" sekmesinde yapılandırılır.\nVarsayılan: ↑ Yukarı kaydırma = Bar Doldur ↑',
-                  ),
-                ),
                 buildKeyTile(
                   AppTranslations.currentLanguage == 'en'
                       ? 'Left Pedal Tap'
@@ -585,12 +547,12 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             } else if (mode == 0) {
               tiles = [
                 buildKeyTile(
-                  'Ekran Sol Yarı Tıklama',
+                  AppTranslations.currentLanguage == 'en' ? 'Left' : 'Sol',
                   s.m0TapLeft,
                   (v) => setStateDialog(() => s.m0TapLeft = v),
                 ),
                 buildKeyTile(
-                  'Ekran Sağ Yarı Tıklama',
+                  AppTranslations.currentLanguage == 'en' ? 'Right' : 'Sağ',
                   s.m0TapRight,
                   (v) => setStateDialog(() => s.m0TapRight = v),
                 ),
@@ -598,12 +560,12 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             } else if (mode == 1) {
               tiles = [
                 buildKeyTile(
-                  'Sol Pedal Tıklama',
+                  AppTranslations.currentLanguage == 'en' ? 'Left' : 'Sol',
                   s.m1TapLeft,
                   (v) => setStateDialog(() => s.m1TapLeft = v),
                 ),
                 buildKeyTile(
-                  'Sağ Pedal Tıklama',
+                  AppTranslations.currentLanguage == 'en' ? 'Right' : 'Sağ',
                   s.m1TapRight,
                   (v) => setStateDialog(() => s.m1TapRight = v),
                 ),
@@ -611,32 +573,32 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             } else if (mode == 2) {
               tiles = [
                 buildKeyTile(
-                  'Üst-Sol Tuş',
+                  AppTranslations.getText('up_left_key'),
                   s.m2Key1,
                   (v) => setStateDialog(() => s.m2Key1 = v),
                 ),
                 buildKeyTile(
-                  'Üst-Sağ Tuş',
+                  AppTranslations.getText('up_right_key'),
                   s.m2Key2,
                   (v) => setStateDialog(() => s.m2Key2 = v),
                 ),
                 buildKeyTile(
-                  'Alt-Sol Tuş',
+                  AppTranslations.getText('down_left_key'),
                   s.m2Key3,
                   (v) => setStateDialog(() => s.m2Key3 = v),
                 ),
                 buildKeyTile(
-                  'Alt-Sağ Tuş',
+                  AppTranslations.getText('down_right_key'),
                   s.m2Key4,
                   (v) => setStateDialog(() => s.m2Key4 = v),
                 ),
                 buildKeyTile(
-                  'Fren Pedal Tıklama',
+                  AppTranslations.getText('left_pedal'),
                   s.m2TapLeft,
                   (v) => setStateDialog(() => s.m2TapLeft = v),
                 ),
                 buildKeyTile(
-                  'Gaz Pedal Tıklama',
+                  AppTranslations.getText('right_pedal'),
                   s.m2TapRight,
                   (v) => setStateDialog(() => s.m2TapRight = v),
                 ),
@@ -644,37 +606,37 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             } else if (mode == 3) {
               tiles = [
                 buildKeyTile(
-                  'Üst-Sol Tuş',
+                  AppTranslations.getText('up_left_key'),
                   s.m3Key1,
                   (v) => setStateDialog(() => s.m3Key1 = v),
                 ),
                 buildKeyTile(
-                  'Üst-Sağ Tuş',
+                  AppTranslations.getText('up_right_key'),
                   s.m3Key2,
                   (v) => setStateDialog(() => s.m3Key2 = v),
                 ),
                 buildKeyTile(
-                  'Alt-Sol Tuş',
+                  AppTranslations.getText('down_left_key'),
                   s.m3Key3,
                   (v) => setStateDialog(() => s.m3Key3 = v),
                 ),
                 buildKeyTile(
-                  'Alt-Sağ Tuş',
+                  AppTranslations.getText('down_right_key'),
                   s.m3Key4,
                   (v) => setStateDialog(() => s.m3Key4 = v),
                 ),
                 buildKeyTile(
-                  'Orta Alt Tuş',
+                  AppTranslations.getText('down_full_wide_key'),
                   s.m3Key5,
                   (v) => setStateDialog(() => s.m3Key5 = v),
                 ),
                 buildKeyTile(
-                  'Fren Pedal Tıklama',
+                  AppTranslations.getText('left_pedal'),
                   s.m3TapLeft,
                   (v) => setStateDialog(() => s.m3TapLeft = v),
                 ),
                 buildKeyTile(
-                  'Gaz Pedal Tıklama',
+                  AppTranslations.getText('right_pedal'),
                   s.m3TapRight,
                   (v) => setStateDialog(() => s.m3TapRight = v),
                 ),
@@ -682,37 +644,37 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
             } else if (mode == 4) {
               tiles = [
                 buildKeyTile(
-                  'Üst-Sol Tuş',
+                  AppTranslations.getText('up_left_key'),
                   s.m4Key1,
                   (v) => setStateDialog(() => s.m4Key1 = v),
                 ),
                 buildKeyTile(
-                  'Üst-Sağ Tuş',
+                  AppTranslations.getText('up_right_key'),
                   s.m4Key2,
                   (v) => setStateDialog(() => s.m4Key2 = v),
                 ),
                 buildKeyTile(
-                  'Alt-Sol Tuş',
+                  AppTranslations.getText('down_left_key'),
                   s.m4Key3,
                   (v) => setStateDialog(() => s.m4Key3 = v),
                 ),
                 buildKeyTile(
-                  'Alt-Sağ Tuş',
+                  AppTranslations.getText('down_right_key'),
                   s.m4Key4,
                   (v) => setStateDialog(() => s.m4Key4 = v),
                 ),
                 buildKeyTile(
-                  'Alt Tam Genişlik Tuş',
+                  AppTranslations.getText('down_full_wide_key'),
                   s.m4KeyBottom,
                   (v) => setStateDialog(() => s.m4KeyBottom = v),
                 ),
                 buildKeyTile(
-                  'Fren Pedal Tıklama',
+                  AppTranslations.getText('left_pedal'),
                   s.m4TapLeft,
                   (v) => setStateDialog(() => s.m4TapLeft = v),
                 ),
                 buildKeyTile(
-                  'Gaz Pedal Tıklama',
+                  AppTranslations.getText('right_pedal'),
                   s.m4TapRight,
                   (v) => setStateDialog(() => s.m4TapRight = v),
                 ),
@@ -726,9 +688,9 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
               ),
               title: Text(
                 mode == -1
-                    ? '${AppTranslations.getText('right_pedal')} (${AppTranslations.currentLanguage == 'en' ? 'Gas' : 'Gaz'})'
+                    ? '${AppTranslations.getText('right_pedal')}'
                     : mode == -2
-                    ? '${AppTranslations.getText('left_pedal')} (${AppTranslations.currentLanguage == 'en' ? 'Brake' : 'Fren'})'
+                    ? '${AppTranslations.getText('left_pedal')}'
                     : 'Mod $mode ${AppTranslations.currentLanguage == 'en' ? 'Key Assignments' : 'Tuş Atamaları'}',
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
@@ -746,38 +708,38 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                   onPressed: () {
                     setStateDialog(() {
                       if (mode == -1) {
-                        s.gasTap = 3;
+                        s.gasTap = 18;
                       } else if (mode == -2) {
-                        s.brakeTap = 4;
+                        s.brakeTap = 17;
                       } else if (mode == 0) {
-                        s.m0TapLeft = 4;
-                        s.m0TapRight = 3;
+                        s.m0TapLeft = 17;
+                        s.m0TapRight = 18;
                       } else if (mode == 1) {
-                        s.m1TapLeft = 4;
-                        s.m1TapRight = 3;
+                        s.m1TapLeft = 17;
+                        s.m1TapRight = 18;
                       } else if (mode == 2) {
                         s.m2Key1 = 5;
                         s.m2Key2 = 6;
                         s.m2Key3 = 7;
                         s.m2Key4 = 8;
-                        s.m2TapLeft = 4;
-                        s.m2TapRight = 3;
+                        s.m2TapLeft = 17;
+                        s.m2TapRight = 18;
                       } else if (mode == 3) {
                         s.m3Key1 = 5;
                         s.m3Key2 = 6;
-                        s.m3Key3 = 13;
+                        s.m3Key3 = 14;
                         s.m3Key4 = 8;
                         s.m3Key5 = 7;
-                        s.m3TapLeft = 4;
-                        s.m3TapRight = 3;
+                        s.m3TapLeft = 17;
+                        s.m3TapRight = 18;
                       } else if (mode == 4) {
                         s.m4Key1 = 5;
                         s.m4Key2 = 6;
-                        s.m4Key3 = 13;
+                        s.m4Key3 = 14;
                         s.m4Key4 = 8;
                         s.m4KeyBottom = 7;
-                        s.m4TapLeft = 4;
-                        s.m4TapRight = 3;
+                        s.m4TapLeft = 17;
+                        s.m4TapRight = 18;
                       }
                     });
                   },

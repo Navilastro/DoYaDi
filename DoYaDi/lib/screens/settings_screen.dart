@@ -10,7 +10,6 @@ import '../core/utils/app_translations.dart';
 // steeringAngles, pedalDistances, swipeSensitivities,
 // clickDurations, zeroOrientationOptions, _swipeDirLabels
 
-
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -46,8 +45,10 @@ class _SettingsScreenState extends State<SettingsScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
-        title: Text(AppTranslations.getText('settings'),
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          AppTranslations.getText('settings'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         bottom: TabBar(
           controller: _tab,
           indicatorColor: ac,
@@ -89,8 +90,10 @@ class _SettingsScreenState extends State<SettingsScreen>
         settingsHeader(AppTranslations.getText('driving_mode')),
         settingsTile(
           title: AppTranslations.getText('default_driving_mode'),
-          trailing: Text('Mod ${s.defaultDrivingMode}',
-              style: TextStyle(color: ac, fontWeight: FontWeight.bold)),
+          trailing: Text(
+            'Mod ${s.defaultDrivingMode}',
+            style: TextStyle(color: ac, fontWeight: FontWeight.bold),
+          ),
           onTap: () async {
             final val = await radioDialog<int>(
               ctx: ctx,
@@ -118,17 +121,24 @@ class _SettingsScreenState extends State<SettingsScreen>
               backgroundColor: ac,
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () {
               if (s.defaultDrivingMode == 5) {
                 Navigator.push(
                   ctx,
                   MaterialPageRoute(
-                      builder: (_) => const CustomLayout5EditorScreen()),
+                    builder: (_) => const CustomLayout5EditorScreen(),
+                  ),
                 );
               } else {
-                showModeKeyAssignmentsDialog(ctx, prov, s, s.defaultDrivingMode);
+                showModeKeyAssignmentsDialog(
+                  ctx,
+                  prov,
+                  s,
+                  s.defaultDrivingMode,
+                );
               }
             },
           ),
@@ -136,13 +146,13 @@ class _SettingsScreenState extends State<SettingsScreen>
         const Divider(color: Colors.white12, height: 24),
         settingsHeader(AppTranslations.getText('pedal')),
         settingsTile(
-          title: AppTranslations.getText('right_pedal'),
+          title: AppTranslations.getText('right_pedal_button'),
           subtitle: AppTranslations.getText('right_pedal_desc'),
           trailing: const Icon(Icons.chevron_right, color: Colors.white38),
           onTap: () => showModeKeyAssignmentsDialog(ctx, prov, s, -1),
         ),
         settingsTile(
-          title: AppTranslations.getText('left_pedal'),
+          title: AppTranslations.getText('left_pedal_button'),
           subtitle: AppTranslations.getText('left_pedal_desc'),
           trailing: const Icon(Icons.chevron_right, color: Colors.white38),
           onTap: () => showModeKeyAssignmentsDialog(ctx, prov, s, -2),
@@ -152,7 +162,11 @@ class _SettingsScreenState extends State<SettingsScreen>
           title: AppTranslations.getText('accel_brake_dist'),
           subtitle: AppTranslations.getText('100_percent_dist'),
           trailing: Text(
-            s.swipeSensitivity == 5 ? '5 mm (for pro)' : s.swipeSensitivity == 0 ? '0 mm' : '${s.swipeSensitivity.toInt()} mm',
+            s.swipeSensitivity == 5
+                ? '5 mm (for pro)'
+                : s.swipeSensitivity == 0
+                ? '0 mm'
+                : '${s.swipeSensitivity.toInt()} mm',
             style: TextStyle(color: ac, fontWeight: FontWeight.bold),
           ),
           onTap: () async {
@@ -217,10 +231,16 @@ class _SettingsScreenState extends State<SettingsScreen>
         settingsHeader(AppTranslations.getText('hw_keys')),
         settingsTile(
           title: AppTranslations.getText('vol_up_action'),
-          trailing: Text(keyName(s.volumeUpAction),
-              style: TextStyle(color: ac, fontWeight: FontWeight.bold)),
+          trailing: Text(
+            keyName(s.volumeUpAction),
+            style: TextStyle(color: ac, fontWeight: FontWeight.bold),
+          ),
           onTap: () async {
-            final val = await keyDialog(ctx, AppTranslations.getText('vol_up_action_title'), s.volumeUpAction);
+            final val = await keyDialog(
+              ctx,
+              AppTranslations.getText('vol_up_action_title'),
+              s.volumeUpAction,
+            );
             if (val != null) {
               s.volumeUpAction = val;
               prov.updateSettings(s);
@@ -230,11 +250,16 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         settingsTile(
           title: AppTranslations.getText('vol_down_action'),
-          trailing: Text(keyName(s.volumeDownAction),
-              style: TextStyle(color: ac, fontWeight: FontWeight.bold)),
+          trailing: Text(
+            keyName(s.volumeDownAction),
+            style: TextStyle(color: ac, fontWeight: FontWeight.bold),
+          ),
           onTap: () async {
-            final val =
-                await keyDialog(ctx, AppTranslations.getText('vol_down_action_title'), s.volumeDownAction);
+            final val = await keyDialog(
+              ctx,
+              AppTranslations.getText('vol_down_action_title'),
+              s.volumeDownAction,
+            );
             if (val != null) {
               s.volumeDownAction = val;
               prov.updateSettings(s);
@@ -307,22 +332,23 @@ class _SettingsScreenState extends State<SettingsScreen>
                 style: TextStyle(
                   color: isSelected ? ac : Colors.white70,
                   fontSize: 15,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
             ),
             if (isSelected)
               Icon(Icons.check_circle, color: ac, size: 20)
             else
-              const Icon(Icons.radio_button_unchecked,
-                  color: Colors.white24, size: 20),
+              const Icon(
+                Icons.radio_button_unchecked,
+                color: Colors.white24,
+                size: 20,
+              ),
           ],
         ),
       ),
     );
   }
-
 
   // ── Direksiyon Tab ───────────────────────────────────────────────────────
 
@@ -337,10 +363,14 @@ class _SettingsScreenState extends State<SettingsScreen>
       children: [
         settingsHeader(AppTranslations.getText('sensor')),
         SwitchListTile(
-          title: Text(AppTranslations.getText('use_gyro'),
-              style: const TextStyle(color: Colors.white, fontSize: 15)),
-          subtitle: Text(AppTranslations.getText('use_gyro_desc'),
-              style: const TextStyle(color: Colors.white38, fontSize: 12)),
+          title: Text(
+            AppTranslations.getText('use_gyro'),
+            style: const TextStyle(color: Colors.white, fontSize: 15),
+          ),
+          subtitle: Text(
+            AppTranslations.getText('use_gyro_desc'),
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
+          ),
           value: s.useGyroscope,
           activeThumbColor: ac,
           onChanged: (val) {
@@ -351,8 +381,10 @@ class _SettingsScreenState extends State<SettingsScreen>
         settingsTile(
           title: AppTranslations.getText('phone_orientation'),
           subtitle: zeroOrientationOptions.entries
-              .firstWhere((e) => e.value == s.zeroOrientation,
-                  orElse: () => const MapEntry('Auto', 0))
+              .firstWhere(
+                (e) => e.value == s.zeroOrientation,
+                orElse: () => const MapEntry('Auto', 0),
+              )
               .key,
           trailing: Icon(Icons.screen_rotation, color: ac),
           onTap: () async {
@@ -379,7 +411,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ? 'Max level at 1 (1°)'
                 : '${s.steeringAngle.toInt()}°',
             style: TextStyle(
-                color: ac, fontWeight: FontWeight.bold, fontSize: 16),
+              color: ac,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
           onTap: () async {
             final val = await radioDialog<int>(
@@ -407,14 +442,21 @@ class _SettingsScreenState extends State<SettingsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(AppTranslations.getText('how_it_works'),
-                    style: const TextStyle(
-                        color: Colors.white70, fontWeight: FontWeight.bold)),
+                Text(
+                  AppTranslations.getText('how_it_works'),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   AppTranslations.getText('how_it_works_desc'),
                   style: const TextStyle(
-                      color: Colors.white38, fontSize: 12, height: 1.6),
+                    color: Colors.white38,
+                    fontSize: 12,
+                    height: 1.6,
+                  ),
                 ),
               ],
             ),
@@ -513,40 +555,168 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         const Divider(color: Colors.white12, height: 24),
         settingsHeader(AppTranslations.getText('right_pedal')),
-        swipeTile(ac, AppTranslations.getText('swipe_up'), swipeName(s.gasSwipeUp),
-            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_up')}', s.gasSwipeUp, (v) => s.gasSwipeUp = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_down'), swipeName(s.gasSwipeDown),
-            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_down')}', s.gasSwipeDown, (v) => s.gasSwipeDown = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_left'), swipeName(s.gasSwipeLeft),
-            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_left')}', s.gasSwipeLeft, (v) => s.gasSwipeLeft = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_right'), swipeName(s.gasSwipeRight),
-            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_right')}', s.gasSwipeRight, (v) => s.gasSwipeRight = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_ul'), swipeName(s.gasSwipeUpLeft),
-            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_ul')}', s.gasSwipeUpLeft, (v) => s.gasSwipeUpLeft = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_ur'), swipeName(s.gasSwipeUpRight),
-            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_ur')}', s.gasSwipeUpRight, (v) => s.gasSwipeUpRight = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_dl'), swipeName(s.gasSwipeDownLeft),
-            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_dl')}', s.gasSwipeDownLeft, (v) => s.gasSwipeDownLeft = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_dr'), swipeName(s.gasSwipeDownRight),
-            () => pick('${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_dr')}', s.gasSwipeDownRight, (v) => s.gasSwipeDownRight = v)),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_up'),
+          swipeName(s.gasSwipeUp),
+          () => pick(
+            '${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_up')}',
+            s.gasSwipeUp,
+            (v) => s.gasSwipeUp = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_down'),
+          swipeName(s.gasSwipeDown),
+          () => pick(
+            '${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_down')}',
+            s.gasSwipeDown,
+            (v) => s.gasSwipeDown = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_left'),
+          swipeName(s.gasSwipeLeft),
+          () => pick(
+            '${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_left')}',
+            s.gasSwipeLeft,
+            (v) => s.gasSwipeLeft = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_right'),
+          swipeName(s.gasSwipeRight),
+          () => pick(
+            '${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_right')}',
+            s.gasSwipeRight,
+            (v) => s.gasSwipeRight = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_ul'),
+          swipeName(s.gasSwipeUpLeft),
+          () => pick(
+            '${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_ul')}',
+            s.gasSwipeUpLeft,
+            (v) => s.gasSwipeUpLeft = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_ur'),
+          swipeName(s.gasSwipeUpRight),
+          () => pick(
+            '${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_ur')}',
+            s.gasSwipeUpRight,
+            (v) => s.gasSwipeUpRight = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_dl'),
+          swipeName(s.gasSwipeDownLeft),
+          () => pick(
+            '${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_dl')}',
+            s.gasSwipeDownLeft,
+            (v) => s.gasSwipeDownLeft = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_dr'),
+          swipeName(s.gasSwipeDownRight),
+          () => pick(
+            '${AppTranslations.getText('right_pedal')} ${AppTranslations.getText('swipe_dr')}',
+            s.gasSwipeDownRight,
+            (v) => s.gasSwipeDownRight = v,
+          ),
+        ),
         const Divider(color: Colors.white12, height: 32),
         settingsHeader(AppTranslations.getText('left_pedal')),
-        swipeTile(ac, AppTranslations.getText('swipe_up'), swipeName(s.brakeSwipeUp),
-            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_up')}', s.brakeSwipeUp, (v) => s.brakeSwipeUp = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_down'), swipeName(s.brakeSwipeDown),
-            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_down')}', s.brakeSwipeDown, (v) => s.brakeSwipeDown = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_left'), swipeName(s.brakeSwipeLeft),
-            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_left')}', s.brakeSwipeLeft, (v) => s.brakeSwipeLeft = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_right'), swipeName(s.brakeSwipeRight),
-            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_right')}', s.brakeSwipeRight, (v) => s.brakeSwipeRight = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_ul'), swipeName(s.brakeSwipeUpLeft),
-            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_ul')}', s.brakeSwipeUpLeft, (v) => s.brakeSwipeUpLeft = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_ur'), swipeName(s.brakeSwipeUpRight),
-            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_ur')}', s.brakeSwipeUpRight, (v) => s.brakeSwipeUpRight = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_dl'), swipeName(s.brakeSwipeDownLeft),
-            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_dl')}', s.brakeSwipeDownLeft, (v) => s.brakeSwipeDownLeft = v)),
-        swipeTile(ac, AppTranslations.getText('swipe_dr'), swipeName(s.brakeSwipeDownRight),
-            () => pick('${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_dr')}', s.brakeSwipeDownRight, (v) => s.brakeSwipeDownRight = v)),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_up'),
+          swipeName(s.brakeSwipeUp),
+          () => pick(
+            '${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_up')}',
+            s.brakeSwipeUp,
+            (v) => s.brakeSwipeUp = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_down'),
+          swipeName(s.brakeSwipeDown),
+          () => pick(
+            '${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_down')}',
+            s.brakeSwipeDown,
+            (v) => s.brakeSwipeDown = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_left'),
+          swipeName(s.brakeSwipeLeft),
+          () => pick(
+            '${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_left')}',
+            s.brakeSwipeLeft,
+            (v) => s.brakeSwipeLeft = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_right'),
+          swipeName(s.brakeSwipeRight),
+          () => pick(
+            '${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_right')}',
+            s.brakeSwipeRight,
+            (v) => s.brakeSwipeRight = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_ul'),
+          swipeName(s.brakeSwipeUpLeft),
+          () => pick(
+            '${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_ul')}',
+            s.brakeSwipeUpLeft,
+            (v) => s.brakeSwipeUpLeft = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_ur'),
+          swipeName(s.brakeSwipeUpRight),
+          () => pick(
+            '${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_ur')}',
+            s.brakeSwipeUpRight,
+            (v) => s.brakeSwipeUpRight = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_dl'),
+          swipeName(s.brakeSwipeDownLeft),
+          () => pick(
+            '${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_dl')}',
+            s.brakeSwipeDownLeft,
+            (v) => s.brakeSwipeDownLeft = v,
+          ),
+        ),
+        swipeTile(
+          ac,
+          AppTranslations.getText('swipe_dr'),
+          swipeName(s.brakeSwipeDownRight),
+          () => pick(
+            '${AppTranslations.getText('left_pedal')} ${AppTranslations.getText('swipe_dr')}',
+            s.brakeSwipeDownRight,
+            (v) => s.brakeSwipeDownRight = v,
+          ),
+        ),
       ],
     );
   }
@@ -570,10 +740,14 @@ class _SettingsScreenState extends State<SettingsScreen>
         }),
         const Divider(color: Colors.white12, height: 24),
         settingsHeader(AppTranslations.getText('steering_indicator')),
-        row(AppTranslations.getText('indicator_color'), s.steeringIndicatorColor, (c) {
-          s.steeringIndicatorColor = c;
-          prov.updateSettings(s);
-        }),
+        row(
+          AppTranslations.getText('indicator_color'),
+          s.steeringIndicatorColor,
+          (c) {
+            s.steeringIndicatorColor = c;
+            prov.updateSettings(s);
+          },
+        ),
         row(AppTranslations.getText('indicator_bg'), s.steeringBgColor, (c) {
           s.steeringBgColor = c;
           prov.updateSettings(s);

@@ -79,9 +79,11 @@ class AppTranslations {
       'edit_keys': 'Tuşları Düzenle',
       'pedal': 'Pedal',
       'right_pedal': 'Sağ Pedal',
-      'right_pedal_desc': 'Varsayılan: Gaz — sağ taraf',
+      'right_pedal_desc': 'Varsayılan: Gaz',
+      'right_pedal_button': 'Sağ pedal butonu',
+      'left_pedal_button': 'Sol pedal butonu',
       'left_pedal': 'Sol Pedal',
-      'left_pedal_desc': 'Varsayılan: Fren — sol taraf',
+      'left_pedal_desc': 'Varsayılan: Fren',
       'accel_brake_dist': 'İvmelenme ve Fren mesafesi',
       '100_percent_dist': '%100 pedal için gereken mesafe',
       'swipe_sens': 'Kaydırma hassasiyeti (tıklama)',
@@ -282,6 +284,11 @@ class AppTranslations {
       // ── DRIVING SCREEN ──
       'press_back_again': 'Çıkmak için tekrar geri tuşuna basın',
       'touch_mouse_tab': 'Dokunmatik Fare',
+      'up_left_key': 'sol üst tuş',
+      'up_right_key': 'sağ üst tuş',
+      'down_left_key': 'sol alt tuş',
+      'down_right_key': 'sağ alt tuş',
+      'down_full_wide_key': 'Alt Tam Genişlik',
 
       // ── TEMPLATE DIALOG ──
       'templates': 'Şablonlar',
@@ -361,9 +368,11 @@ class AppTranslations {
       'edit_keys': 'Edit Keys',
       'pedal': 'Pedal',
       'right_pedal': 'Right Pedal',
-      'right_pedal_desc': 'Default: Gas — right side',
+      'right_pedal_desc': 'Default: Gas',
+      'right_pedal_button': 'Right pedal button',
+      'left_pedal_button': 'Left pedal button',
       'left_pedal': 'Left Pedal',
-      'left_pedal_desc': 'Default: Brake — left side',
+      'left_pedal_desc': 'Default: Brake',
       'accel_brake_dist': 'Accel/Brake swipe distance',
       '100_percent_dist': 'Distance required for 100% pedal',
       'swipe_sens': 'Swipe sensitivity (Tap threshold)',
@@ -562,6 +571,11 @@ class AppTranslations {
       // ── DRIVING SCREEN ──
       'press_back_again': 'Press back again to exit',
       'touch_mouse_tab': 'Touch Mouse',
+      'up_left_key': 'Up Left',
+      'up_right_key': 'Up Right',
+      'down_left_key': 'Down Left',
+      'down_right_key': 'Down Right',
+      'down_full_wide_key': 'Down Full Wide',
 
       // ── TEMPLATE DIALOG ──
       'templates': 'Templates',

@@ -123,7 +123,10 @@ class _DrivingScreenState extends State<DrivingScreen>
   }
 
   void _onTick() {
-    final settings = Provider.of<SettingsProvider>(context, listen: false).settings;
+    final settings = Provider.of<SettingsProvider>(
+      context,
+      listen: false,
+    ).settings;
     final int currentMode = settings.defaultDrivingMode;
 
     // ── Sensör Bypass (Pil/CPU Optimizasyonu) ──────────────────────────────
@@ -167,7 +170,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     //   X          0x4000  → keyIndex 7
     //   Y          0x8000  → keyIndex 8
     int buttons = 0;
-    if (pressedKeys.contains(9))  buttons |= 0x0001; // DPAD_UP
+    if (pressedKeys.contains(9)) buttons |= 0x0001; // DPAD_UP
     if (pressedKeys.contains(10)) buttons |= 0x0002; // DPAD_DOWN
     if (pressedKeys.contains(11)) buttons |= 0x0004; // DPAD_LEFT
     if (pressedKeys.contains(12)) buttons |= 0x0008; // DPAD_RIGHT
@@ -175,24 +178,24 @@ class _DrivingScreenState extends State<DrivingScreen>
     if (pressedKeys.contains(14)) buttons |= 0x0020; // BACK / SELECT
     if (pressedKeys.contains(17)) buttons |= 0x0040; // L3 (Sol Analog Tık)
     if (pressedKeys.contains(18)) buttons |= 0x0080; // R3 (Sağ Analog Tık)
-    if (pressedKeys.contains(1))  buttons |= 0x0100; // LB
-    if (pressedKeys.contains(2))  buttons |= 0x0200; // RB
-    if (pressedKeys.contains(3))  buttons |= 0x0400; // GUIDE / Steam
-    if (pressedKeys.contains(5))  buttons |= 0x1000; // A
-    if (pressedKeys.contains(6))  buttons |= 0x2000; // B
-    if (pressedKeys.contains(7))  buttons |= 0x4000; // X
-    if (pressedKeys.contains(8))  buttons |= 0x8000; // Y
+    if (pressedKeys.contains(1)) buttons |= 0x0100; // LB
+    if (pressedKeys.contains(2)) buttons |= 0x0200; // RB
+    if (pressedKeys.contains(3)) buttons |= 0x0400; // GUIDE / Steam
+    if (pressedKeys.contains(5)) buttons |= 0x1000; // A
+    if (pressedKeys.contains(6)) buttons |= 0x2000; // B
+    if (pressedKeys.contains(7)) buttons |= 0x4000; // X
+    if (pressedKeys.contains(8)) buttons |= 0x8000; // Y
 
     // Byte 3: High Byte, Byte 4: Low Byte
     final int buttonsHigh = (buttons >> 8) & 0xFF;
-    final int buttonsLow  = buttons & 0xFF;
+    final int buttonsLow = buttons & 0xFF;
 
     final List<int> payload = [
       steerByte,
       gasByte,
       brakeByte,
       buttonsHigh, // Byte 3 — XUSB High Byte
-      buttonsLow,  // Byte 4 — XUSB Low Byte
+      buttonsLow, // Byte 4 — XUSB Low Byte
     ];
 
     // Determine if we need the extended 16-byte Mode 5 payload
