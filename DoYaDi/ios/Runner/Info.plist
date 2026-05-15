@@ -47,5 +47,20 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+
+		<!-- iOS 14+ Local Network Privacy — UDP telemetry discovery -->
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>DoYaDi requires local network access to discover and send ultra-low latency telemetry data to your PC server.</string>
+		<key>NSBonjourServices</key>
+		<array>
+			<string>_doyadi._udp</string>
+			<string>_doyadi._tcp</string>
+		</array>
+
+		<!-- Bluetooth — BLE entegrasyonu için hazır -->
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>DoYaDi needs Bluetooth access to connect to your PC controller server.</string>
+		<key>NSBluetoothPeripheralUsageDescription</key>
+		<string>DoYaDi needs Bluetooth access to connect to your PC controller server.</string>
 	</dict>
 </plist>
