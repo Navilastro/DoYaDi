@@ -1,0 +1,21 @@
+*.o
+*.obj
+*.exe
+*.out
+*.app
+build/
+bin/
+.vs/
+.env
+.vscode/
+.idea/
+
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db-cfs
+
+# Redis
+dump.rdb
+dump.rdb.json

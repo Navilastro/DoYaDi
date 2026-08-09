@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="DoYaDi_Server.vcxproj" Id="d6b284b9-7ecc-4bfb-8e0b-13e7264e9442" />
+</Solution>

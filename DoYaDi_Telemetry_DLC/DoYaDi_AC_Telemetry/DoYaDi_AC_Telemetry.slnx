@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="DoYaDi_AC_Telemetry.vcxproj" Id="73a058be-4340-48d2-9a99-fe2d4ac5e64b" />
+</Solution>
