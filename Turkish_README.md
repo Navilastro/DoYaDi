@@ -120,3 +120,7 @@ Ayrıca doğrudan <a href="https://github.com/Navilastro/DoYaDi/releases/tag/DoY
 
 👨‍💻 Geliştirici
   >Efe Pehlivan
+
+<p align="center">
+  <sub>Copyright (c) 2026. Tüm hakları saklıdır. İzinsiz kopyalanamaz ve kullanılamaz.</sub>
+</p>
