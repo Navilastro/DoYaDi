@@ -123,3 +123,7 @@ While AI served as the "typing hand," the core vision, the logic behind dynamic 
 
 👨‍💻 Developer
   >Efe Pehlivan
+
+<p align="center">
+  <sub>Copyright (c) 2026. Tüm hakları saklıdır. İzinsiz kopyalanamaz ve kullanılamaz.</sub>
+</p>
