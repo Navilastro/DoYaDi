@@ -15,7 +15,10 @@ enum Layout5ItemType {
   brakePedalIcon, // Fren pedal ikonu (en fazla 1 adet)
   clutchBar,      // Debriyaj barı (en fazla 1 adet)
   clutchIcon,     // Debriyaj ikonu (en fazla 1 adet)
-  handbrakeButton,// El freni butonu (en fazla 1 adet)
+  handbrakeButton,// El freni butonu (en fazla 1 adet) - Eski Sürüm Uyumluluğu
+  handbrakeBar,   // El freni barı (en fazla 1 adet)
+  handbrakeIcon,  // El freni ikonu (en fazla 1 adet)
+  steeringWheelIcon, // Direksiyon ikonu (sadece görsel, en fazla 1 adet)
 }
 
 enum ButtonMode {
@@ -23,6 +26,8 @@ enum ButtonMode {
   gasPct, // Belirli bir gaz yüzdesi
   brakePct, // Belirli bir fren yüzdesi
   macro, // Makro
+  handbrakePct, // Belirli bir el freni yüzdesi
+  clutchPct, // Belirli bir debriyaj yüzdesi
 }
 
 enum MacroActionType { key, gasPct, brakePct, delay }
@@ -58,6 +63,9 @@ class Layout5Item {
   Color bgColor;
   Color textColor;
   String? label; // null → varsayılan "{N} Buton"
+  
+  // Z-Index (Katman Sırası)
+  int zIndex;
 
   // Mod
   ButtonMode mode;
@@ -89,6 +97,7 @@ class Layout5Item {
     this.bgColor = const Color(0xFF1A1A3E),
     this.textColor = const Color(0xFFFFFFFF),
     this.label,
+    this.zIndex = 1,
     this.mode = ButtonMode.key,
     this.keyIndex = 3,
     this.modeValue = 1.0,
@@ -112,6 +121,7 @@ class Layout5Item {
     'bgColor': bgColor.toARGB32(),
     'textColor': textColor.toARGB32(),
     'label': label,
+    'zIndex': zIndex,
     'mode': mode.index,
     'keyIndex': keyIndex,
     'modeValue': modeValue,
@@ -159,6 +169,7 @@ class Layout5Item {
       bgColor: Color(json['bgColor'] as int),
       textColor: Color(json['textColor'] as int),
       label: json['label'] as String?,
+      zIndex: json['zIndex'] as int? ?? 1,
       mode: ButtonMode.values[json['mode'] as int],
       keyIndex: json['keyIndex'] as int,
       modeValue: (json['modeValue'] as num).toDouble(),
@@ -186,6 +197,7 @@ class Layout5Item {
     Color? textColor,
     String? label,
     bool clearLabel = false,
+    int? zIndex,
     ButtonMode? mode,
     int? keyIndex,
     double? modeValue,
@@ -212,6 +224,7 @@ class Layout5Item {
       bgColor: bgColor ?? this.bgColor,
       textColor: textColor ?? this.textColor,
       label: clearLabel ? null : (label ?? this.label),
+      zIndex: zIndex ?? this.zIndex,
       mode: mode ?? this.mode,
       keyIndex: keyIndex ?? this.keyIndex,
       modeValue: modeValue ?? this.modeValue,

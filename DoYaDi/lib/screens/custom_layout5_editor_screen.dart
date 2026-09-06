@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/layout5_item.dart';
+
 import '../providers/settings_provider.dart';
 import '../core/widgets/searchable_key_picker.dart';
 import '../core/utils/keyboard_keys.dart';
@@ -385,8 +386,8 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
     );
   }
 
-  bool get _hasSteeringWheel => _items.any(
-      (e) => e.type == Layout5ItemType.leftJoystick || e.type == Layout5ItemType.rightJoystick);
+  bool get _hasLeftJoystick => _items.any((e) => e.type == Layout5ItemType.leftJoystick);
+  bool get _hasRightJoystick => _items.any((e) => e.type == Layout5ItemType.rightJoystick);
   bool get _hasGasController => _items.any(
       (e) => e.type == Layout5ItemType.gasBar || e.type == Layout5ItemType.gasPedalIcon);
   bool get _hasBrakeController => _items.any(
@@ -394,8 +395,8 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
   bool get _hasClutchController => _items.any(
       (e) => e.type == Layout5ItemType.clutchBar || e.type == Layout5ItemType.clutchIcon);
   bool get _hasHandbrakeController => _items.any(
-      (e) => e.type == Layout5ItemType.handbrakeButton);
-
+      (e) => e.type == Layout5ItemType.handbrakeButton || e.type == Layout5ItemType.handbrakeBar || e.type == Layout5ItemType.handbrakeIcon);
+  bool get _hasSteeringWheelIcon => _items.any((e) => e.type == Layout5ItemType.steeringWheelIcon);
   void _showConstraintWarning(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -408,8 +409,16 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
 
   void _addItem(Layout5ItemType type) {
     // ── KATI YERLEŞİM KISITLAMALARI (VALIDATION RULES) ──
-    if ((type == Layout5ItemType.leftJoystick || type == Layout5ItemType.rightJoystick) && _hasSteeringWheel) {
-      _showConstraintWarning('Ekranda en fazla 1 adet Direksiyon kontrolcüsü bulunabilir!');
+    if (type == Layout5ItemType.leftJoystick && _hasLeftJoystick) {
+      _showConstraintWarning('Ekranda en fazla 1 adet Sol Joystick bulunabilir!');
+      return;
+    }
+    if (type == Layout5ItemType.rightJoystick && _hasRightJoystick) {
+      _showConstraintWarning('Ekranda en fazla 1 adet Sağ Joystick bulunabilir!');
+      return;
+    }
+    if (type == Layout5ItemType.rightJoystick && (_hasHandbrakeController || _hasClutchController)) {
+      _showConstraintWarning('El freni veya debriyaj varken sağ joystick eklenemez!');
       return;
     }
     if ((type == Layout5ItemType.gasBar || type == Layout5ItemType.gasPedalIcon) && _hasGasController) {
@@ -424,9 +433,18 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
       _showConstraintWarning('Ekranda en fazla 1 adet Debriyaj kontrolcüsü bulunabilir!');
       return;
     }
-    if (type == Layout5ItemType.handbrakeButton && _hasHandbrakeController) {
+    if ((type == Layout5ItemType.handbrakeButton || type == Layout5ItemType.handbrakeBar || type == Layout5ItemType.handbrakeIcon) && _hasHandbrakeController) {
       _showConstraintWarning('Ekranda en fazla 1 adet El Freni bulunabilir!');
       return;
+    }
+    if (type == Layout5ItemType.steeringWheelIcon && _hasSteeringWheelIcon) {
+      _showConstraintWarning('Ekranda en fazla 1 adet Direksiyon İkonu bulunabilir!');
+      return;
+    }
+    
+    // Eğer el freni veya debriyaj ekleniyorsa, varsa sağ joystick'i kaldır
+    if (type == Layout5ItemType.clutchBar || type == Layout5ItemType.clutchIcon || type == Layout5ItemType.handbrakeBar || type == Layout5ItemType.handbrakeIcon) {
+      _items.removeWhere((e) => e.type == Layout5ItemType.rightJoystick);
     }
 
     final id = '${type.name}_${DateTime.now().millisecondsSinceEpoch}';
@@ -919,7 +937,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
     return PopupMenuButton<Layout5ItemType>(
       color: const Color(0xFF1A1A3E),
       itemBuilder: (_) => [
-        if (!_hasSteeringWheel) ...[
+        if (!_hasLeftJoystick) ...[
           PopupMenuItem(
             value: Layout5ItemType.leftJoystick,
             child: Text(
@@ -927,6 +945,8 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
               style: const TextStyle(color: Colors.white),
             ),
           ),
+        ],
+        if (!_hasRightJoystick) ...[
           PopupMenuItem(
             value: Layout5ItemType.rightJoystick,
             child: Text(
@@ -968,27 +988,47 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
           ),
         ],
         if (!_hasClutchController) ...[
-          const PopupMenuItem(
+          PopupMenuItem(
             value: Layout5ItemType.clutchBar,
             child: Text(
-              'Debriyaj Barı Ekle',
-              style: TextStyle(color: Colors.cyanAccent),
+              AppTranslations.getText('type_clutch_bar') != 'type_clutch_bar' 
+                ? AppTranslations.getText('type_clutch_bar') 
+                : 'Debriyaj Barı Ekle',
+              style: const TextStyle(color: Colors.cyanAccent),
             ),
           ),
-          const PopupMenuItem(
+          PopupMenuItem(
             value: Layout5ItemType.clutchIcon,
             child: Text(
-              'Debriyaj İkonu Ekle',
-              style: TextStyle(color: Colors.cyanAccent),
+              AppTranslations.getText('type_clutch_icon') != 'type_clutch_icon'
+                ? AppTranslations.getText('type_clutch_icon')
+                : 'Debriyaj İkonu Ekle',
+              style: const TextStyle(color: Colors.cyanAccent),
             ),
           ),
         ],
-        if (!_hasHandbrakeController)
-          const PopupMenuItem(
-            value: Layout5ItemType.handbrakeButton,
+        if (!_hasHandbrakeController) ...[
+          PopupMenuItem(
+            value: Layout5ItemType.handbrakeBar,
             child: Text(
-              'El Freni Ekle',
-              style: TextStyle(color: Colors.redAccent),
+              AppTranslations.getText('type_handbrake_bar'),
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ),
+          PopupMenuItem(
+            value: Layout5ItemType.handbrakeIcon,
+            child: Text(
+              AppTranslations.getText('type_handbrake_icon'),
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+        if (!_hasSteeringWheelIcon)
+          PopupMenuItem(
+            value: Layout5ItemType.steeringWheelIcon,
+            child: Text(
+              AppTranslations.getText('type_steering_wheel'),
+              style: const TextStyle(color: Colors.greenAccent),
             ),
           ),
         PopupMenuItem(
@@ -1094,6 +1134,7 @@ class _PropertiesPanel extends StatefulWidget {
 
 class _PropertiesPanelState extends State<_PropertiesPanel> {
   late TextEditingController _labelCtrl;
+  late TextEditingController _zIndexCtrl;
   bool _lockAspectRatio = false;
   double _currentRatio = 1.0;
 
@@ -1101,6 +1142,7 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
   void initState() {
     super.initState();
     _labelCtrl = TextEditingController(text: widget.item.label ?? '');
+    _zIndexCtrl = TextEditingController(text: widget.item.zIndex.toString());
   }
 
   @override
@@ -1108,6 +1150,7 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.item.id != widget.item.id) {
       _labelCtrl.text = widget.item.label ?? '';
+      _zIndexCtrl.text = widget.item.zIndex.toString();
       _lockAspectRatio = false;
       _currentRatio = 1.0;
     }
@@ -1116,6 +1159,7 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
   @override
   void dispose() {
     _labelCtrl.dispose();
+    _zIndexCtrl.dispose();
     super.dispose();
   }
 
@@ -1232,10 +1276,91 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
               ),
             ],
           ),
+          
+          const Divider(color: Colors.white12),
+          
+          // ── Z-Index (Katman Sırası) ──
+          _label(AppTranslations.getText('z_index')),
+          TextField(
+            controller: _zIndexCtrl,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            keyboardType: const TextInputType.numberWithOptions(signed: true),
+            decoration: const InputDecoration(
+              isDense: true,
+              filled: true,
+              fillColor: Color(0xFF1A1A3E),
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 6,
+              ),
+            ),
+            onChanged: (v) {
+              final parsed = int.tryParse(v);
+              if (parsed != null) {
+                _update(item.copyWith(zIndex: parsed));
+              }
+            },
+          ),
 
           // ── Joystick Hassasiyet (Sensitivity) ──
           if (_isJoystick) ...[
             const Divider(color: Colors.white12),
+
+            // Joystick Modu Seçici (Global — sol/sağ ortak)
+            _label(AppTranslations.getText('joystick_mode')),
+            Builder(
+              builder: (ctx) {
+                final provider = Provider.of<SettingsProvider>(ctx, listen: false);
+                final currentMode = provider.settings.joystickMode.clamp(0, 3);
+                return DropdownButton<int>(
+                  value: currentMode,
+                  dropdownColor: const Color(0xFF1A1A3E),
+                  isExpanded: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  items: [
+                    DropdownMenuItem(
+                      value: 0,
+                      child: Text(
+                        AppTranslations.getText('joystick_mode_fixed'),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 1,
+                      child: Text(
+                        AppTranslations.getText('joystick_mode_floating'),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 2,
+                      child: Text(
+                        AppTranslations.getText('joystick_mode_spawn'),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 3,
+                      child: Text(
+                        AppTranslations.getText('joystick_mode_floating_spawn'),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) {
+                      provider.settings.joystickMode = v;
+                      provider.saveSettings();
+                      setState(() {});
+                    }
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 4),
+
+            // Hassasiyet (öğe bazında, sol/sağ ayrı)
             _label(AppTranslations.getText('sensivity')),
             Row(
               children: [
@@ -1286,6 +1411,100 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
             ],
           ),
           const SizedBox(height: 4),
+          if (item.enableHaptic) ...[
+            Row(
+              children: [
+                Text(
+                  AppTranslations.getText('haptic_type'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(width: 8),
+                DropdownButton<int?>(
+                  value: item.customHapticType,
+                  dropdownColor: const Color(0xFF1A1A3E),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  items: [
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text(AppTranslations.getText('use_global_setting')),
+                    ),
+                    DropdownMenuItem(
+                      value: 0,
+                      child: Text(AppTranslations.getText('haptic_type_light')),
+                    ),
+                    DropdownMenuItem(
+                      value: 1,
+                      child: Text(AppTranslations.getText('haptic_type_medium')),
+                    ),
+                    DropdownMenuItem(
+                      value: 2,
+                      child: Text(AppTranslations.getText('haptic_type_heavy')),
+                    ),
+                    DropdownMenuItem(
+                      value: 3,
+                      child: Text(AppTranslations.getText('haptic_type_selection')),
+                    ),
+                    DropdownMenuItem(
+                      value: 4,
+                      child: Text(AppTranslations.getText('haptic_type_vibrate')),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    _update(
+                      item.copyWith(
+                        customHapticType: v,
+                        clearCustomHapticType: v == null,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Text(
+                  AppTranslations.getText('haptic_trigger'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(width: 8),
+                DropdownButton<int?>(
+                  value: item.customHapticTrigger,
+                  dropdownColor: const Color(0xFF1A1A3E),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  items: [
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text(AppTranslations.getText('use_global_setting')),
+                    ),
+                    DropdownMenuItem(
+                      value: 0,
+                      child: Text(AppTranslations.getText('haptic_trigger_down')),
+                    ),
+                    DropdownMenuItem(
+                      value: 1,
+                      child: Text(AppTranslations.getText('haptic_trigger_up')),
+                    ),
+                    DropdownMenuItem(
+                      value: 2,
+                      child: Text(AppTranslations.getText('haptic_trigger_held')),
+                    ),
+                    DropdownMenuItem(
+                      value: 3,
+                      child: Text(AppTranslations.getText('haptic_trigger_active')),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    _update(
+                      item.copyWith(
+                        customHapticTrigger: v,
+                        clearCustomHapticTrigger: v == null,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
 
           if (_isButton) ...[
             _label(AppTranslations.getText('text_color')),
@@ -1408,6 +1627,14 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                 DropdownMenuItem(
                   value: ButtonMode.macro,
                   child: Text(AppTranslations.getText('mode_macro')),
+                ),
+                DropdownMenuItem(
+                  value: ButtonMode.handbrakePct,
+                  child: Text(AppTranslations.getText('mode_handbrake_pct')),
+                ),
+                DropdownMenuItem(
+                  value: ButtonMode.clutchPct,
+                  child: Text(AppTranslations.getText('mode_clutch_pct')),
                 ),
               ],
               onChanged: (v) {
@@ -1588,6 +1815,54 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
             ],
           ),
 
+        if (item.mode == ButtonMode.handbrakePct)
+          Row(
+            children: [
+              Text(
+                AppTranslations.getText('mode_handbrake_pct'),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              Expanded(
+                child: Slider(
+                  value: item.modeValue,
+                  min: 0,
+                  max: 1,
+                  activeColor: const Color(0xFFFF9800),
+                  inactiveColor: Colors.white12,
+                  onChanged: (v) => _update(item.copyWith(modeValue: v)),
+                ),
+              ),
+              Text(
+                '${(item.modeValue * 100).round()}%',
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
+              ),
+            ],
+          ),
+
+        if (item.mode == ButtonMode.clutchPct)
+          Row(
+            children: [
+              Text(
+                AppTranslations.getText('mode_clutch_pct'),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              Expanded(
+                child: Slider(
+                  value: item.modeValue,
+                  min: 0,
+                  max: 1,
+                  activeColor: const Color(0xFF2196F3),
+                  inactiveColor: Colors.white12,
+                  onChanged: (v) => _update(item.copyWith(modeValue: v)),
+                ),
+              ),
+              Text(
+                '${(item.modeValue * 100).round()}%',
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
+              ),
+            ],
+          ),
+
         if (item.mode == ButtonMode.macro)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1668,115 +1943,7 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
               ),
             ],
           ),
-        const Divider(color: Colors.white12, height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              AppTranslations.getText('haptic_header'),
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
-            ),
-            Switch(
-              value: item.enableHaptic,
-              activeThumbColor: const Color(0xFF40E0D0),
-              onChanged: (v) => _update(item.copyWith(enableHaptic: v)),
-            ),
-          ],
-        ),
-        if (item.enableHaptic) ...[
-          Row(
-            children: [
-              Text(
-                AppTranslations.getText('haptic_type'),
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-              const SizedBox(width: 8),
-              DropdownButton<int?>(
-                value: item.customHapticType,
-                dropdownColor: const Color(0xFF1A1A3E),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(AppTranslations.getText('use_global_setting')),
-                  ),
-                  DropdownMenuItem(
-                    value: 0,
-                    child: Text(AppTranslations.getText('haptic_type_light')),
-                  ),
-                  DropdownMenuItem(
-                    value: 1,
-                    child: Text(AppTranslations.getText('haptic_type_medium')),
-                  ),
-                  DropdownMenuItem(
-                    value: 2,
-                    child: Text(AppTranslations.getText('haptic_type_heavy')),
-                  ),
-                  DropdownMenuItem(
-                    value: 3,
-                    child: Text(AppTranslations.getText('haptic_type_selection')),
-                  ),
-                  DropdownMenuItem(
-                    value: 4,
-                    child: Text(AppTranslations.getText('haptic_type_vibrate')),
-                  ),
-                ],
-                onChanged: (v) {
-                  _update(
-                    item.copyWith(
-                      customHapticType: v,
-                      clearCustomHapticType: v == null,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Text(
-                AppTranslations.getText('haptic_trigger'),
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-              const SizedBox(width: 8),
-              DropdownButton<int?>(
-                value: item.customHapticTrigger,
-                dropdownColor: const Color(0xFF1A1A3E),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(AppTranslations.getText('use_global_setting')),
-                  ),
-                  DropdownMenuItem(
-                    value: 0,
-                    child: Text(AppTranslations.getText('haptic_trigger_down')),
-                  ),
-                  DropdownMenuItem(
-                    value: 1,
-                    child: Text(AppTranslations.getText('haptic_trigger_up')),
-                  ),
-                  DropdownMenuItem(
-                    value: 2,
-                    child: Text(AppTranslations.getText('haptic_trigger_held')),
-                  ),
-                  DropdownMenuItem(
-                    value: 3,
-                    child: Text(AppTranslations.getText('haptic_trigger_active')),
-                  ),
-                ],
-                onChanged: (v) {
-                  _update(
-                    item.copyWith(
-                      customHapticTrigger: v,
-                      clearCustomHapticTrigger: v == null,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
+
       ],
     );
   }
@@ -1838,22 +2005,31 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                 ),
                 const SizedBox(height: 12),
                 if (selectedType == MacroActionType.key)
-                  DropdownButton<double>(
-                    value: val,
-                    dropdownColor: const Color(0xFF1A1A3E),
-                    style: const TextStyle(color: Colors.white),
-                    items: List.generate(
-                      16,
-                      (i) => DropdownMenuItem(
-                        value: (i + 1).toDouble(),
-                        child: Text(
-                          '${AppTranslations.getText('key_prefix')} ${i + 1}',
-                        ),
-                      ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1A1A3E),
                     ),
-                    onChanged: (v) {
-                      if (v != null) set(() => val = v);
+                    onPressed: () async {
+                      final newVal = await showSearchableKeyPicker(
+                        ctx,
+                        val.toInt(),
+                      );
+                      if (newVal != null) {
+                        set(() => val = newVal.toDouble());
+                      }
                     },
+                    child: Text(
+                      val >= 2000
+                          ? '${AppTranslations.getText('macro_prefix')}${val.toInt() - 1999}'
+                          : val >= 1000
+                              ? KeyboardKeys.appKeyMap.entries
+                                  .firstWhere(
+                                      (e) => e.value == val.toInt(),
+                                      orElse: () => const MapEntry('', 0))
+                                  .key
+                              : '${AppTranslations.getText('key_prefix')} ${val.toInt()}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
                 if (selectedType == MacroActionType.gasPct ||
                     selectedType == MacroActionType.brakePct)

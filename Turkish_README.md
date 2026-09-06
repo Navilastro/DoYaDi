@@ -4,104 +4,105 @@ DoYaDi, mobil cihazınızı Wi-Fi, kablo veya Bluetooth aracılığıyla yüksek
 
 <h2>🚀 Temel Özellikler</h2>
 
-    16/17-Bayt "Özgürlük" Mimarisi: Düşük ağ yükü ve yüksek hız için veri iletimini optimize eden, aktif bileşenlere göre dinamik boyutlanan özel veri paketi (payload) yapısı.
-
-    60 FPS Oyun Döngüsü: Gecikmesiz bir deneyim için Flutter tarafında saniyede 60 kez sürekli veri pompalama (UDP/BT).
-
-    Dinamik Değişken Oranlı Direksiyon: Cihazın yunuslama (pitch) açısına bağlı olarak direksiyon hassasiyetini anında ayarlayan matematiksel bir model.
-
-      İnce Ayar Bölgesi (50°-70°): Milimetrik manevralar için düşük hassasiyet.
-
-      Agresif Mod (110°-130°): Hızlı dönüşler için yüksek tepkisellik.
-
-    Akıllı Touchpad ve Fare Kontrolü: Windows SendInput API'si ile güçlendirilmiş, 1, 2 ve 3 parmak dokunuşlarını (Sol, Sağ ve Orta Tıklama) algılayan touchpad entegrasyonu.
-
-    Klavye Makroları ve Anti-Ghosting: Doğrudan cihaz üzerinden herhangi bir PC tuşunu (F1-F12, Shift, Ctrl vb.) tetikleyebilme ve aynı anda 4 tuşa kadar basım desteği.
-
-    Güvenli Geri Tuşu Mantığı: Yanlışlıkla dokunmaları ve istenmeyen sayfa geçişlerini önlemek için isExiting durum kontrolü ve IgnorePointer izolasyonu uygular.
-
-    Genişletilebilir Eklenti (DLC) Sistemi: Özel bir C++ PluginManager tarafından yönetilen, mobil uygulama ile özel kanallar üzerinden iletişim kuran harici DLL eklentileri (ör. ETS2/ATS telemetrisi) desteği.
-
-    Gerçek Zamanlı Telemetri ve Haptic (Titreşim) Geri Bildirim: Oyun içi verileri (devir, hız vb.) görsel ve dokunsal geri bildirim için mobil cihaza aktaran özel telemetri dinleyicisi (UDP 8890 / BT).
-
-    Asenkron ve Thread-Safe Mimari: Yüksek frekanslı sürüş verileri ile eklenti komutlarının birbirini engellemesini önleyen, donma yapmayan kararlı ağ altyapısı.
-
-    Dört adede kadar kontrol cihazına izin verir!
+*   **16/17-Bayt "Özgürlük" Mimarisi:** Düşük ağ yükü ve yüksek hız için veri iletimini optimize eden, aktif bileşenlere göre dinamik boyutlanan özel veri paketi (payload) yapısı.
+*   **60 FPS Oyun Döngüsü:** Gecikmesiz bir deneyim için Flutter tarafında saniyede 60 kez sürekli veri pompalama (UDP/BT).
+*   **Dinamik Değişken Oranlı Direksiyon:** Cihazın yunuslama (pitch) açısına bağlı olarak direksiyon hassasiyetini anında ayarlayan matematiksel bir model.
+    *   İnce Ayar Bölgesi (50°-70°): Milimetrik manevralar için düşük hassasiyet.
+    *   Agresif Mod (110°-130°): Hızlı dönüşler için yüksek tepkisellik.
+*   **Analog Debriyaj ve El Freni (Raw Data):** Sıfır yumuşatma ve milimetrik hassasiyet için Sağ Analog Çubuğa (Z-Ekseni) atanmış, vJoy gibi dış sürücülere ihtiyaç bırakmayan filtresiz veri aktarımı.
+*   **Akıllı Touchpad ve Fare Kontrolü:** Windows SendInput API'si ile güçlendirilmiş, 1, 2 ve 3 parmak dokunuşlarını (Sol, Sağ ve Orta Tıklama) algılayan touchpad entegrasyonu.
+*   **Klavye Makroları ve Anti-Ghosting:** Doğrudan cihaz üzerinden herhangi bir PC tuşunu (F1-F12, Shift, Ctrl vb.) tetikleyebilme ve aynı anda 4 tuşa kadar basım desteği.
+*   **Güvenli Geri Tuşu Mantığı:** Yanlışlıkla dokunmaları ve istenmeyen sayfa geçişlerini önlemek için isExiting durum kontrolü ve IgnorePointer izolasyonu uygular.
+*   **Genişletilebilir Eklenti (DLC) Sistemi:** Özel bir C++ PluginManager tarafından yönetilen, mobil uygulama ile özel kanallar üzerinden iletişim kuran harici DLL eklentileri (ör. ETS2/ATS telemetrisi) desteği.
+*   **Gerçek Zamanlı Telemetri ve Haptic (Titreşim) Geri Bildirim:** Oyun içi verileri (devir, hız vb.) görsel ve dokunsal geri bildirim için mobil cihaza aktaran özel telemetri dinleyicisi (UDP 8890 / BT).
+*   **Asenkron ve Thread-Safe Mimari:** Yüksek frekanslı sürüş verileri ile eklenti komutlarının birbirini engellemesini önleyen, donma yapmayan kararlı ağ altyapısı.
+*   Dört adede kadar kontrol cihazına izin verir!
 
 <h2>🛠 Teknik Mimari</h2>
 
 Proje, bir mobil istemci (Flutter) ve bir Windows sunucusundan (C++) oluşmaktadır.
 
-  <h3>📱 Mobil Uygulama (Flutter)</h3>
+<h3>📱 Mobil Uygulama (Flutter)</h3>
 
-    Sensör Yönetimi: İvmeölçer ve jiroskop verilerinin atan2 trigonometrik fonksiyonları kullanılarak işlenmesi.
-
-    Ağ Katmanı: Wi-Fi ve kablo üzerinden UDP, Bluetooth üzerinden RFCOMM (SPP) protokolleri.
-
-    Arayüz/Kullanıcı Deneyimi (UI/UX): CustomPainter ve gelişmiş GestureDetector mimarilerinden yararlanan özelleştirilebilir buton dizilimleri (Mod 5).
+*   **Sensör Yönetimi:** İvmeölçer ve jiroskop verilerinin atan2 trigonometrik fonksiyonları kullanılarak işlenmesi.
+*   **Ağ Katmanı:** Wi-Fi ve kablo üzerinden UDP, Bluetooth üzerinden RFCOMM (SPP) protokolleri.
+*   **Arayüz/Kullanıcı Deneyimi (UI/UX):** CustomPainter ve gelişmiş GestureDetector mimarilerinden yararlanan özelleştirilebilir buton dizilimleri (Mod 5).
 
 <h3>🖥 PC Sunucusu (C++)</h3>
 
-    Donanım Emülasyonu: ViGEmBus kütüphanesi kullanılarak sanal bir Xbox 360 kontrolcüsü oluşturulması.
-
-    Windows API Entegrasyonu: Fare ve klavye olayları için düşük seviyeli SendInput fonksiyonları.
-
-    Eklenti (Plugin) Yönetimi: Ana sürüş döngüsünü bloklamadan harici eklentileri yönetmek için asenkron DLL yükleme ve komut işleme mimarisi.
-
-    Çoklu İş Parçacığı (Multithreading): UDP Keşfi (Discovery), Veri Dinleyici (Data Listener) ve Bluetooth servislerinin eşzamanlı olarak yürütülmesi.
+*   **Donanım Emülasyonu:** ViGEmBus kütüphanesi kullanılarak sanal bir Xbox 360 kontrolcüsü oluşturulması. **(ViGEmClient kütüphanesinin projeye statik `.lib` olarak gömülmesiyle sıfır `.dll` bağımlılığı ve tek parça `.exe` mimarisi).**
+*   **Windows API Entegrasyonu:** Fare ve klavye olayları için düşük seviyeli SendInput fonksiyonları.
+*   **Eklenti (Plugin) Yönetimi:** Ana sürüş döngüsünü bloklamadan harici eklentileri yönetmek için asenkron DLL yükleme ve komut işleme mimarisi.
+*   **Çoklu İş Parçacığı (Multithreading):** UDP Keşfi (Discovery), Veri Dinleyici (Data Listener) ve Bluetooth servislerinin eşzamanlı olarak yürütülmesi.
 
 <h2>📊 Payload (Veri Yükü) Yapısı</h2>
 
-    Sistem, son derece verimli, 17-Bayta kadar çıkabilen özel bir protokol kullanır:
+Sistem, son derece verimli, 17-Bayta kadar çıkabilen özel bir protokol kullanır:
 
-    Bayt 0-4: Temel Araç Kontrolleri (Direksiyon, Gaz, Fren, Butonlar)
-
-    Bayt 5-8: Analog Çubuklar (X, Y eksenleri)
-
-    Bayt 9-10: Fare Delta Hareketleri (X, Y)
-
-    Bayt 11: Fare Tıklama Durumları (0: Yok, 1: Sol, 2: Sağ, 3: Orta)
-
-    Bayt 12-15: Aktif Sanal Tuş Kodları (Anti-Ghosting Yuvaları)
+*   **Bayt 0-4:** Temel Araç Kontrolleri (Direksiyon, Gaz, Fren, Butonlar)
+*   **Bayt 5-8:** Analog Çubuklar (X, Y ve **Debriyaj/El Freni atamaları için Z eksenleri**)
+*   **Bayt 9-10:** Fare Delta Hareketleri (X, Y)
+*   **Bayt 11:** Fare Tıklama Durumları (0: Yok, 1: Sol, 2: Sağ, 3: Orta)
+*   **Bayt 12-15:** Aktif Sanal Tuş Kodları (Anti-Ghosting Yuvaları)
 
 <i>'Eğer kullanıcı direksiyon 5'e joystick, dokunmatik fare veya klavye tuşları eklemediyse gönderim boyutu 5 bayt ile sınırlı kalır.'</i>
 
 <h2>🤖 Geliştirme Süreci ve Yapay Zeka Hakkında</h2>
 
-eliştirme süreci boyunca Gemini, Claude / AntiGravity gibi büyük dil modelleri (LLM'ler) mimari beyin fırtınası, matematiksel modelleme ve hata ayıklama (debugging) için kullanılmıştır.
+Geliştirme süreci boyunca Gemini, Claude / AntiGravity gibi büyük dil modelleri (LLM'ler) mimari beyin fırtınası, matematiksel modelleme ve hata ayıklama (debugging) için kullanılmıştır.
 
 Yapay zeka "yazan el" olarak hizmet verirken; temel vizyon, dinamik hassasiyetin arkasındaki mantık ve altta yatan tüm mühendislik kararları tamamen geliştiriciye aittir.
 
 <h2>🔧 Kurulum</h2>
 
 <h3>PC Sunucusu:</h3>
-        
-        * Windows bilgisayarınıza ViGEmBus sürücüsünü kurun.
-        * C++ projesini Visual Studio kullanarak derleyin ve yürütülebilir dosyayı (executable) çalıştırın.
-        Uyarı:
-            - Sunucuyu Bluetooth'u açmadan önce başlatırsanız, Bluetooth'u açtıktan sonra sunucuyu yeniden başlatmanız gerekir.
-            - Eğer internet ile kullanmak isterseniz, yalnızca Özel Ağlarda (private networks) çalışır.
-        
-       
-  Sunucu kurulum dosyası setup.exe'yi indirmek için -> <a href="https://github.com/Navilastro/DoYaDi/releases/tag/server_setup">İndir</a>. Arka planda güvenlik duvarı izinlerini otomatik halleder.
+
+*   Windows bilgisayarınıza ViGEmBus sürücüsünü kurun.
+*   C++ projesini Visual Studio kullanarak derleyin ve yürütülebilir dosyayı (executable) çalıştırın.
+*   **Simülasyon Tavsiyesi:** Assetto Corsa gibi oyunlarda analog eksenlerin kusursuz aktarımı için Windows Aygıt Yöneticisindeki eski donanım kalıntılarını (hayalet cihazları) sildiğinizden ve Steam kütüphanesinden oyuna sağ tıklayıp **"Steam Girdisini Devre Dışı Bırak"** seçeneğini işaretlediğinizden emin olun.
+*   **Uyarı:**
+    *   Sunucuyu Bluetooth'u açmadan önce başlatırsanız, Bluetooth'u açtıktan sonra sunucuyu yeniden başlatmanız gerekir.
+    *   Eğer internet ile kullanmak isterseniz, yalnızca Özel Ağlarda (private networks) çalışır.
+
+Sunucu kurulum dosyası setup.exe'yi indirmek için -> <a href="https://github.com/Navilastro/DoYaDi/releases/tag/server_setup">İndir</a>. Arka planda güvenlik duvarı izinlerini otomatik halleder.
 
 <h4>.iss özel bölümü:</h4>
- 
-    [Run]
 
-    ; Firewall kurallarini sessizce ekler. Sadece Özel Aglarda (profile=private) ve sadece DoYaDi_Server.exe için izin verir.
-    Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DoYaDi UDP Discovery"" dir=in action=allow protocol=UDP localport=8889 profile=private program=""{app}{#MyAppExeName}"""; Flags: runhidden
-    Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DoYaDi UDP Data"" dir=in action=allow protocol=UDP localport=8888 profile=private program=""{app}{#MyAppExeName}"""; Flags: runhidden
+    [Languages]
+      Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
+      Name: "english"; MessagesFile: "compiler:Default.isl"
 
-    ; Kurulum biter bitmez programi calistirir.
-    Filename: "{app}{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+    [Tasks]
+      Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
+      [Files]
+      Source: "..\DoYaDi_Server\x64\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+
+      [Icons]
+      Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+      Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+
+      [INI]
+      Filename: "{app}\config.ini"; Section: "Settings"; Key: "Language"; String: "{language}"
+
+      [Dirs]
+      Name: "{app}\DoYaDi_Ek"
+
+      [Run]
+
+      Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DoYaDi UDP Discovery"" dir=in action=allow protocol=UDP localport=8889 profile=private program=""{app}\{#MyAppExeName}"""; Flags: runhidden
+      Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DoYaDi UDP Data"" dir=in action=allow protocol=UDP localport=8888 profile=private program=""{app}\{#MyAppExeName}"""; Flags: runhidden
+      Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DoYaDi UDP Telemetry"" dir=in action=allow protocol=UDP localport=8890 profile=private program=""{app}\{#MyAppExeName}"""; Flags: runhidden
+      Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""DoYaDi UDP Addon"" dir=in action=allow protocol=UDP localport=8891 profile=private program=""{app}\{#MyAppExeName}"""; Flags: runhidden
+
+      Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 
-    [UninstallRun]
-   
-    ; Program bilgisayardan kaldirilirken iz birakmamak icin Firewall kurallarini temizler.
-    Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DoYaDi UDP Discovery"""; Flags: runhidden
-    Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DoYaDi UDP Data"""; Flags: runhidden
+      [UninstallRun]
+      Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DoYaDi UDP Discovery"""; Flags: runhidden
+      Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DoYaDi UDP Data"""; Flags: runhidden
+      Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DoYaDi UDP Telemetry"""; Flags: runhidden
+      Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""DoYaDi UDP Addon"""; Flags: runhidden
 
 <h2>Mobil Uygulama:</h2>
 
@@ -120,3 +121,8 @@ Ayrıca doğrudan <a href="https://github.com/Navilastro/DoYaDi/releases/tag/DoY
 
 👨‍💻 Geliştirici
   >Efe Pehlivan
+
+
+<p align="center">
+  <sub>Copyright (c) 2026. Tüm hakları saklıdır. İzinsiz kopyalanamaz ve kullanılamaz.</sub>
+</p>

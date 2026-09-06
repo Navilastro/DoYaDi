@@ -5,7 +5,7 @@
 #define MyAppName "DoYaDi_Server"
 #define MyAppVersion "1.5"
 #define MyAppPublisher "Navilastro"
-#define MyAppURL "https://www.Navilastro.tk/DoYaDi-Server-Setup"
+#define MyAppURL "https://www.Navilastro.tk"
 #define MyAppExeName "DoYaDi_Server.exe"
 
 [Setup]

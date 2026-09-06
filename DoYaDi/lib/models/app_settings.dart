@@ -122,6 +122,11 @@ class AppSettings {
   /// Aralık: 0.5 – 3.0
   double joystickSensitivity;
 
+  // ── Joystick Çalışma Modu ──────────────────────────────────────────────────
+  /// 0: Sabit (Fixed), 1: Sürüklenen (Floating Base), 2: Belirme (Spawn)
+  /// Global ayar — sol ve sağ joystick aynı modu paylaşır.
+  int joystickMode;
+
   // ── Buton Basış Süre Kontrolleri ───────────────────────────────────────────
   int globalButtonPressMode; // 0: Anlık, 1: Süreli, 2: Toggle, 3: Hızlı (Eski)
   int globalButtonPressDurationMs;
@@ -255,6 +260,7 @@ class AppSettings {
     this.layout5Profiles = const {},
     this.activeLayout5Profile,
     this.joystickSensitivity = 1.0,
+    this.joystickMode = 0,
     this.globalButtonPressMode = 0,
     this.globalButtonPressDurationMs = 2000,
     this.customButtonPressModes = const {},

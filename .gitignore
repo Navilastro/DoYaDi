@@ -4,3 +4,24 @@
 .vs/
 Thumbs.db
 .DS_Store
+
+# Debug ve Derleme Çıktıları
+build/
+target/
+.dart_tool/
+*.log
+*.apk
+*.ipa
+*.exe
+*.obj
+*.pdb
+x64/
+x86/
+Debug/
+Release/
+
+# AI Asistanı
+.claudiaideconfig
+
+# Özel Eklenti Klasörü (Kurulum dosyasından sonra oluşturulur)
+DoYaDi_Ek/

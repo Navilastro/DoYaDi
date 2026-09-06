@@ -99,7 +99,7 @@ class KeyboardKeys {
       ' ': 1032,
       '\'': 1222,
       '*': 1106, // Numpad *
-      '+': 1187, // OEM_PLUS
+      '+': 1137, // Özel Unicode (+)
       '-': 1189, // OEM_MINUS
       '/': 1191, // OEM_2
       '[': 1219, // OEM_4
@@ -147,7 +147,7 @@ class KeyboardKeys {
       base['ş'] = 1216; // Özel Unicode (1216 -> 216)
       base['İ'] = 1217; // Özel Unicode (1217 -> 217)
       base['ö'] = 1218; // Özel Unicode (1218 -> 218)
-      base['ç'] = 1219; // Özel Unicode (1219 -> 219)
+      base['ç'] = 1136; // Özel Unicode (1136 -> 136)
     }
 
     return base;

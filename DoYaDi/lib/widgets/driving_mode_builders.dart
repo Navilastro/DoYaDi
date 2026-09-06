@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../models/app_settings.dart';
 import '../models/layout5_item.dart';
+import '../models/joystick_mode.dart';
 import '../widgets/driving_painters.dart';
 import '../widgets/dynamic_steering_painter.dart';
 import '../widgets/driving_tap_zone.dart';
 import '../widgets/joystick_widget.dart';
+import '../widgets/joystick/joystick_spawn_layer.dart';
 import '../screens/driving_screen_state.dart';
 import '../core/utils/app_translations.dart';
 import '../core/sensor_manager.dart';
@@ -272,6 +274,9 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
         items = defaultLayout5();
       }
     }
+    
+    // Katman sırasına (Z-Index) göre küçükten büyüğe sırala
+    items.sort((a, b) => a.zIndex.compareTo(b.zIndex));
 
     // Detect which advanced items are present — determines whether to use 16-byte payload
     final bool hasLeftJoy = items.any((e) => e.type == Layout5ItemType.leftJoystick);
@@ -291,10 +296,23 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
               e.keyIndex >= 2000),
     );
 
+    // Item bazlı hassasiyet değerlerini çıkar (sol/sağ ayrı)
+    double? parsedLeftSens;
+    double? parsedRightSens;
+    for (final item in items) {
+      if (item.type == Layout5ItemType.leftJoystick) {
+        parsedLeftSens = item.sensitivity;
+      } else if (item.type == Layout5ItemType.rightJoystick) {
+        parsedRightSens = item.sensitivity;
+      }
+    }
+
     if (leftJoystickPresent != hasLeftJoy ||
         rightJoystickPresent != hasRightJoy ||
         touchpadPresent != hasTouchpad ||
-        keyboardKeysPresent != hasKbKeys) {
+        keyboardKeysPresent != hasKbKeys ||
+        leftJoySensitivity != parsedLeftSens ||
+        rightJoySensitivity != parsedRightSens) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
@@ -302,17 +320,69 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
             rightJoystickPresent = hasRightJoy;
             touchpadPresent = hasTouchpad;
             keyboardKeysPresent = hasKbKeys;
+            leftJoySensitivity = parsedLeftSens;
+            rightJoySensitivity = parsedRightSens;
           });
         }
       });
     }
 
+    // Joystick modu
+    final joystickMode = JoystickMode.values[s.joystickMode.clamp(0, 3)];
+
+    // Spawn modu için joystick bilgilerini topla
+    List<JoystickSpawnInfo> spawnInfos = [];
+    if (joystickMode.isSpawnLike) {
+      for (final item in items) {
+        if (item.type == Layout5ItemType.leftJoystick ||
+            item.type == Layout5ItemType.rightJoystick) {
+          final cx = item.left * size.width + item.width * size.width / 2;
+          final cy = item.top * size.height + item.height * size.height / 2;
+          final r = math.min(
+            item.width * size.width,
+            item.height * size.height,
+          ) / 2;
+          spawnInfos.add(JoystickSpawnInfo(
+            originCenter: Offset(cx, cy),
+            radius: r,
+            isLeft: item.type == Layout5ItemType.leftJoystick,
+            baseColor: item.bgColor,
+            thumbColor: item.textColor,
+          ));
+        }
+      }
+    }
+
     return Stack(
-      children: items.map((item) => buildMode5Item(item, s, size)).toList(),
+      clipBehavior: Clip.none,
+      children: [
+        // Normal item'lar
+        ...items.map((item) => buildMode5Item(item, s, size, joystickMode)).toList(),
+
+        // Spawn tabanlı modlar: şeffaf dokunma yakalama katmanı (en üstte)
+        if (joystickMode.isSpawnLike && spawnInfos.isNotEmpty)
+          Positioned.fill(
+            child: JoystickSpawnLayer(
+              joystickInfos: spawnInfos,
+              floatingEnabled: joystickMode.isFloating,
+              onJoy0Changed: (x, y) => setState(() {
+                joy0x = x;
+                joy0y = y;
+              }),
+              onJoy1Changed: (x, y) => setState(() {
+                joy1x = x;
+                joy1y = y;
+              }),
+              onActiveChanged: (isLeft) => setState(() {
+                spawnActiveIsLeft = isLeft;
+              }),
+            ),
+          ),
+      ],
     );
   }
 
-  Widget buildMode5Item(Layout5Item item, AppSettings s, Size size) {
+  Widget buildMode5Item(Layout5Item item, AppSettings s, Size size, [JoystickMode joystickMode = JoystickMode.fixed]) {
     final double l = item.left * size.width;
     final double t = item.top * size.height;
     final double w = item.width * size.width;
@@ -321,10 +391,19 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
     Widget content;
     switch (item.type) {
       case Layout5ItemType.leftJoystick:
+        // Spawn tabanlı modlarda: aktif olan joystick spawn layer'da çizilir,
+        // orijinal konumdaki ghost yarı saydam gösterilir
+        final bool isSpawnHidden = joystickMode.isSpawnLike && spawnActiveIsLeft == true;
+        final double ghostOpacity = joystickMode.isSpawnLike
+            ? (isSpawnHidden ? 0.0 : 0.2)
+            : 1.0;
+
         content = JoystickWidget(
           radius: math.min(w, h) / 2,
           baseColor: item.bgColor,
           thumbColor: item.textColor,
+          mode: joystickMode,
+          ghostOpacity: ghostOpacity,
           onChanged: (x, y) {
             setState(() {
               joy0x = x;
@@ -334,10 +413,17 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
         );
         break;
       case Layout5ItemType.rightJoystick:
+        final bool isSpawnHidden = joystickMode.isSpawnLike && spawnActiveIsLeft == false;
+        final double ghostOpacity = joystickMode.isSpawnLike
+            ? (isSpawnHidden ? 0.0 : 0.2)
+            : 1.0;
+
         content = JoystickWidget(
           radius: math.min(w, h) / 2,
           baseColor: item.bgColor,
           thumbColor: item.textColor,
+          mode: joystickMode,
+          ghostOpacity: ghostOpacity,
           onChanged: (x, y) {
             setState(() {
               joy1x = x;
@@ -446,6 +532,19 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
                 HapticManager().triggerHapticType(s, item.customHapticType ?? s.globalHapticType, force: true);
               }
               setState(() => brakePercentage = item.modeValue);
+            } else if (item.mode == ButtonMode.handbrakePct) {
+              if (item.enableHaptic || s.simulatedHapticEnabled) {
+                HapticManager().triggerHapticType(s, item.customHapticType ?? s.globalHapticType, force: true);
+              }
+              setState(() {
+                handbrakePressed = true;
+                handbrakePercentage = item.modeValue;
+              });
+            } else if (item.mode == ButtonMode.clutchPct) {
+              if (item.enableHaptic || s.simulatedHapticEnabled) {
+                HapticManager().triggerHapticType(s, item.customHapticType ?? s.globalHapticType, force: true);
+              }
+              setState(() => clutchPercentage = item.modeValue);
             } else if (item.mode == ButtonMode.macro) {
               if (item.enableHaptic || s.simulatedHapticEnabled) {
                 HapticManager().triggerHapticType(s, item.customHapticType ?? s.globalHapticType, force: true);
@@ -460,6 +559,13 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
               setState(() => gasPercentage = 0.0);
             } else if (item.mode == ButtonMode.brakePct) {
               setState(() => brakePercentage = 0.0);
+            } else if (item.mode == ButtonMode.handbrakePct) {
+              setState(() {
+                handbrakePressed = false;
+                handbrakePercentage = 0.0;
+              });
+            } else if (item.mode == ButtonMode.clutchPct) {
+              setState(() => clutchPercentage = 0.0);
             }
           },
           onPointerCancel: (_) {
@@ -469,6 +575,13 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
               setState(() => gasPercentage = 0.0);
             } else if (item.mode == ButtonMode.brakePct) {
               setState(() => brakePercentage = 0.0);
+            } else if (item.mode == ButtonMode.handbrakePct) {
+              setState(() {
+                handbrakePressed = false;
+                handbrakePercentage = 0.0;
+              });
+            } else if (item.mode == ButtonMode.clutchPct) {
+              setState(() => clutchPercentage = 0.0);
             }
           },
           child: Container(
@@ -496,9 +609,14 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
         content = Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: (e) {
-            tpFingers++;
+            tpActivePointers.add(e.pointer);
+            if (tpFingers > tpMaxFingers) tpMaxFingers = tpFingers;
             if (tpFingers == 1) {
               tpTotalMoveDistance = 0.0;
+              tpGestureStartX = e.localPosition.dx;
+              tpGestureStartY = e.localPosition.dy;
+              tpGestureAccumX = 0.0;
+              tpGestureAccumY = 0.0;
               if (lastTouchpadUpTime != null && DateTime.now().difference(lastTouchpadUpTime!).inMilliseconds < 300) {
                 isTouchpadDragging = true;
                 setState(() => tpClick = 1);
@@ -507,43 +625,95 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
                 isTouchpadDragging = false;
               }
             }
-            if (tpFingers == 2) tpWasTwo = true;
+            if (tpFingers == 2) {
+              tpWasTwo = true;
+              if (isTouchpadDragging) {
+                isTouchpadDragging = false;
+                setState(() => tpClick = 0);
+              }
+            }
             if (tpFingers >= 3) tpWasThree = true;
           },
           onPointerMove: (e) {
             // Accumulate delta — sent in onTick bytes 9-10
-            touchpadDeltaX += e.delta.dx;
-            touchpadDeltaY += e.delta.dy;
+            if (tpFingers == 1) {
+              touchpadDeltaX += e.delta.dx;
+              touchpadDeltaY += e.delta.dy;
+            }
             tpTotalMoveDistance += e.delta.distance;
+            tpGestureAccumX += e.delta.dx;
+            tpGestureAccumY += e.delta.dy;
+            
+            // 2-Finger Continuous Scroll (Wheel)
+            if (tpFingers == 2 && tpMaxFingers == 2) {
+              if (e.delta.dy < -1.0) { // Scroll Up input -> reverse to Scroll Down (5)
+                setState(() => tpClick = 5);
+              } else if (e.delta.dy > 1.0) { // Scroll Down input -> reverse to Scroll Up (4)
+                setState(() => tpClick = 4);
+              } else {
+                setState(() => tpClick = 0);
+              }
+            }
           },
           onPointerUp: (e) {
-            tpFingers--;
+            tpActivePointers.remove(e.pointer);
             if (tpFingers <= 0) {
-              tpFingers = 0;
               bool wasDragging = isTouchpadDragging;
+              
+              double deltaX = tpGestureAccumX;
+              double deltaY = tpGestureAccumY;
 
               // Tıklama ile sürüklemeyi ayır: parmak sürüklendiyse tıklama üretme!
               if (!wasDragging && tpDownTime != null && tpTotalMoveDistance < 8.0) {
                 final dur = DateTime.now().difference(tpDownTime!);
                 if (dur.inMilliseconds < 250) {
                   // Short tap — determine click type by finger count
-                  setState(() {
-                    if (tpWasThree) {
-                      tpClick = 3; // middle click
-                    } else if (tpWasTwo) {
-                      tpClick = 2; // right click
-                    } else {
-                      tpClick = 1; // left click
-                    }
+                  int clickType = 1;
+                  if (tpWasThree) {
+                    clickType = 3; // middle click
+                  } else if (tpWasTwo) {
+                    clickType = 2; // right click
+                  }
+                  
+                  setState(() => tpClick = clickType);
+                  Future.delayed(const Duration(milliseconds: 50), () {
+                    if (mounted && tpClick == clickType) setState(() => tpClick = 0);
                   });
                 }
+              } else if (tpTotalMoveDistance > 30.0) {
+                // Makro Kısayollar (3 veya 4 parmak jest tamamlandığında)
+                if (tpMaxFingers == 3) {
+                  if (deltaY.abs() > deltaX.abs()) {
+                    if (deltaY > 0) {
+                      fireGestureMacro([1091, 1068]); // 3-Finger Down (Win+D)
+                    } else {
+                      fireGestureMacro([1091, 1068]); // 3-Finger Up (Win+D)
+                    }
+                  } else {
+                    if (deltaX < 0) {
+                      fireGestureMacro([1018, 1016, 1009]); // 3-Finger Left (Alt+Shift+Tab)
+                    } else {
+                      fireGestureMacro([1018, 1009]); // 3-Finger Right (Alt+Tab)
+                    }
+                  }
+                } else if (tpMaxFingers == 4) {
+                  if (deltaX.abs() > deltaY.abs()) {
+                    if (deltaX > 0) {
+                      fireGestureMacro([1017, 1091, 1039]); // 4-Finger Right (Ctrl+Win+Right)
+                    } else {
+                      fireGestureMacro([1017, 1091, 1037]); // 4-Finger Left (Ctrl+Win+Left)
+                    }
+                  }
+                }
               }
+
               lastTouchpadUpTime = DateTime.now();
               isTouchpadDragging = false;
               tpWasTwo = false;
               tpWasThree = false;
               tpDownTime = null;
               tpTotalMoveDistance = 0.0;
+              tpMaxFingers = 0;
 
               if (wasDragging) {
                 setState(() => tpClick = 0);
@@ -551,13 +721,17 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
             }
           },
           onPointerCancel: (e) {
-            tpFingers = 0;
-            isTouchpadDragging = false;
-            tpWasTwo = false;
-            tpWasThree = false;
-            tpDownTime = null;
-            tpTotalMoveDistance = 0.0;
-            setState(() => tpClick = 0);
+            tpActivePointers.remove(e.pointer);
+            if (tpFingers <= 0) {
+              tpActivePointers.clear();
+              tpMaxFingers = 0;
+              isTouchpadDragging = false;
+              tpWasTwo = false;
+              tpWasThree = false;
+              tpDownTime = null;
+              tpTotalMoveDistance = 0.0;
+              setState(() => tpClick = 0);
+            }
           },
           child: Container(
             decoration: BoxDecoration(
@@ -703,6 +877,105 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
                 fillPercentage: clutchIconValue,
                 baseColor: Colors.blueAccent,
                 isGas: false,
+              ),
+            ),
+          ),
+        );
+        break;
+      case Layout5ItemType.handbrakeBar:
+        content = Builder(
+          builder: (bctx) {
+            return Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (e) {
+                final box = bctx.findRenderObject() as RenderBox?;
+                if (box != null) {
+                  final localPos = box.globalToLocal(e.position);
+                  final pct = (1.0 - (localPos.dy / box.size.height)).clamp(0.0, 1.0);
+                  setState(() => handbrakePercentage = pct);
+                }
+                HapticManager().triggerLight(s);
+              },
+              onPointerMove: (e) {
+                final box = bctx.findRenderObject() as RenderBox?;
+                if (box != null) {
+                  final localPos = box.globalToLocal(e.position);
+                  final pct = (1.0 - (localPos.dy / box.size.height)).clamp(0.0, 1.0);
+                  setState(() => handbrakePercentage = pct);
+                }
+              },
+              onPointerUp: (_) => setState(() => handbrakePercentage = 0.0),
+              onPointerCancel: (_) => setState(() => handbrakePercentage = 0.0),
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: PedalPainter(
+                    fillPercentage: handbrakePercentage,
+                    baseColor: Colors.redAccent,
+                    bgColor: item.bgColor,
+                    yetsoreColor: s.yetsoreColor,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+        break;
+      case Layout5ItemType.handbrakeIcon:
+        content = Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (_) {
+            setState(() {
+              handbrakePressed = true;
+              handbrakePercentage = 1.0;
+            });
+            HapticManager().triggerLight(s);
+          },
+          onPointerUp: (_) {
+            setState(() {
+              handbrakePressed = false;
+              handbrakePercentage = 0.0;
+            });
+          },
+          onPointerCancel: (_) {
+            setState(() {
+              handbrakePressed = false;
+              handbrakePercentage = 0.0;
+            });
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: handbrakePressed ? Colors.redAccent : Colors.redAccent.withOpacity(0.15),
+              border: Border.all(
+                color: Colors.redAccent,
+                width: 2.5,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                '(P)',
+                style: TextStyle(
+                  color: handbrakePressed ? Colors.white : Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: math.min(w, h) * 0.45,
+                ),
+              ),
+            ),
+          ),
+        );
+        break;
+      case Layout5ItemType.steeringWheelIcon:
+        // Etkileşim için değil, sadece görsel.
+        content = Opacity(
+          opacity: 0.85,
+          child: RepaintBoundary(
+            child: CustomPaint(
+              painter: DynamicSteeringWheelPainter(
+                steeringRatio: 0.0,
+                totalAngleDegrees: 0.0,
+                turnRightColor: item.textColor,
+                turnLeftColor: item.textColor,
+                baseColor: item.textColor.withOpacity(0.3),
               ),
             ),
           ),

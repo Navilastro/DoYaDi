@@ -187,11 +187,13 @@ class _DrivingScreenState extends State<DrivingScreen>
       final double j1y = joy1y.abs() < 0.05 ? 0.0 : joy1y;
 
       // Üstel hassasiyet eğrisi uygula (Exponential Sensitivity Curve)
-      final double sens = settings.joystickSensitivity;
-      final double curve0x = j0x.sign * math.pow(j0x.abs(), sens);
-      final double curve0y = j0y.sign * math.pow(j0y.abs(), sens);
-      final double curve1x = j1x.sign * math.pow(j1x.abs(), sens);
-      final double curve1y = j1y.sign * math.pow(j1y.abs(), sens);
+      // Item bazlı hassasiyet (sol/sağ ayrı), yoksa global fallback
+      final double leftSens = leftJoySensitivity ?? settings.joystickSensitivity;
+      final double rightSens = rightJoySensitivity ?? settings.joystickSensitivity;
+      final double curve0x = j0x.sign * math.pow(j0x.abs(), leftSens);
+      final double curve0y = j0y.sign * math.pow(j0y.abs(), leftSens);
+      final double curve1x = j1x.sign * math.pow(j1x.abs(), rightSens);
+      final double curve1y = j1y.sign * math.pow(j1y.abs(), rightSens);
 
       int leftStickXByte = 128;
       int leftStickYByte = 128;
@@ -255,10 +257,9 @@ class _DrivingScreenState extends State<DrivingScreen>
       while (kbKeys.length < 4) kbKeys.add(0);
       payload.addAll(kbKeys);
 
-      // Reset touchpad deltas and click after sending
+      // Reset touchpad deltas after sending (but NOT clicks, gestures handle their own release)
       touchpadDeltaX = 0.0;
       touchpadDeltaY = 0.0;
-      if (!isTouchpadDragging && tpClick != 0) setState(() => tpClick = 0);
     }
 
     payload.add(221);

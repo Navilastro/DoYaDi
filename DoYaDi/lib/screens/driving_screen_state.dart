@@ -57,13 +57,21 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   double touchpadDeltaX = 0.0;
   double touchpadDeltaY = 0.0;
   int tpClick = 0; // 0=none, 1=left, 2=right, 3=middle
-  int tpFingers = 0;
+  Set<int> tpActivePointers = {};
+  int get tpFingers => tpActivePointers.length;
   bool tpWasTwo = false;
   bool tpWasThree = false;
   DateTime? tpDownTime;
   DateTime? lastTouchpadUpTime;
   bool isTouchpadDragging = false;
   double tpTotalMoveDistance = 0.0;
+  
+  // Touchpad Gestures
+  int tpMaxFingers = 0;
+  double tpGestureStartX = 0.0;
+  double tpGestureStartY = 0.0;
+  double tpGestureAccumX = 0.0;
+  double tpGestureAccumY = 0.0;
 
   // Mode 5 layout presence flags — determine whether to use 16-byte payload
   bool leftJoystickPresent = false;
@@ -71,6 +79,15 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   bool get joystickPresent => leftJoystickPresent || rightJoystickPresent;
   bool touchpadPresent = false;
   bool keyboardKeysPresent = false;
+
+  // Mode 5: Joystick item bazlı hassasiyet (sol/sağ ayrı)
+  // Layout parse edilirken set edilir. null ise global fallback kullanılır.
+  double? leftJoySensitivity;
+  double? rightJoySensitivity;
+
+  // Mode 5: Spawn modu — aktif spawn bilgisi (hangi joystick spawn edildi)
+  // null = hiçbiri spawn değil, true = sol aktif, false = sağ aktif
+  bool? spawnActiveIsLeft;
 
   // Mode 5/6: pedal icon acceleration state
   double gasPedalIconValue = 0.0;
@@ -518,6 +535,28 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
       }
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Gesture Macro çalıştırma (Çok parmaklı jestler için)
+  // ──────────────────────────────────────────────────────────────────────────
+  void fireGestureMacro(List<int> keys) {
+    if (keys.isEmpty) return;
+    setState(() {
+      for (final k in keys) {
+        if (k > 0) pressedKeys.add(k);
+      }
+    });
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        setState(() {
+          for (final k in keys) {
+            if (k > 0) pressedKeys.remove(k);
+          }
+        });
+      }
+    });
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // Debriyaj İkon İvmelenme Yardımcıları (0 -> %100 ramp-up)
   // ──────────────────────────────────────────────────────────────────────────

@@ -98,15 +98,62 @@ void ResetSlotInputs(int slotIndex) {
     XUSB_REPORT_INIT(&report);
     vigem_target_x360_update(client, slots[slotIndex].pad, report);
 
-    // Basılı kalan tuşları ve tıklamaları bırak
+    // Basılı kalan tuşları bırak
     for (int oldKey : slots[slotIndex].lastKeys) {
         INPUT keyUpInput = { 0 };
         keyUpInput.type = INPUT_KEYBOARD;
-        keyUpInput.ki.wVk = oldKey;
-        keyUpInput.ki.dwFlags = KEYEVENTF_KEYUP;
+        if ((oldKey >= 193 && oldKey <= 218) || oldKey == 136 || oldKey == 137) {
+            WORD symbol = 0;
+            if (oldKey == 193) symbol = '@';
+            else if (oldKey == 194) symbol = '#';
+            else if (oldKey == 195) symbol = '$';
+            else if (oldKey == 196) symbol = '%';
+            else if (oldKey == 197) symbol = '^';
+            else if (oldKey == 198) symbol = '&';
+            else if (oldKey == 199) symbol = '(';
+            else if (oldKey == 200) symbol = ')';
+            else if (oldKey == 201) symbol = '?';
+            else if (oldKey == 202) symbol = '{';
+            else if (oldKey == 203) symbol = '}';
+            else if (oldKey == 204) symbol = '_';
+            else if (oldKey == 205) symbol = 0x00E6; // æ
+            else if (oldKey == 206) symbol = 0x00C6; // Æ
+            else if (oldKey == 207) symbol = '!';
+            else if (oldKey == 208) symbol = '<';
+            else if (oldKey == 209) symbol = '>';
+            else if (oldKey == 210) symbol = ':';
+            else if (oldKey == 211) symbol = '"';
+            else if (oldKey == 212) symbol = '|';
+            else if (oldKey == 213) symbol = 0x0131; // ı
+            else if (oldKey == 214) symbol = 0x011F; // ğ
+            else if (oldKey == 215) symbol = 0x00FC; // ü
+            else if (oldKey == 216) symbol = 0x015F; // ş
+            else if (oldKey == 217) symbol = 0x0130; // İ
+            else if (oldKey == 218) symbol = 0x00F6; // ö
+            else if (oldKey == 136) symbol = 0x00E7; // ç
+            else if (oldKey == 137) symbol = '+'; // +
+            
+            keyUpInput.ki.wScan = symbol;
+            keyUpInput.ki.wVk = 0;
+            keyUpInput.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+        } else {
+            keyUpInput.ki.wVk = oldKey;
+            keyUpInput.ki.dwFlags = KEYEVENTF_KEYUP;
+        }
         SendInput(1, &keyUpInput, sizeof(INPUT));
     }
     slots[slotIndex].lastKeys.clear();
+
+    // Basılı kalan fare tıklamalarını bırak
+    int lastClick = slots[slotIndex].lastMouseClick;
+    if (lastClick >= 1 && lastClick <= 3) {
+        INPUT clickUpInput = { 0 };
+        clickUpInput.type = INPUT_MOUSE;
+        if (lastClick == 1) clickUpInput.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+        else if (lastClick == 2) clickUpInput.mi.dwFlags = MOUSEEVENTF_RIGHTUP;
+        else if (lastClick == 3) clickUpInput.mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
+        SendInput(1, &clickUpInput, sizeof(INPUT));
+    }
     slots[slotIndex].lastMouseClick = 0;
     slots[slotIndex].inputActive = false;
 }
@@ -219,8 +266,22 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
             SendInput(1, &moveInput, sizeof(INPUT));
         }
 
-        // --- 2. FARE TIKLAMALARI (Byte 11) ---
+        // --- 2. FARE TIKLAMALARI VE JESTLER (Byte 11) ---
         int currentMouseClick = buffer[11];
+
+        // SÜREKLİ KAYDIRMA (Scroll) - Sadece değiştiğinde değil, her UDP paketinde çalışır
+        if (currentMouseClick == 4 || currentMouseClick == 5) {
+            INPUT scrollInput = { 0 };
+            scrollInput.type = INPUT_MOUSE;
+            scrollInput.mi.dwFlags = MOUSEEVENTF_WHEEL;
+            
+            // WHEEL_DELTA(120) çok hızlı olduğu için pürüzsüz kaydırma için 30'a düşürüldü
+            if (currentMouseClick == 4) scrollInput.mi.mouseData = 30;
+            else if (currentMouseClick == 5) scrollInput.mi.mouseData = static_cast<DWORD>(-30);
+            
+            SendInput(1, &scrollInput, sizeof(INPUT));
+        }
+
         if (currentMouseClick != slot.lastMouseClick) {
             INPUT clickInput = { 0 };
             clickInput.type = INPUT_MOUSE;
@@ -234,7 +295,10 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
             if (currentMouseClick == 3) clickInput.mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN;
             else if (slot.lastMouseClick == 3) clickInput.mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
 
-            SendInput(1, &clickInput, sizeof(INPUT));
+            if (clickInput.mi.dwFlags != 0) {
+                SendInput(1, &clickInput, sizeof(INPUT));
+            }
+
             slot.lastMouseClick = currentMouseClick;
         }
 
@@ -251,7 +315,7 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
             if (std::find(currentKeys.begin(), currentKeys.end(), oldKey) == currentKeys.end()) {
                 INPUT keyUpInput = { 0 };
                 keyUpInput.type = INPUT_KEYBOARD;
-                if (oldKey >= 193 && oldKey <= 219) {
+                if ((oldKey >= 193 && oldKey <= 218) || oldKey == 136 || oldKey == 137) {
                     WORD symbol = 0;
                     if (oldKey == 193) symbol = '@';
                     else if (oldKey == 194) symbol = '#';
@@ -279,7 +343,8 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
                     else if (oldKey == 216) symbol = 0x015F; // ş
                     else if (oldKey == 217) symbol = 0x0130; // İ
                     else if (oldKey == 218) symbol = 0x00F6; // ö
-                    else if (oldKey == 219) symbol = 0x00E7; // ç
+                    else if (oldKey == 136) symbol = 0x00E7; // ç
+                    else if (oldKey == 137) symbol = '+'; // +
                     
                     keyUpInput.ki.wScan = symbol;
                     keyUpInput.ki.wVk = 0;
@@ -297,7 +362,7 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
             if (std::find(slot.lastKeys.begin(), slot.lastKeys.end(), newKey) == slot.lastKeys.end()) {
                 INPUT keyDownInput = { 0 };
                 keyDownInput.type = INPUT_KEYBOARD;
-                if (newKey >= 193 && newKey <= 219) {
+                if ((newKey >= 193 && newKey <= 218) || newKey == 136 || newKey == 137) {
                     WORD symbol = 0;
                     if (newKey == 193) symbol = '@';
                     else if (newKey == 194) symbol = '#';
@@ -325,7 +390,8 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
                     else if (newKey == 216) symbol = 0x015F; // ş
                     else if (newKey == 217) symbol = 0x0130; // İ
                     else if (newKey == 218) symbol = 0x00F6; // ö
-                    else if (newKey == 219) symbol = 0x00E7; // ç
+                    else if (newKey == 136) symbol = 0x00E7; // ç
+                    else if (newKey == 137) symbol = '+'; // +
                     
                     keyDownInput.ki.wScan = symbol;
                     keyDownInput.ki.wVk = 0;
