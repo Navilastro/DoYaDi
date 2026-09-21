@@ -356,10 +356,9 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Normal item'lar
-        ...items.map((item) => buildMode5Item(item, s, size, joystickMode)).toList(),
-
-        // Spawn tabanlı modlar: şeffaf dokunma yakalama katmanı (en üstte)
+        // Spawn tabanlı modlar: şeffaf dokunma yakalama katmanı
+        // ÖNCE yerleştirilir ki üstündeki butonlar/touchpad hit test önceliği alsın.
+        // Yalnızca boş alanlara dokunulduğunda aktifleşir.
         if (joystickMode.isSpawnLike && spawnInfos.isNotEmpty)
           Positioned.fill(
             child: JoystickSpawnLayer(
@@ -378,6 +377,9 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
               }),
             ),
           ),
+
+        // Normal item'lar (üst katman — hit test önceliği bunlarda)
+        ...items.map((item) => buildMode5Item(item, s, size, joystickMode)).toList(),
       ],
     );
   }
@@ -965,20 +967,40 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
         );
         break;
       case Layout5ItemType.steeringWheelIcon:
-        // Etkileşim için değil, sadece görsel.
-        content = Opacity(
-          opacity: 0.85,
-          child: RepaintBoundary(
+        final sensor = SensorManager();
+        final steerRad = steeringAngle * 75.0 * math.pi / 180.0;
+        final deg = sensor.pitchDeg;
+
+        Widget steeringWidget;
+        if (s.mod6SteeringStyle == 1) {
+          steeringWidget = RepaintBoundary(
             child: CustomPaint(
               painter: DynamicSteeringWheelPainter(
-                steeringRatio: 0.0,
-                totalAngleDegrees: 0.0,
+                steeringRatio: steeringAngle,
+                totalAngleDegrees: deg * (s.steeringAngle / 180.0),
                 turnRightColor: item.textColor,
                 turnLeftColor: item.textColor,
-                baseColor: item.textColor.withOpacity(0.3),
+                baseColor: item.textColor.withValues(alpha: 0.3),
               ),
+              child: const SizedBox.expand(),
             ),
-          ),
+          );
+        } else {
+          steeringWidget = RepaintBoundary(
+            child: CustomPaint(
+              painter: SteeringWheelPainter(
+                angle: steerRad,
+                fullTurns: sensor.fullTurns,
+                rimColor: item.textColor,
+              ),
+              child: const SizedBox.expand(),
+            ),
+          );
+        }
+        
+        content = Opacity(
+          opacity: 0.85,
+          child: steeringWidget,
         );
         break;
       case Layout5ItemType.handbrakeButton:
@@ -1011,13 +1033,31 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
         );
         break;
     }
+    // Floating modda joystick base sürüklenebilir — Positioned sınırlarını aşamaması
+    // için OverflowBox ile sarılır.
+    final bool isFloatingJoy = (item.type == Layout5ItemType.leftJoystick ||
+        item.type == Layout5ItemType.rightJoystick) &&
+        joystickMode == JoystickMode.floatingBase;
+
+    final Widget child = isFloatingJoy
+        ? OverflowBox(
+            alignment: Alignment.center,
+            maxWidth: double.infinity,
+            maxHeight: double.infinity,
+            child: SizedBox(
+              width: w,
+              height: h,
+              child: Transform.rotate(angle: item.rotation, child: content),
+            ),
+          )
+        : Transform.rotate(angle: item.rotation, child: content);
 
     return Positioned(
       left: l,
       top: t,
       width: w,
       height: h,
-      child: Transform.rotate(angle: item.rotation, child: content),
+      child: child,
     );
   }
 

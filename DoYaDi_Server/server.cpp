@@ -102,7 +102,7 @@ void ResetSlotInputs(int slotIndex) {
     for (int oldKey : slots[slotIndex].lastKeys) {
         INPUT keyUpInput = { 0 };
         keyUpInput.type = INPUT_KEYBOARD;
-        if ((oldKey >= 193 && oldKey <= 218) || oldKey == 136 || oldKey == 137) {
+        if ((oldKey >= 193 && oldKey <= 218) || (oldKey >= 136 && oldKey <= 147)) {
             WORD symbol = 0;
             if (oldKey == 193) symbol = '@';
             else if (oldKey == 194) symbol = '#';
@@ -132,6 +132,16 @@ void ResetSlotInputs(int slotIndex) {
             else if (oldKey == 218) symbol = 0x00F6; // ö
             else if (oldKey == 136) symbol = 0x00E7; // ç
             else if (oldKey == 137) symbol = '+'; // +
+            else if (oldKey == 138) symbol = '\'';
+            else if (oldKey == 139) symbol = '-';
+            else if (oldKey == 140) symbol = '/';
+            else if (oldKey == 141) symbol = '[';
+            else if (oldKey == 142) symbol = ']';
+            else if (oldKey == 143) symbol = ';';
+            else if (oldKey == 144) symbol = '\\';
+            else if (oldKey == 145) symbol = ',';
+            else if (oldKey == 146) symbol = '.';
+            else if (oldKey == 147) symbol = '=';
             
             keyUpInput.ki.wScan = symbol;
             keyUpInput.ki.wVk = 0;
@@ -315,7 +325,7 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
             if (std::find(currentKeys.begin(), currentKeys.end(), oldKey) == currentKeys.end()) {
                 INPUT keyUpInput = { 0 };
                 keyUpInput.type = INPUT_KEYBOARD;
-                if ((oldKey >= 193 && oldKey <= 218) || oldKey == 136 || oldKey == 137) {
+                if ((oldKey >= 193 && oldKey <= 218) || (oldKey >= 136 && oldKey <= 147)) {
                     WORD symbol = 0;
                     if (oldKey == 193) symbol = '@';
                     else if (oldKey == 194) symbol = '#';
@@ -345,6 +355,16 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
                     else if (oldKey == 218) symbol = 0x00F6; // ö
                     else if (oldKey == 136) symbol = 0x00E7; // ç
                     else if (oldKey == 137) symbol = '+'; // +
+                    else if (oldKey == 138) symbol = '\'';
+                    else if (oldKey == 139) symbol = '-';
+                    else if (oldKey == 140) symbol = '/';
+                    else if (oldKey == 141) symbol = '[';
+                    else if (oldKey == 142) symbol = ']';
+                    else if (oldKey == 143) symbol = ';';
+                    else if (oldKey == 144) symbol = '\\';
+                    else if (oldKey == 145) symbol = ',';
+                    else if (oldKey == 146) symbol = '.';
+                    else if (oldKey == 147) symbol = '=';
                     
                     keyUpInput.ki.wScan = symbol;
                     keyUpInput.ki.wVk = 0;
@@ -362,7 +382,7 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
             if (std::find(slot.lastKeys.begin(), slot.lastKeys.end(), newKey) == slot.lastKeys.end()) {
                 INPUT keyDownInput = { 0 };
                 keyDownInput.type = INPUT_KEYBOARD;
-                if ((newKey >= 193 && newKey <= 218) || newKey == 136 || newKey == 137) {
+                if ((newKey >= 193 && newKey <= 218) || (newKey >= 136 && newKey <= 147)) {
                     WORD symbol = 0;
                     if (newKey == 193) symbol = '@';
                     else if (newKey == 194) symbol = '#';
@@ -392,6 +412,16 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
                     else if (newKey == 218) symbol = 0x00F6; // ö
                     else if (newKey == 136) symbol = 0x00E7; // ç
                     else if (newKey == 137) symbol = '+'; // +
+                    else if (newKey == 138) symbol = '\'';
+                    else if (newKey == 139) symbol = '-';
+                    else if (newKey == 140) symbol = '/';
+                    else if (newKey == 141) symbol = '[';
+                    else if (newKey == 142) symbol = ']';
+                    else if (newKey == 143) symbol = ';';
+                    else if (newKey == 144) symbol = '\\';
+                    else if (newKey == 145) symbol = ',';
+                    else if (newKey == 146) symbol = '.';
+                    else if (newKey == 147) symbol = '=';
                     
                     keyDownInput.ki.wScan = symbol;
                     keyDownInput.ki.wVk = 0;

@@ -11,6 +11,7 @@ import '../widgets/joystick_widget.dart';
 import '../widgets/driving_painters.dart';
 import '../core/utils/app_translations.dart';
 import '../core/utils/template_profiles.dart';
+import '../widgets/dynamic_steering_painter.dart';
 
 class CustomLayout5EditorScreen extends StatefulWidget {
   const CustomLayout5EditorScreen({super.key});
@@ -874,6 +875,38 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
             baseColor: Colors.blueAccent,
             isGas: false,
           ),
+        );
+      case Layout5ItemType.steeringWheelIcon:
+        final s = Provider.of<SettingsProvider>(context, listen: false).settings;
+        Widget steeringWidget;
+        if (s.mod6SteeringStyle == 1) {
+          steeringWidget = RepaintBoundary(
+            child: CustomPaint(
+              painter: DynamicSteeringWheelPainter(
+                steeringRatio: 0.0,
+                totalAngleDegrees: 0.0,
+                turnRightColor: item.textColor,
+                turnLeftColor: item.textColor,
+                baseColor: item.textColor.withOpacity(0.3),
+              ),
+              child: const SizedBox.expand(),
+            ),
+          );
+        } else {
+          steeringWidget = RepaintBoundary(
+            child: CustomPaint(
+              painter: SteeringWheelPainter(
+                angle: 0.0,
+                fullTurns: 1,
+                rimColor: item.textColor,
+              ),
+              child: const SizedBox.expand(),
+            ),
+          );
+        }
+        return Opacity(
+          opacity: 0.85,
+          child: steeringWidget,
         );
       case Layout5ItemType.handbrakeButton:
         return Container(

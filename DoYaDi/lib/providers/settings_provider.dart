@@ -57,7 +57,7 @@ class SettingsProvider with ChangeNotifier {
     _settings.joystickSensitivity =
         (prefs.getDouble('joystickSensitivity') ?? 1.0).clamp(0.5, 3.0);
     _settings.joystickMode =
-        (prefs.getInt('joystickMode') ?? 0).clamp(0, 2);
+        (prefs.getInt('joystickMode') ?? 0).clamp(0, 3);
     final profilesStr = prefs.getString('layout5Profiles');
     if (profilesStr != null && profilesStr.isNotEmpty) {
       try {
@@ -344,7 +344,7 @@ class SettingsProvider with ChangeNotifier {
     );
     await prefs.setInt(
       'joystickMode',
-      _settings.joystickMode.clamp(0, 2),
+      _settings.joystickMode.clamp(0, 3),
     );
     await prefs.setString(
       'layout5Profiles',
