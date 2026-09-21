@@ -18,6 +18,10 @@ class SensorManager {
   /// Ham pitch açısı (derece). SteeringPainter'a iletilir.
   double pitchDeg = 0.0;
 
+  /// Sağ analog X ve Y ekseni (Gyro-to-Right Analog için) (-1.0 .. 1.0)
+  double rightAnalogX = 0.0;
+  double rightAnalogY = 0.0;
+
   /// Kümülatif toplam açı (derece) — Mod 6 gösterimi için
   double cumulativeDegrees = 0.0;
 
@@ -105,6 +109,33 @@ class SensorManager {
         steeringAngle = _accelSteeringAngle;
       }
     }
+
+    // ── Gyro-to-Right Analog Hesaplaması (Roll ve Pitch) ──
+    // Roll (X ekseni) - Sağa Sola Yatırma
+    double rawRoll = math.asin((event.y / 9.8).clamp(-1.0, 1.0)) * (180 / math.pi);
+    // Pitch (Y ekseni) - Öne Arkaya Yatırma
+    // math.asin(event.x) kullanmak telefonu yere paralel (düz) varsayar.
+    // Bunun yerine, kullanıcının tutuşuna göre kalibre edilmiş 'rawPitch' değerini (yukarıda hesaplanan) kullanıyoruz.
+    // İleri (ekran yere) eğildiğinde pozitif, Geri (ekran tavana) eğildiğinde negatif olur.
+    double rawPitchY = rawPitch;
+    
+    // Deadzone (7 derece) ve Max Açı (45 derece)
+    const double deadzone = 7.0;
+    const double maxAngle = 45.0;
+    
+    double targetRx = 0.0;
+    if (rawRoll.abs() > deadzone) {
+      targetRx = ((rawRoll.abs() - deadzone) / (maxAngle - deadzone)).clamp(0.0, 1.0) * rawRoll.sign;
+    }
+    
+    double targetRy = 0.0;
+    if (rawPitchY.abs() > deadzone) {
+      targetRy = ((rawPitchY.abs() - deadzone) / (maxAngle - deadzone)).clamp(0.0, 1.0) * rawPitchY.sign;
+    }
+    
+    // LPF Smoothing (Yumuşatma) - takılmaları önlemek için %20 oranında hedefe yaklaşır
+    rightAnalogX += (targetRx - rightAnalogX) * 0.2;
+    rightAnalogY += (targetRy - rightAnalogY) * 0.2;
   }
 
   // ── Gyroscope işleme (Kümülatif Mod) ──────────────────────────────────────
@@ -142,5 +173,7 @@ class SensorManager {
     isCumulativeActive = false;
     cumulativeDegrees = 0.0;
     fullTurns = 0;
+    rightAnalogX = 0.0;
+    rightAnalogY = 0.0;
   }
 }

@@ -85,6 +85,9 @@ class Layout5Item {
   bool enableHaptic; // true ise dokunulduğunda titreşim tetiklenir
   int? customHapticType; // 0: Hafif, 1: Orta, 2: Ağır, 3: Seçim, 4: Titreşim | null: Global
   int? customHapticTrigger; // 0: Basılınca, 1: Bırakılınca, 2: Basıldığı Süre, 3: Aktif Süre | null: Global
+  
+  // Gyro-to-Right Analog (DualSense free look tarzı) - Sadece Left Joystick için
+  bool gyroToRightAnalog;
 
   Layout5Item({
     required this.id,
@@ -108,6 +111,7 @@ class Layout5Item {
     this.enableHaptic = false,
     this.customHapticType,
     this.customHapticTrigger,
+    this.gyroToRightAnalog = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -132,6 +136,7 @@ class Layout5Item {
     'enableHaptic': enableHaptic,
     'customHapticType': customHapticType,
     'customHapticTrigger': customHapticTrigger,
+    'gyroToRightAnalog': gyroToRightAnalog,
   };
 
   factory Layout5Item.fromJson(Map<String, dynamic> json) {
@@ -182,6 +187,7 @@ class Layout5Item {
       enableHaptic: json['enableHaptic'] as bool? ?? false,
       customHapticType: json['customHapticType'] as int?,
       customHapticTrigger: json['customHapticTrigger'] as int?,
+      gyroToRightAnalog: json['gyroToRightAnalog'] as bool? ?? false,
     );
   }
 
@@ -212,6 +218,7 @@ class Layout5Item {
     bool clearCustomHapticType = false,
     int? customHapticTrigger,
     bool clearCustomHapticTrigger = false,
+    bool? gyroToRightAnalog,
   }) {
     return Layout5Item(
       id: id ?? this.id,
@@ -243,6 +250,7 @@ class Layout5Item {
       customHapticTrigger: clearCustomHapticTrigger
           ? null
           : (customHapticTrigger ?? this.customHapticTrigger),
+      gyroToRightAnalog: gyroToRightAnalog ?? this.gyroToRightAnalog,
     );
   }
 }

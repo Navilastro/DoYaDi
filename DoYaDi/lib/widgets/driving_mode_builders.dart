@@ -281,6 +281,9 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
     // Detect which advanced items are present — determines whether to use 16-byte payload
     final bool hasLeftJoy = items.any((e) => e.type == Layout5ItemType.leftJoystick);
     final bool hasRightJoy = items.any((e) => e.type == Layout5ItemType.rightJoystick);
+    
+    final bool hasGyroRightAnalog = hasLeftJoy && 
+        items.firstWhere((e) => e.type == Layout5ItemType.leftJoystick).gyroToRightAnalog;
 
     final bool hasTouchpad = items.any(
       (e) => e.type == Layout5ItemType.touchpad,
@@ -312,7 +315,8 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
         touchpadPresent != hasTouchpad ||
         keyboardKeysPresent != hasKbKeys ||
         leftJoySensitivity != parsedLeftSens ||
-        rightJoySensitivity != parsedRightSens) {
+        rightJoySensitivity != parsedRightSens ||
+        isGyroToRightAnalogActive != hasGyroRightAnalog) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
@@ -322,6 +326,7 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
             keyboardKeysPresent = hasKbKeys;
             leftJoySensitivity = parsedLeftSens;
             rightJoySensitivity = parsedRightSens;
+            isGyroToRightAnalogActive = hasGyroRightAnalog;
           });
         }
       });

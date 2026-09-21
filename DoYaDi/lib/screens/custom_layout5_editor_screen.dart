@@ -1414,6 +1414,20 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                 ),
               ],
             ),
+            
+            if (item.type == Layout5ItemType.leftJoystick) ...[
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                activeColor: const Color(0xFF40E0D0),
+                title: Text(
+                  AppTranslations.getText('gyro_to_right_analog'),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+                value: item.gyroToRightAnalog,
+                onChanged: (v) => _update(item.copyWith(gyroToRightAnalog: v)),
+              ),
+            ],
           ],
 
           const Divider(color: Colors.white12),

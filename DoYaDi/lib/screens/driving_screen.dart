@@ -192,8 +192,14 @@ class _DrivingScreenState extends State<DrivingScreen>
       final double rightSens = rightJoySensitivity ?? settings.joystickSensitivity;
       final double curve0x = j0x.sign * math.pow(j0x.abs(), leftSens);
       final double curve0y = j0y.sign * math.pow(j0y.abs(), leftSens);
-      final double curve1x = j1x.sign * math.pow(j1x.abs(), rightSens);
-      final double curve1y = j1y.sign * math.pow(j1y.abs(), rightSens);
+      double curve1x = j1x.sign * math.pow(j1x.abs(), rightSens);
+      double curve1y = j1y.sign * math.pow(j1y.abs(), rightSens);
+      
+      // Gyro-to-Right Analog aktifse sensör verisiyle ez
+      if (isGyroToRightAnalogActive) {
+        curve1x = _sensorManager.rightAnalogX;
+        curve1y = _sensorManager.rightAnalogY;
+      }
 
       int leftStickXByte = 128;
       int leftStickYByte = 128;
@@ -207,18 +213,21 @@ class _DrivingScreenState extends State<DrivingScreen>
       }
 
       int rightStickXByte = 128;
-      if (isHandbrakeBarActive && j1x.abs() < 0.05) {
+      if (isHandbrakeBarActive && (!isGyroToRightAnalogActive && j1x.abs() < 0.05)) {
         // El Freni Bar değerini Byte 7'ye (Sağ Analog X) aktar
         rightStickXByte = (handbrakePercentage * 255).clamp(0, 255).round();
-      } else if (j1x.abs() >= 0.05) {
+      } else if (isGyroToRightAnalogActive || j1x.abs() >= 0.05) {
         rightStickXByte = ((curve1x + 1.0) / 2.0 * 255).clamp(0, 255).round();
         if (rightStickXByte == 127) rightStickXByte = 128;
       }
 
-      int rStickYByte = ((curve1y + 1.0) / 2.0 * 255).clamp(0, 255).round();
-      if (isClutchActive && j1y.abs() < 0.05) {
+      int rStickYByte = 128;
+      if (isClutchActive && (!isGyroToRightAnalogActive && j1y.abs() < 0.05)) {
         // Debriyaj değerini Byte 8'e (Sağ Analog Y) aktar
         rStickYByte = (clutchPercentage * 255).clamp(0, 255).round();
+      } else if (isGyroToRightAnalogActive || j1y.abs() >= 0.05) {
+        rStickYByte = ((curve1y + 1.0) / 2.0 * 255).clamp(0, 255).round();
+        if (rStickYByte == 127) rStickYByte = 128;
       }
 
       payload.addAll([
