@@ -80,8 +80,15 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   bool touchpadPresent = false;
   bool keyboardKeysPresent = false;
   
-  // Gyro-to-Right Analog (Sol joystick üzerinde aktifse)
-  bool isGyroToRightAnalogActive = false;
+  // Gyro-to-Right Analog (Sol Joystick üzerinde)
+  int gyroToRightAnalogMode = 0; // 0=Kapalı, 1=Pilot, 2=FPS
+  double gyroRightAnalogSensitivity = 1.0;
+  double gyroRightAnalogDeadzone = 7.0;
+
+  // Gyro-to-Mouse (Touchpad üzerinde)
+  int gyroToMouseMode = 0; // 0=Kapalı, 1=Pilot, 2=FPS
+  double gyroMouseSensitivity = 1.0;
+  double gyroMouseDeadzone = 7.0;
 
   // Mode 5: Joystick item bazlı hassasiyet (sol/sağ ayrı)
   // Layout parse edilirken set edilir. null ise global fallback kullanılır.

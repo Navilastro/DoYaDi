@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "DoYaDi_Server"
-#define MyAppVersion "1.5"
+#define MyAppVersion "1.6"
 #define MyAppPublisher "Navilastro"
 #define MyAppURL "https://www.Navilastro.tk"
 #define MyAppExeName "DoYaDi_Server.exe"

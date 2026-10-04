@@ -22,6 +22,28 @@ class SensorManager {
   double rightAnalogX = 0.0;
   double rightAnalogY = 0.0;
 
+  /// Fare Delta X ve Y (Gyro-to-Mouse için)
+  double mouseDeltaX = 0.0;
+  double mouseDeltaY = 0.0;
+  double _lastTargetMx = 0.0;
+  double _lastTargetMy = 0.0;
+
+  // Pilot modu için biriken (accumulated) açılar
+  double _accumulatedRaPitch = 0.0;
+  double _accumulatedRaYaw = 0.0;
+  double _accumulatedMousePitch = 0.0;
+  double _accumulatedMouseYaw = 0.0;
+
+  /// 0: Kapalı, 1: Pilot (Mutlak/Direkt), 2: FPS (Yumuşatılmış/Sürüklenmeli)
+  int rightAnalogMode = 0;
+  double rightAnalogSensitivity = 1.0;
+  double rightAnalogDeadzone = 7.0;
+  
+  /// 0: Kapalı, 1: Pilot, 2: FPS
+  int mouseMode = 0;
+  double mouseSensitivity = 1.0;
+  double mouseDeadzone = 7.0;
+
   /// Kümülatif toplam açı (derece) — Mod 6 gösterimi için
   double cumulativeDegrees = 0.0;
 
@@ -36,6 +58,9 @@ class SensorManager {
   StreamSubscription? _gyroscopeSub;
   DateTime? _lastGyroTimestamp;
   double _accelSteeringAngle = 0.0; // Accelerometer'den hesaplanan açı
+  
+  // Otomatik merkezleme için hareketsizlik takibi
+  DateTime? _lastGyroMovementTimestamp;
 
   // ── Başlat ─────────────────────────────────────────────────────────────────
   void init(AppSettings settings) {
@@ -83,81 +108,147 @@ class SensorManager {
       multiplier = maxMultiplier;
     }
 
-    // 3. Nihai Direksiyon Verisini Hesaplama
+    // Gyro-to-Right Analog and Mouse will be processed in _processGyroscope
+    // Here we only keep _accelSteeringAngle and normal steering
     double maxG = (settings.steeringAngle / 180.0) * 9.8;
     double normalized = ((event.y / maxG) * multiplier).clamp(-1.0, 1.0);
     _accelSteeringAngle = normalized;
 
-    // Kümülatif modda değilse doğrudan ata
     if (!isCumulativeActive) {
       steeringAngle = normalized;
     }
 
-    // Kümülatif mod geçiş kontrolü (180° eşiği)
     if (settings.isCumulativeSteering) {
       final accelAngleDeg = normalized.abs() * settings.steeringAngle;
       if (!isCumulativeActive && accelAngleDeg >= 175.0) {
-        // Kümülatif moda geç
         isCumulativeActive = true;
         cumulativeDegrees = normalized * settings.steeringAngle;
         _lastGyroTimestamp = null;
       } else if (isCumulativeActive && cumulativeDegrees.abs() < 170.0) {
-        // Normal moda geri dön
         isCumulativeActive = false;
         cumulativeDegrees = 0.0;
         fullTurns = 0;
         steeringAngle = _accelSteeringAngle;
       }
     }
-
-    // ── Gyro-to-Right Analog Hesaplaması (Roll ve Pitch) ──
-    // Roll (X ekseni) - Sağa Sola Yatırma
-    double rawRoll = math.asin((event.y / 9.8).clamp(-1.0, 1.0)) * (180 / math.pi);
-    // Pitch (Y ekseni) - Öne Arkaya Yatırma
-    // math.asin(event.x) kullanmak telefonu yere paralel (düz) varsayar.
-    // Bunun yerine, kullanıcının tutuşuna göre kalibre edilmiş 'rawPitch' değerini (yukarıda hesaplanan) kullanıyoruz.
-    // İleri (ekran yere) eğildiğinde pozitif, Geri (ekran tavana) eğildiğinde negatif olur.
-    double rawPitchY = rawPitch;
-    
-    // Deadzone (7 derece) ve Max Açı (45 derece)
-    const double deadzone = 7.0;
-    const double maxAngle = 45.0;
-    
-    double targetRx = 0.0;
-    if (rawRoll.abs() > deadzone) {
-      targetRx = ((rawRoll.abs() - deadzone) / (maxAngle - deadzone)).clamp(0.0, 1.0) * rawRoll.sign;
-    }
-    
-    double targetRy = 0.0;
-    if (rawPitchY.abs() > deadzone) {
-      targetRy = ((rawPitchY.abs() - deadzone) / (maxAngle - deadzone)).clamp(0.0, 1.0) * rawPitchY.sign;
-    }
-    
-    // LPF Smoothing (Yumuşatma) - takılmaları önlemek için %20 oranında hedefe yaklaşır
-    rightAnalogX += (targetRx - rightAnalogX) * 0.2;
-    rightAnalogY += (targetRy - rightAnalogY) * 0.2;
   }
 
-  // ── Gyroscope işleme (Kümülatif Mod) ──────────────────────────────────────
+  // ── Gyroscope işleme (Kümülatif Mod & Right Analog / Mouse) ───────────────
   void _processGyroscope(GyroscopeEvent event, AppSettings settings) {
-    if (!settings.isCumulativeSteering || !isCumulativeActive) return;
-
     final now = DateTime.now();
     if (_lastGyroTimestamp != null) {
       final dt = now.difference(_lastGyroTimestamp!).inMicroseconds / 1e6;
       if (dt > 0 && dt < 0.5) {
-        // Z eksenindeki açısal hız (rad/s) → derece/s → açı farkı
-        // İşaret tersine çevriliyor: gyro Z ekseni konvansiyonu
-        // cihazın fiziksel dönüş yönüyle ters ürettiği için
-        final deltaAngle = event.z * (180.0 / math.pi) * dt * -1.0;
-        cumulativeDegrees += deltaAngle;
+        
+        // 1. Kümülatif Direksiyon Modu (Z ekseni - Roll)
+        if (settings.isCumulativeSteering && isCumulativeActive) {
+          // Z eksenindeki açısal hız (rad/s) → derece/s → açı farkı
+          final deltaAngle = event.z * (180.0 / math.pi) * dt * -1.0;
+          cumulativeDegrees += deltaAngle;
+          fullTurns = cumulativeDegrees ~/ 360;
+          final maxAngle = settings.steeringAngle;
+          steeringAngle = (cumulativeDegrees / maxAngle).clamp(-1.0, 1.0);
+        }
 
-        // Tam tur sayısını güncelle
-        fullTurns = cumulativeDegrees ~/ 360;
+        // 2. Gyro-to-Right Analog & Mouse İşleme
+        // Telefon dik tutulduğunda: X ekseni pitch (yukarı/aşağı), Y ekseni yaw (sağa/sola döndürme)
+        double gyroPitchDelta = event.x * (180.0 / math.pi) * dt; // yukarı/aşağı
+        double gyroYawDelta = event.y * (180.0 / math.pi) * dt; // sağa/sola
 
-        // Kümülatif açıyı steeringAngle ayarına göre -1.0 .. 1.0'a normalize et
-        final maxAngle = settings.steeringAngle;
-        steeringAngle = (cumulativeDegrees / maxAngle).clamp(-1.0, 1.0);
+        // Sağ Analog
+        if (rightAnalogMode != 0) {
+          if (rightAnalogMode == 1) {
+            // Pilot Modu (Mutlak): Açıları topla, sonra stick değerine çevir
+            _accumulatedRaPitch = (_accumulatedRaPitch + gyroPitchDelta).clamp(-rightAnalogDeadzone * 2 - 45.0, rightAnalogDeadzone * 2 + 45.0);
+            _accumulatedRaYaw = (_accumulatedRaYaw + gyroYawDelta).clamp(-rightAnalogDeadzone * 2 - 45.0, rightAnalogDeadzone * 2 + 45.0);
+            
+            // Merkezden Deadzone çıkararak 0-1 arası (max 45 dereceye kadar) normalize et
+            double raTargetRx = 0.0;
+            if (_accumulatedRaYaw.abs() > rightAnalogDeadzone) {
+              raTargetRx = ((_accumulatedRaYaw.abs() - rightAnalogDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedRaYaw.sign;
+            }
+            double raTargetRy = 0.0;
+            if (_accumulatedRaPitch.abs() > rightAnalogDeadzone) {
+              raTargetRy = ((_accumulatedRaPitch.abs() - rightAnalogDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedRaPitch.sign;
+            }
+            
+            rightAnalogX = (raTargetRx * rightAnalogSensitivity).clamp(-1.0, 1.0);
+            rightAnalogY = (raTargetRy * rightAnalogSensitivity).clamp(-1.0, 1.0);
+          } else {
+            // FPS Modu (Açısal hız - Sürekli hareket)
+            double raX = 0.0;
+            if (gyroYawDelta.abs() > (rightAnalogDeadzone * dt)) {
+               raX = gyroYawDelta * rightAnalogSensitivity; // Sağa/sola hız
+            }
+            double raY = 0.0;
+            if (gyroPitchDelta.abs() > (rightAnalogDeadzone * dt)) {
+               raY = gyroPitchDelta * rightAnalogSensitivity; // Yukarı/aşağı hız
+            }
+            
+            // FPS modu için Stick gibi sürüklenmeli, anlık hızı stick sapması olarak veriyoruz
+            // Stick sapması 0 ile 1 arasında, o yüzden uygun bir çarpan ekliyoruz (örn. /10.0)
+            rightAnalogX += ((raX / 10.0) - rightAnalogX) * 0.3;
+            rightAnalogY += ((raY / 10.0) - rightAnalogY) * 0.3;
+            rightAnalogX = rightAnalogX.clamp(-1.0, 1.0);
+            rightAnalogY = rightAnalogY.clamp(-1.0, 1.0);
+          }
+        } else {
+          _accumulatedRaPitch = 0.0;
+          _accumulatedRaYaw = 0.0;
+        }
+
+        // Fare
+        if (mouseMode != 0) {
+          if (mouseMode == 1) {
+            // Pilot Modu (Mutlak) farede pek yaygın değildir, ancak telefonun baktığı yön fare kursorudur.
+            _accumulatedMousePitch = (_accumulatedMousePitch + gyroPitchDelta).clamp(-mouseDeadzone * 2 - 45.0, mouseDeadzone * 2 + 45.0);
+            _accumulatedMouseYaw = (_accumulatedMouseYaw + gyroYawDelta).clamp(-mouseDeadzone * 2 - 45.0, mouseDeadzone * 2 + 45.0);
+
+            double mTargetRx = 0.0;
+            if (_accumulatedMouseYaw.abs() > mouseDeadzone) {
+              mTargetRx = ((_accumulatedMouseYaw.abs() - mouseDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedMouseYaw.sign;
+            }
+            double mTargetRy = 0.0;
+            if (_accumulatedMousePitch.abs() > mouseDeadzone) {
+              mTargetRy = ((_accumulatedMousePitch.abs() - mouseDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedMousePitch.sign;
+            }
+
+            double mX = mTargetRx * mouseSensitivity;
+            double mY = mTargetRy * mouseSensitivity;
+            mouseDeltaX = (mX - _lastTargetMx) * 100.0;
+            mouseDeltaY = (mY - _lastTargetMy) * 100.0;
+            _lastTargetMx = mX;
+            _lastTargetMy = mY;
+          } else {
+            // FPS Modu farede asıl Flick/Gyro Aiming'dir (Açısal Hız delta olarak doğrudan gönderilir)
+            double mx = 0.0;
+            if (gyroYawDelta.abs() > (mouseDeadzone * dt)) mx = gyroYawDelta;
+            double my = 0.0;
+            if (gyroPitchDelta.abs() > (mouseDeadzone * dt)) my = gyroPitchDelta;
+
+            mouseDeltaX = mx * mouseSensitivity * 25.0; 
+            mouseDeltaY = my * mouseSensitivity * 25.0;
+          }
+        } else {
+          _accumulatedMousePitch = 0.0;
+          _accumulatedMouseYaw = 0.0;
+          mouseDeltaX = 0.0;
+          mouseDeltaY = 0.0;
+        }
+
+        // Hareketsizlik takibi ve Otomatik Merkezleme
+        double movementMagnitude = gyroPitchDelta.abs() + gyroYawDelta.abs();
+        if (movementMagnitude > 0.05) {
+          _lastGyroMovementTimestamp = now;
+        }
+
+        if (settings.gyroCenterMode == 0 && _lastGyroMovementTimestamp != null) {
+          final stillDuration = now.difference(_lastGyroMovementTimestamp!).inMilliseconds / 1000.0;
+          if (stillDuration >= settings.gyroAutoCenterDuration) {
+            recenterGyro();
+            _lastGyroMovementTimestamp = now; // Sürekli sıfırlamaması için
+          }
+        }
       }
     }
     _lastGyroTimestamp = now;
@@ -175,5 +266,13 @@ class SensorManager {
     fullTurns = 0;
     rightAnalogX = 0.0;
     rightAnalogY = 0.0;
+  }
+
+  // ── Manuel Merkezleme ──────────────────────────────────────────────────────
+  void recenterGyro() {
+    _accumulatedRaPitch = 0.0;
+    _accumulatedRaYaw = 0.0;
+    _accumulatedMousePitch = 0.0;
+    _accumulatedMouseYaw = 0.0;
   }
 }

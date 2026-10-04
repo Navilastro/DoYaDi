@@ -282,8 +282,21 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
     final bool hasLeftJoy = items.any((e) => e.type == Layout5ItemType.leftJoystick);
     final bool hasRightJoy = items.any((e) => e.type == Layout5ItemType.rightJoystick);
     
-    final bool hasGyroRightAnalog = hasLeftJoy && 
-        items.firstWhere((e) => e.type == Layout5ItemType.leftJoystick).gyroToRightAnalog;
+    final Layout5Item? leftJoyItem = items.cast<Layout5Item?>().firstWhere(
+      (e) => e != null && e.type == Layout5ItemType.leftJoystick,
+      orElse: () => null,
+    );
+    final int parsedGyroRightAnalogMode = leftJoyItem?.gyroToRightAnalogMode ?? 0;
+    final double parsedGyroRightAnalogSensitivity = leftJoyItem?.gyroRightAnalogSensitivity ?? 1.0;
+    final double parsedGyroRightAnalogDeadzone = leftJoyItem?.gyroRightAnalogDeadzone ?? 7.0;
+
+    final Layout5Item? touchpadItem = items.cast<Layout5Item?>().firstWhere(
+      (e) => e != null && e.type == Layout5ItemType.touchpad,
+      orElse: () => null,
+    );
+    final int parsedGyroMouseMode = touchpadItem?.gyroToMouseMode ?? 0;
+    final double parsedGyroMouseSensitivity = touchpadItem?.gyroMouseSensitivity ?? 1.0;
+    final double parsedGyroMouseDeadzone = touchpadItem?.gyroMouseDeadzone ?? 7.0;
 
     final bool hasTouchpad = items.any(
       (e) => e.type == Layout5ItemType.touchpad,
@@ -316,7 +329,12 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
         keyboardKeysPresent != hasKbKeys ||
         leftJoySensitivity != parsedLeftSens ||
         rightJoySensitivity != parsedRightSens ||
-        isGyroToRightAnalogActive != hasGyroRightAnalog) {
+        gyroToRightAnalogMode != parsedGyroRightAnalogMode ||
+        gyroRightAnalogSensitivity != parsedGyroRightAnalogSensitivity ||
+        gyroRightAnalogDeadzone != parsedGyroRightAnalogDeadzone ||
+        gyroToMouseMode != parsedGyroMouseMode ||
+        gyroMouseSensitivity != parsedGyroMouseSensitivity ||
+        gyroMouseDeadzone != parsedGyroMouseDeadzone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
@@ -326,7 +344,12 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
             keyboardKeysPresent = hasKbKeys;
             leftJoySensitivity = parsedLeftSens;
             rightJoySensitivity = parsedRightSens;
-            isGyroToRightAnalogActive = hasGyroRightAnalog;
+            gyroToRightAnalogMode = parsedGyroRightAnalogMode;
+            gyroRightAnalogSensitivity = parsedGyroRightAnalogSensitivity;
+            gyroRightAnalogDeadzone = parsedGyroRightAnalogDeadzone;
+            gyroToMouseMode = parsedGyroMouseMode;
+            gyroMouseSensitivity = parsedGyroMouseSensitivity;
+            gyroMouseDeadzone = parsedGyroMouseDeadzone;
           });
         }
       });
@@ -610,8 +633,13 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
             ),
           ),
         );
-        break;
       case Layout5ItemType.touchpad:
+        if (item.gyroToMouseMode != 0) {
+          // Eğer Touchpad Gyro-to-Mouse için kullanılıyorsa, sürüş ekranında görünmez olur
+          content = const SizedBox.shrink();
+          break;
+        }
+
         // Touchpad: accumulates mouse delta; click type determined by finger count
         content = Listener(
           behavior: HitTestBehavior.opaque,

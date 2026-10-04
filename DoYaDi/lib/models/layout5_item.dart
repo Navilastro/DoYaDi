@@ -86,8 +86,15 @@ class Layout5Item {
   int? customHapticType; // 0: Hafif, 1: Orta, 2: Ağır, 3: Seçim, 4: Titreşim | null: Global
   int? customHapticTrigger; // 0: Basılınca, 1: Bırakılınca, 2: Basıldığı Süre, 3: Aktif Süre | null: Global
   
-  // Gyro-to-Right Analog (DualSense free look tarzı) - Sadece Left Joystick için
-  bool gyroToRightAnalog;
+  // Gyro-to-Right Analog (Joystick üzerinden)
+  int gyroToRightAnalogMode; // 0: Kapalı, 1: Pilot (Mutlak), 2: FPS (Hassas/Sürüklenmeli)
+  double gyroRightAnalogSensitivity;
+  double gyroRightAnalogDeadzone; // Ölü alan (derece)
+
+  // Gyro-to-Mouse (Touchpad üzerinden)
+  int gyroToMouseMode; // 0: Kapalı, 1: Pilot, 2: FPS
+  double gyroMouseSensitivity;
+  double gyroMouseDeadzone; // Ölü alan (derece)
 
   Layout5Item({
     required this.id,
@@ -111,7 +118,12 @@ class Layout5Item {
     this.enableHaptic = false,
     this.customHapticType,
     this.customHapticTrigger,
-    this.gyroToRightAnalog = false,
+    this.gyroToRightAnalogMode = 0,
+    this.gyroRightAnalogSensitivity = 1.0,
+    this.gyroRightAnalogDeadzone = 7.0,
+    this.gyroToMouseMode = 0,
+    this.gyroMouseSensitivity = 1.0,
+    this.gyroMouseDeadzone = 7.0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -136,7 +148,12 @@ class Layout5Item {
     'enableHaptic': enableHaptic,
     'customHapticType': customHapticType,
     'customHapticTrigger': customHapticTrigger,
-    'gyroToRightAnalog': gyroToRightAnalog,
+    'gyroToRightAnalogMode': gyroToRightAnalogMode,
+    'gyroRightAnalogSensitivity': gyroRightAnalogSensitivity,
+    'gyroRightAnalogDeadzone': gyroRightAnalogDeadzone,
+    'gyroToMouseMode': gyroToMouseMode,
+    'gyroMouseSensitivity': gyroMouseSensitivity,
+    'gyroMouseDeadzone': gyroMouseDeadzone,
   };
 
   factory Layout5Item.fromJson(Map<String, dynamic> json) {
@@ -187,7 +204,12 @@ class Layout5Item {
       enableHaptic: json['enableHaptic'] as bool? ?? false,
       customHapticType: json['customHapticType'] as int?,
       customHapticTrigger: json['customHapticTrigger'] as int?,
-      gyroToRightAnalog: json['gyroToRightAnalog'] as bool? ?? false,
+      gyroToRightAnalogMode: json['gyroToRightAnalogMode'] as int? ?? (json['gyroToRightAnalog'] == true ? 2 : 0), // Geriye dönük uyumluluk
+      gyroRightAnalogSensitivity: json['gyroRightAnalogSensitivity'] != null ? (json['gyroRightAnalogSensitivity'] as num).toDouble() : (json['gyroSensitivity'] != null ? (json['gyroSensitivity'] as num).toDouble() : 1.0),
+      gyroRightAnalogDeadzone: json['gyroRightAnalogDeadzone'] != null ? (json['gyroRightAnalogDeadzone'] as num).toDouble() : 7.0,
+      gyroToMouseMode: json['gyroToMouseMode'] as int? ?? 0,
+      gyroMouseSensitivity: json['gyroMouseSensitivity'] != null ? (json['gyroMouseSensitivity'] as num).toDouble() : 1.0,
+      gyroMouseDeadzone: json['gyroMouseDeadzone'] != null ? (json['gyroMouseDeadzone'] as num).toDouble() : 7.0,
     );
   }
 
@@ -218,7 +240,12 @@ class Layout5Item {
     bool clearCustomHapticType = false,
     int? customHapticTrigger,
     bool clearCustomHapticTrigger = false,
-    bool? gyroToRightAnalog,
+    int? gyroToRightAnalogMode,
+    double? gyroRightAnalogSensitivity,
+    double? gyroRightAnalogDeadzone,
+    int? gyroToMouseMode,
+    double? gyroMouseSensitivity,
+    double? gyroMouseDeadzone,
   }) {
     return Layout5Item(
       id: id ?? this.id,
@@ -250,7 +277,12 @@ class Layout5Item {
       customHapticTrigger: clearCustomHapticTrigger
           ? null
           : (customHapticTrigger ?? this.customHapticTrigger),
-      gyroToRightAnalog: gyroToRightAnalog ?? this.gyroToRightAnalog,
+      gyroToRightAnalogMode: gyroToRightAnalogMode ?? this.gyroToRightAnalogMode,
+      gyroRightAnalogSensitivity: gyroRightAnalogSensitivity ?? this.gyroRightAnalogSensitivity,
+      gyroRightAnalogDeadzone: gyroRightAnalogDeadzone ?? this.gyroRightAnalogDeadzone,
+      gyroToMouseMode: gyroToMouseMode ?? this.gyroToMouseMode,
+      gyroMouseSensitivity: gyroMouseSensitivity ?? this.gyroMouseSensitivity,
+      gyroMouseDeadzone: gyroMouseDeadzone ?? this.gyroMouseDeadzone,
     );
   }
 }

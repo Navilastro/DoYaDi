@@ -7,6 +7,8 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <atomic>      // FAZ 0: Data race önleme
+#include <stop_token>  // FAZ 0: jthread güvenli kapanış
 #include <filesystem>
 #include <chrono>
 #include <set>
@@ -39,12 +41,16 @@ struct LoadedPlugin {
 class PluginManager {
 private:
     std::vector<LoadedPlugin> plugins;
-    std::thread addonListenerThread;
-    std::thread watchdogThread;
-    bool isListening = false;
+    std::jthread addonListenerThread;  // FAZ 0: jthread geçişi
+    std::jthread watchdogThread;       // FAZ 0: jthread geçişi
+    std::atomic<bool> isListening{false}; // FAZ 0: Data race güvenliği
     SOCKET addonSock = INVALID_SOCKET;
     std::mutex pluginMutex;
     int nextAutoID = 1; // GetPluginID olmayan DLL'ler için otomatik ID
+
+    // FAZ 0: Fire-and-forget UDP ProcessCommand thread'lerini takip
+    std::vector<std::jthread> pendingCommandTasks;
+    std::mutex pendingCommandMutex;
 
     std::vector<std::string> GetSearchDirectories(const std::string& ekKlasorYolu) {
         std::vector<std::string> dirs;
@@ -187,9 +193,10 @@ public:
 
     // ── Addon Listener: 8891 UDP ────────────────────────────────────────────
     // Hem 3-byte DLC komutlarını (0xEE) hem de string mesajlarını (DOYADI_ADDON_LIST) dinler.
+    // FAZ 0: WSAPoll non-blocking + jthread ile güvenli kapanış
     void StartAddonListener() {
-        isListening = true;
-        addonListenerThread = std::thread([this]() {
+        isListening.store(true);
+        addonListenerThread = std::jthread([this](std::stop_token stoken) {
             addonSock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
             BOOL reuse = TRUE;
             setsockopt(addonSock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse));
@@ -205,9 +212,10 @@ public:
                 return;
             }
 
-            // Socket timeout: thread'i kilitlememek için
-            DWORD timeout = 1000;
-            setsockopt(addonSock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+            // FAZ 0: WSAPoll ile non-blocking — SO_RCVTIMEO kaldırıldı
+            WSAPOLLFD pfd = {};
+            pfd.fd = addonSock;
+            pfd.events = POLLIN;
 
             std::cout << "[SISTEM] Addon Yonetim Portu (8891) aktif edildi." << std::endl;
 
@@ -215,11 +223,16 @@ public:
             sockaddr_in clientAddr;
             int clientAddrLen = sizeof(clientAddr);
 
-            while (isListening) {
+            while (!stoken.stop_requested()) {
+                int pollResult = WSAPoll(&pfd, 1, 500); // 500ms poll timeout
+                if (pollResult < 0) break; // socket hatası
+                if (pollResult == 0) continue; // timeout, stop kontrolü
+
+                clientAddrLen = sizeof(clientAddr);
                 int bytes = recvfrom(addonSock, (char*)buffer, 512, 0, 
                                      (sockaddr*)&clientAddr, &clientAddrLen);
                 
-                if (bytes <= 0) continue; // Timeout veya hata — devam et
+                if (bytes <= 0) continue;
 
                 // ── 3-byte DLC Komut: [0xEE, PluginID, Durum] ──
                 if (bytes == 3 && buffer[0] == 0xEE) {
@@ -230,15 +243,23 @@ public:
                     char phoneIp[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &clientAddr.sin_addr, phoneIp, INET_ADDRSTRLEN);
 
+                    // FAZ 0: Fire-and-forget detach yerine takip edilen jthread
                     // DLL başlatma süresinin dinleme döngüsünü bloklamasını önle
                     std::string ipStr(phoneIp);
-                    std::thread([this, pluginID, isActive, ipStr]() {
-                        try {
-                            ProcessCommand(pluginID, isActive, ipStr.c_str());
-                        } catch (...) {
-                            std::cerr << "[HATA] UDP ProcessCommand exception!" << std::endl;
-                        }
-                    }).detach();
+                    {
+                        std::lock_guard<std::mutex> lock(pendingCommandMutex);
+                        // Bitmiş task'leri temizle
+                        std::erase_if(pendingCommandTasks, [](const std::jthread& t) {
+                            return !t.joinable();
+                        });
+                        pendingCommandTasks.emplace_back([this, pluginID, isActive, ipStr]() {
+                            try {
+                                ProcessCommand(pluginID, isActive, ipStr.c_str());
+                            } catch (...) {
+                                std::cerr << "[HATA] UDP ProcessCommand exception!" << std::endl;
+                            }
+                        });
+                    }
                 }
                 // ── String Mesaj: DOYADI_ADDON_LIST ──
                 else if (bytes >= 17) {
@@ -254,39 +275,69 @@ public:
             }
             closesocket(addonSock);
         });
-        addonListenerThread.detach();
     }
 
     // ── Komut İşleme: ID bazlı (Hash mantığı tamamen kaldırıldı) ────────────
+    // FAZ 0: Acquire-Release-Acquire mutex deseni
+    // DLL callback'leri (StartPlugin/StopPlugin) MUTEX DIŞINDA çalışır
+    // Böylece uzun süren DLL işlemleri diğer thread'leri (watchdog, listener) KLEMEZ
     void ProcessCommand(int pluginID, bool isActive, const char* phoneIp) {
-        std::lock_guard<std::mutex> lock(pluginMutex);
-        for (auto& p : plugins) {
-            if (p.assignedID == pluginID) {
-                if (isActive && !p.isRunning) {
-                    // Eklentiyi başlat
-                    if (p.start) {
-                        // Yeni arayüz: telefon IP ve portunu ver
-                        p.start(phoneIp, 8890);
-                    } else if (p.startLegacy) {
-                        // Eski arayüz: parametresiz çağır
-                        p.startLegacy();
+        // Faz 1: Plugin'i bul (kısa kilit)
+        StartFunc startFn = nullptr;
+        StartFuncLegacy startLegacyFn = nullptr;
+        StopFunc stopFn = nullptr;
+        GetInfoFunc infoFn = nullptr;
+        bool shouldStart = false;
+        bool shouldStop = false;
+        int pluginIdx = -1;
+        
+        {
+            std::lock_guard<std::mutex> lock(pluginMutex);
+            for (size_t i = 0; i < plugins.size(); i++) {
+                if (plugins[i].assignedID == pluginID) {
+                    pluginIdx = (int)i;
+                    infoFn = plugins[i].getInfo;
+                    if (isActive && !plugins[i].isRunning) {
+                        shouldStart = true;
+                        startFn = plugins[i].start;
+                        startLegacyFn = plugins[i].startLegacy;
+                    } else if (isActive && plugins[i].isRunning) {
+                        // Heartbeat güncelle (güvenlik freni beslemesi)
+                        plugins[i].lastHeartbeat = std::chrono::steady_clock::now();
+                    } else if (!isActive && plugins[i].isRunning) {
+                        shouldStop = true;
+                        stopFn = plugins[i].stop;
                     }
-                    p.isRunning = true;
-                    p.lastHeartbeat = std::chrono::steady_clock::now();
-                    std::cout << "[PLUGIN] Baslatildi: " << p.getInfo()
-                              << " -> " << phoneIp << ":8890" << std::endl;
+                    break;
                 }
-                else if (isActive && p.isRunning) {
-                    // Heartbeat güncelle (güvenlik freni beslemesi)
-                    p.lastHeartbeat = std::chrono::steady_clock::now();
-                }
-                else if (!isActive && p.isRunning) {
-                    // Eklentiyi durdur
-                    p.stop();
-                    p.isRunning = false;
-                    std::cout << "[PLUGIN] Durduruldu: " << p.getInfo() << std::endl;
-                }
-                break;
+            }
+        }
+        // Kilit serbest bırakıldı — diğer thread'ler çalışabilir
+        
+        // Faz 2: DLL callback'i MUTEX DIŞINDA çalıştır (deadlock riski yok)
+        if (shouldStart) {
+            if (startFn) {
+                startFn(phoneIp, 8890);
+            } else if (startLegacyFn) {
+                startLegacyFn();
+            }
+            
+            // Faz 3: Sonucu mutex altında güncelle (kısa kilit)
+            std::lock_guard<std::mutex> lock(pluginMutex);
+            if (pluginIdx >= 0 && pluginIdx < (int)plugins.size() &&
+                plugins[pluginIdx].assignedID == pluginID) {
+                plugins[pluginIdx].isRunning = true;
+                plugins[pluginIdx].lastHeartbeat = std::chrono::steady_clock::now();
+                std::cout << "[PLUGIN] Baslatildi: " << plugins[pluginIdx].getInfo()
+                          << " -> " << phoneIp << ":8890" << std::endl;
+            }
+        } else if (shouldStop && stopFn) {
+            stopFn();
+            std::lock_guard<std::mutex> lock(pluginMutex);
+            if (pluginIdx >= 0 && pluginIdx < (int)plugins.size() &&
+                plugins[pluginIdx].assignedID == pluginID) {
+                plugins[pluginIdx].isRunning = false;
+                std::cout << "[PLUGIN] Durduruldu: " << plugins[pluginIdx].getInfo() << std::endl;
             }
         }
     }
@@ -294,9 +345,10 @@ public:
     // ── Addon Watchdog: Güvenlik Freni ───────────────────────────────────────
     // Telefon bağlantısı tamamen koparsa (60 saniye komut/kalp atışı gelmezse)
     // eklentiyi otomatik durdurur. Eklenti panelinden kapatıldığında (0x00) ise ANINDA sonlanır.
+    // FAZ 0: jthread + stop_token ile güvenli kapanış
     void StartAddonWatchdog() {
-        watchdogThread = std::thread([this]() {
-            while (isListening) {
+        watchdogThread = std::jthread([this](std::stop_token stoken) {
+            while (!stoken.stop_requested()) {
                 Sleep(1000); // Her saniye kontrol et
 
                 std::lock_guard<std::mutex> lock(pluginMutex);
@@ -318,7 +370,6 @@ public:
                 }
             }
         });
-        watchdogThread.detach();
     }
 
     void RescanPluginsInternal() {
@@ -394,10 +445,33 @@ public:
         return response;
     }
 
+    // FAZ 0: Güvenli kapanış sırası
     void Shutdown() {
-        isListening = false;
-        closesocket(addonSock);
-
+        isListening.store(false);
+        
+        // 1. Socket'i kapat → WSAPoll'u kır
+        if (addonSock != INVALID_SOCKET) {
+            closesocket(addonSock);
+            addonSock = INVALID_SOCKET;
+        }
+        
+        // 2. jthread'lere stop sinyali gönder ve bekle
+        if (addonListenerThread.joinable()) {
+            addonListenerThread.request_stop();
+            addonListenerThread.join();
+        }
+        if (watchdogThread.joinable()) {
+            watchdogThread.request_stop();
+            watchdogThread.join();
+        }
+        
+        // 3. Pending UDP ProcessCommand task'lerini bekle
+        {
+            std::lock_guard<std::mutex> lock(pendingCommandMutex);
+            pendingCommandTasks.clear(); // jthread destructor → request_stop() + join()
+        }
+        
+        // 4. Plugin'leri durdur ve DLL'leri serbest bırak
         std::lock_guard<std::mutex> lock(pluginMutex);
         for (auto& p : plugins) {
             if (p.isRunning) {

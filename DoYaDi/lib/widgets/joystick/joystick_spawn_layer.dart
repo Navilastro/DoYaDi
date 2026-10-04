@@ -31,7 +31,7 @@ class JoystickSpawnInfo {
 /// orijinal merkezlerine olan mesafesini karşılaştırır (Voronoi mantığı).
 /// En yakın joystick dokunulan noktada anlık olarak belirir ve aktifleşir.
 ///
-/// [floatingEnabled] true olduğunda, spawn edilen joystick floating base
+/// floatingEnabled true olduğunda, spawn edilen joystick floating base
 /// davranışı gösterir: thumb sınıra dayandığında base parmağı takip eder.
 class JoystickSpawnLayer extends StatefulWidget {
   /// Ekrandaki tüm joystick'lerin spawn bilgileri.

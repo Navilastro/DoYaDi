@@ -122,6 +122,12 @@ class AppSettings {
   /// Aralık: 0.5 – 3.0
   double joystickSensitivity;
 
+  // ── Sensör Merkez Noktası Ayarları ─────────────────────────────────────────
+  /// 0: Otomatik (Belirli süre hareketsizlikte), 1: Yalnızca Butonla (Ayarlar/Düzenleyici)
+  int gyroCenterMode;
+  /// Otomatik merkezleme için hareketsiz kalınması gereken süre (saniye)
+  double gyroAutoCenterDuration;
+
   // ── Joystick Çalışma Modu ──────────────────────────────────────────────────
   /// 0: Sabit (Fixed), 1: Sürüklenen (Floating Base), 2: Belirme (Spawn)
   /// Global ayar — sol ve sağ joystick aynı modu paylaşır.
@@ -260,6 +266,8 @@ class AppSettings {
     this.layout5Profiles = const {},
     this.activeLayout5Profile,
     this.joystickSensitivity = 1.0,
+    this.gyroCenterMode = 0,
+    this.gyroAutoCenterDuration = 10.0,
     this.joystickMode = 0,
     this.globalButtonPressMode = 0,
     this.globalButtonPressDurationMs = 2000,

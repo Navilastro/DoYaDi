@@ -8,6 +8,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 import '../providers/settings_provider.dart';
 import '../providers/connection_provider.dart';
 import '../core/network/network_manager.dart';
+import '../core/utils/result.dart';
 import 'settings_screen.dart';
 import 'driving_screen.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
@@ -84,21 +85,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(AppTranslations.getText('scanning_network')), duration: const Duration(seconds: 1)),
                       );
-                      String? foundIp = await NetworkManager().discoverServer();
-                      if (foundIp != null) {
-                        ipController.text = foundIp;
-                        connectionProvider.setWifiIp(foundIp);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(AppTranslations.getText('pc_found_ready')), backgroundColor: Colors.green),
-                          );
-                        }
-                      } else {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(AppTranslations.getText('pc_not_found')), backgroundColor: Colors.red),
-                          );
-                        }
+                      final result = await connectionProvider.discoverServer();
+                      switch (result) {
+                        case Success(:final value):
+                          ipController.text = value;
+                          connectionProvider.setWifiIp(value);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(AppTranslations.getText('pc_found_ready')), backgroundColor: Colors.green),
+                            );
+                          }
+                        case Failure(:final message):
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(message), backgroundColor: Colors.red),
+                            );
+                          }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -297,29 +299,29 @@ class _HomeScreenState extends State<HomeScreen> {
                                 );
                               }
 
-                              final bool success =
-                                  await NetworkManager().initBluetooth(device.address);
+                              final btResult = await connectionProvider.connectBluetooth(
+                                device: device,
+                              );
 
-                              if (success) {
-                                connectionProvider.setBluetoothDevice(device);
-                                connectionProvider.setWifiIp(''); // Wi-Fi UDP'yi devre dışı bırak
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                     SnackBar(
-                                      content: Text(AppTranslations.getText('bt_connection_success')),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                }
-                              } else {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                     SnackBar(
-                                      content: Text(AppTranslations.getText('bt_connection_failed')),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
+                              switch (btResult) {
+                                case Success():
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                       SnackBar(
+                                        content: Text(AppTranslations.getText('bt_connection_success')),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                case Failure(:final message):
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                       SnackBar(
+                                        content: Text(message),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
                               }
                             },
                           );
@@ -397,20 +399,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(AppTranslations.getText('scanning_network')), duration: const Duration(seconds: 1)),
                 );
-                String? foundIp = await NetworkManager().discoverServer();
-                if (foundIp != null) {
-                  connectionProvider.setWifiIp(foundIp);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(AppTranslations.getText('pc_found_ready')), backgroundColor: Colors.green),
-                    );
-                  }
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(AppTranslations.getText('pc_not_found_usb')), backgroundColor: Colors.red),
-                    );
-                  }
+                final usbResult = await connectionProvider.discoverServer();
+                switch (usbResult) {
+                  case Success(:final value):
+                    connectionProvider.setWifiIp(value);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(AppTranslations.getText('pc_found_ready')), backgroundColor: Colors.green),
+                      );
+                    }
+                  case Failure(:final message):
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(message), backgroundColor: Colors.red),
+                      );
+                    }
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -535,21 +538,35 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () async {
                 final connection = Provider.of<ConnectionProvider>(context, listen: false);
                 
-                // 4. GÜVENLİK KONTROLÜ: Eğer ne IP girilmiş ne de Bluetooth bağlanmışsa engelle!
-                if (connection.wifiIp.isEmpty && !NetworkManager().isBluetoothConnected) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(AppTranslations.getText('please_select_device_first')),
-                      backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
-                  return; // Uygulamanın sürüş ekranına geçmesini durdur
-                }
-
-                // IP varsa soketi güvenle başlat
-                if (connection.wifiIp.isNotEmpty) {
-                  await NetworkManager().initUdp(connection.wifiIp);
+                // GÜVENLİK KONTROLÜ: Bağlantı yoksa sürüşe izin verme
+                if (!connection.isConnected) {
+                  // IP girilmiş ama bağlantı kurulmamışsa otomatik bağlan
+                  if (connection.wifiIp.isNotEmpty) {
+                    final wifiResult = await connection.connectWifi();
+                    if (wifiResult.isFailure) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(wifiResult.errorMessage ?? AppTranslations.getText('please_select_device_first')),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  } else if (!NetworkManager().isBluetoothConnected) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AppTranslations.getText('please_select_device_first')),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                    return;
+                  }
                 }
                 
                 if (!context.mounted) return;

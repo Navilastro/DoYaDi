@@ -12,6 +12,7 @@ import '../widgets/driving_painters.dart';
 import '../core/utils/app_translations.dart';
 import '../core/utils/template_profiles.dart';
 import '../widgets/dynamic_steering_painter.dart';
+import '../core/sensor_manager.dart';
 
 class CustomLayout5EditorScreen extends StatefulWidget {
   const CustomLayout5EditorScreen({super.key});
@@ -387,15 +388,24 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
     );
   }
 
+  bool get _isRightAnalogSensorControlled {
+    try {
+      final leftJoy = _items.firstWhere((e) => e.type == Layout5ItemType.leftJoystick);
+      return leftJoy.gyroToRightAnalogMode != 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
   bool get _hasLeftJoystick => _items.any((e) => e.type == Layout5ItemType.leftJoystick);
-  bool get _hasRightJoystick => _items.any((e) => e.type == Layout5ItemType.rightJoystick);
+  bool get _hasRightJoystick => _isRightAnalogSensorControlled || _items.any((e) => e.type == Layout5ItemType.rightJoystick);
   bool get _hasGasController => _items.any(
       (e) => e.type == Layout5ItemType.gasBar || e.type == Layout5ItemType.gasPedalIcon);
   bool get _hasBrakeController => _items.any(
       (e) => e.type == Layout5ItemType.brakeBar || e.type == Layout5ItemType.brakePedalIcon);
-  bool get _hasClutchController => _items.any(
+  bool get _hasClutchController => _isRightAnalogSensorControlled || _items.any(
       (e) => e.type == Layout5ItemType.clutchBar || e.type == Layout5ItemType.clutchIcon);
-  bool get _hasHandbrakeController => _items.any(
+  bool get _hasHandbrakeController => _isRightAnalogSensorControlled || _items.any(
       (e) => e.type == Layout5ItemType.handbrakeButton || e.type == Layout5ItemType.handbrakeBar || e.type == Layout5ItemType.handbrakeIcon);
   bool get _hasSteeringWheelIcon => _items.any((e) => e.type == Layout5ItemType.steeringWheelIcon);
   void _showConstraintWarning(String msg) {
@@ -414,6 +424,10 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
       _showConstraintWarning('Ekranda en fazla 1 adet Sol Joystick bulunabilir!');
       return;
     }
+    if (type == Layout5ItemType.rightJoystick && _isRightAnalogSensorControlled) {
+      _showConstraintWarning('Sağ analog sensör ile yönetildiği için eklenemez!');
+      return;
+    }
     if (type == Layout5ItemType.rightJoystick && _hasRightJoystick) {
       _showConstraintWarning('Ekranda en fazla 1 adet Sağ Joystick bulunabilir!');
       return;
@@ -430,8 +444,16 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
       _showConstraintWarning('Ekranda en fazla 1 adet Fren kontrolcüsü bulunabilir (Fren Barı ve Fren İkonu aynı anda kullanılamaz)!');
       return;
     }
+    if ((type == Layout5ItemType.clutchBar || type == Layout5ItemType.clutchIcon) && _isRightAnalogSensorControlled) {
+      _showConstraintWarning('Sağ analog sensör ile yönetildiği için Debriyaj eklenemez!');
+      return;
+    }
     if ((type == Layout5ItemType.clutchBar || type == Layout5ItemType.clutchIcon) && _hasClutchController) {
       _showConstraintWarning('Ekranda en fazla 1 adet Debriyaj kontrolcüsü bulunabilir!');
+      return;
+    }
+    if ((type == Layout5ItemType.handbrakeButton || type == Layout5ItemType.handbrakeBar || type == Layout5ItemType.handbrakeIcon) && _isRightAnalogSensorControlled) {
+      _showConstraintWarning('Sağ analog sensör ile yönetildiği için El Freni eklenemez!');
       return;
     }
     if ((type == Layout5ItemType.handbrakeButton || type == Layout5ItemType.handbrakeBar || type == Layout5ItemType.handbrakeIcon) && _hasHandbrakeController) {
@@ -498,6 +520,17 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
     setState(() {
       final idx = _items.indexWhere((e) => e.id == updated.id);
       if (idx >= 0) _items[idx] = updated;
+
+      if (updated.type == Layout5ItemType.leftJoystick && updated.gyroToRightAnalogMode != 0) {
+        _items.removeWhere((e) => 
+          e.type == Layout5ItemType.rightJoystick ||
+          e.type == Layout5ItemType.clutchBar ||
+          e.type == Layout5ItemType.clutchIcon ||
+          e.type == Layout5ItemType.handbrakeBar ||
+          e.type == Layout5ItemType.handbrakeIcon ||
+          e.type == Layout5ItemType.handbrakeButton
+        );
+      }
     });
   }
 
@@ -590,6 +623,19 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                           false,
                           _reset,
                           color: Colors.orange,
+                        ),
+                        const SizedBox(width: 8),
+                        _topBtn(
+                          'Sıfırla',
+                          Icons.center_focus_strong,
+                          false,
+                          () {
+                            SensorManager().recenterGyro();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Sensör merkezi sıfırlandı.', style: TextStyle(color: Colors.white))),
+                            );
+                          },
+                          color: Colors.pinkAccent,
                         ),
                         const SizedBox(width: 8),
                         IconButton(
@@ -923,6 +969,21 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                 SizedBox(width: 4),
                 Text('EL FRENİ', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
               ],
+            ),
+          ),
+        );
+      case Layout5ItemType.touchpad:
+        return Container(
+          decoration: BoxDecoration(
+            color: item.bgColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: item.textColor.withValues(alpha: 0.3)),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.mouse,
+              color: item.textColor.withValues(alpha: 0.4),
+              size: min(w, h) * 0.35,
             ),
           ),
         );
@@ -1417,15 +1478,145 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
             
             if (item.type == Layout5ItemType.leftJoystick) ...[
               const SizedBox(height: 8),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                activeColor: const Color(0xFF40E0D0),
-                title: Text(
-                  AppTranslations.getText('gyro_to_right_analog'),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+              _label(AppTranslations.getText('gyro_to_right_analog')),
+              Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                value: item.gyroToRightAnalog,
-                onChanged: (v) => _update(item.copyWith(gyroToRightAnalog: v)),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: item.gyroToRightAnalogMode,
+                    dropdownColor: const Color(0xFF1A1A3E),
+                    isExpanded: true,
+                    icon: const Icon(Icons.arrow_drop_down, color: Colors.white54, size: 20),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    onChanged: (v) {
+                      if (v != null) _update(item.copyWith(gyroToRightAnalogMode: v));
+                    },
+                    items: const [
+                      DropdownMenuItem(value: 0, child: Text('Kapalı')),
+                      DropdownMenuItem(value: 1, child: Text('Pilot Modu (Mutlak)')),
+                      DropdownMenuItem(value: 2, child: Text('FPS Modu (Sürüklenmeli)')),
+                    ],
+                  ),
+                ),
+              ),
+              if (item.gyroToRightAnalogMode != 0) ...[
+                const SizedBox(height: 8),
+                _label('Gyro Hassasiyeti'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: item.gyroRightAnalogSensitivity.clamp(0.1, 10.0),
+                        min: 0.1,
+                        max: 10.0,
+                        activeColor: const Color(0xFF40E0D0),
+                        inactiveColor: Colors.white12,
+                        onChanged: (v) => _update(item.copyWith(gyroRightAnalogSensitivity: v)),
+                      ),
+                    ),
+                    Text(
+                      item.gyroRightAnalogSensitivity.toStringAsFixed(2),
+                      style: const TextStyle(color: Colors.white54, fontSize: 11),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                _label('Ölü Alan (Derece)'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: item.gyroRightAnalogDeadzone.clamp(0.0, 20.0),
+                        min: 0.0,
+                        max: 20.0,
+                        activeColor: const Color(0xFF40E0D0),
+                        inactiveColor: Colors.white12,
+                        onChanged: (v) => _update(item.copyWith(gyroRightAnalogDeadzone: v)),
+                      ),
+                    ),
+                    Text(
+                      '${item.gyroRightAnalogDeadzone.toStringAsFixed(1)}°',
+                      style: const TextStyle(color: Colors.white54, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ],
+
+          if (item.type == Layout5ItemType.touchpad) ...[
+            const SizedBox(height: 8),
+            _label('Sensörü Fareye Çevir (Gyro-to-Mouse)'),
+            Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.white12,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: item.gyroToMouseMode,
+                  dropdownColor: const Color(0xFF1A1A3E),
+                  isExpanded: true,
+                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white54, size: 20),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  onChanged: (v) {
+                    if (v != null) _update(item.copyWith(gyroToMouseMode: v));
+                  },
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('Kapalı')),
+                    DropdownMenuItem(value: 1, child: Text('Pilot Modu (Mutlak)')),
+                    DropdownMenuItem(value: 2, child: Text('FPS Modu (Hız/Sürüklenmeli)')),
+                  ],
+                ),
+              ),
+            ),
+            if (item.gyroToMouseMode != 0) ...[
+              const SizedBox(height: 8),
+              _label('Fare Gyro Hassasiyeti'),
+              Row(
+                children: [
+                  Expanded(
+                    child: Slider(
+                      value: item.gyroMouseSensitivity.clamp(0.1, 10.0),
+                      min: 0.1,
+                      max: 10.0,
+                      activeColor: const Color(0xFF40E0D0),
+                      inactiveColor: Colors.white12,
+                      onChanged: (v) => _update(item.copyWith(gyroMouseSensitivity: v)),
+                    ),
+                  ),
+                  Text(
+                    item.gyroMouseSensitivity.toStringAsFixed(2),
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              _label('Fare Ölü Alan (Derece)'),
+              Row(
+                children: [
+                  Expanded(
+                    child: Slider(
+                      value: item.gyroMouseDeadzone.clamp(0.0, 20.0),
+                      min: 0.0,
+                      max: 20.0,
+                      activeColor: const Color(0xFF40E0D0),
+                      inactiveColor: Colors.white12,
+                      onChanged: (v) => _update(item.copyWith(gyroMouseDeadzone: v)),
+                    ),
+                  ),
+                  Text(
+                    '${item.gyroMouseDeadzone.toStringAsFixed(1)}°',
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                ],
               ),
             ],
           ],

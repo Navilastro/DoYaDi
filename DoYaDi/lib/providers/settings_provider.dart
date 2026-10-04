@@ -56,6 +56,9 @@ class SettingsProvider with ChangeNotifier {
     _settings.activeLayout5Profile = prefs.getString('activeLayout5Profile');
     _settings.joystickSensitivity =
         (prefs.getDouble('joystickSensitivity') ?? 1.0).clamp(0.5, 3.0);
+    _settings.gyroCenterMode = prefs.getInt('gyroCenterMode') ?? 0;
+    _settings.gyroAutoCenterDuration =
+        (prefs.getDouble('gyroAutoCenterDuration') ?? 10.0).clamp(5.0, 30.0);
     _settings.joystickMode =
         (prefs.getInt('joystickMode') ?? 0).clamp(0, 3);
     final profilesStr = prefs.getString('layout5Profiles');
@@ -341,6 +344,11 @@ class SettingsProvider with ChangeNotifier {
     await prefs.setDouble(
       'joystickSensitivity',
       _settings.joystickSensitivity.clamp(0.5, 3.0),
+    );
+    await prefs.setInt('gyroCenterMode', _settings.gyroCenterMode);
+    await prefs.setDouble(
+      'gyroAutoCenterDuration',
+      _settings.gyroAutoCenterDuration.clamp(5.0, 30.0),
     );
     await prefs.setInt(
       'joystickMode',

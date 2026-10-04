@@ -7,6 +7,7 @@ import 'addon_manager_tab.dart';
 import '../widgets/settings_dialogs.dart';
 import '../core/haptic_manager.dart';
 import '../core/utils/app_translations.dart';
+import '../core/sensor_manager.dart';
 
 // Sabitler settings_dialogs.dart'tan geliyor:
 // steeringAngles, pedalDistances, swipeSensitivities,
@@ -579,6 +580,73 @@ class _SettingsScreenState extends State<SettingsScreen>
             s.isCumulativeSteering = val;
             prov.updateSettings(s);
           },
+        ),
+        settingsTile(
+          title: 'Sensör Merkezleme Modu',
+          subtitle: s.gyroCenterMode == 0
+              ? 'Otomatik (${s.gyroAutoCenterDuration.toInt()} sn hareketsizlik)'
+              : 'Sadece Manuel',
+          trailing: Icon(Icons.center_focus_strong, color: ac),
+          onTap: () async {
+            final val = await radioDialog<int>(
+              ctx: ctx,
+              title: 'Sensör Merkezleme Modu',
+              current: s.gyroCenterMode,
+              options: const {
+                'Otomatik (Hareketsizlik)': 0,
+                'Sadece Manuel': 1,
+              },
+            );
+            if (val != null) {
+              s.gyroCenterMode = val;
+              prov.updateSettings(s);
+              setState(() {});
+            }
+          },
+        ),
+        if (s.gyroCenterMode == 0)
+          settingsTile(
+            title: 'Otomatik Merkezleme Süresi',
+            subtitle: '${s.gyroAutoCenterDuration.toInt()} saniye hareketsiz kalınca sıfırlar.',
+            trailing: Text(
+              '${s.gyroAutoCenterDuration.toInt()} sn',
+              style: TextStyle(color: ac, fontWeight: FontWeight.bold),
+            ),
+            onTap: () async {
+              final val = await radioDialog<double>(
+                ctx: ctx,
+                title: 'Otomatik Merkezleme Süresi',
+                current: s.gyroAutoCenterDuration,
+                options: const {
+                  '5 sn': 5.0,
+                  '10 sn': 10.0,
+                  '15 sn': 15.0,
+                  '20 sn': 20.0,
+                },
+              );
+              if (val != null) {
+                s.gyroAutoCenterDuration = val;
+                prov.updateSettings(s);
+                setState(() {});
+              }
+            },
+          ),
+        settingsTile(
+          title: 'Merkezi Şimdi Sıfırla',
+          subtitle: 'Sensör merkezini o anki duruşa göre ayarlar.',
+          trailing: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ac,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () {
+              SensorManager().recenterGyro();
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(content: Text('Sensör merkezi sıfırlandı.', style: TextStyle(color: Colors.white))),
+              );
+            },
+            child: const Text('Sıfırla'),
+          ),
         ),
         settingsTile(
           title: AppTranslations.getText('phone_orientation'),

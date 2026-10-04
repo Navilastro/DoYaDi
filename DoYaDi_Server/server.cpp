@@ -1,6 +1,8 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <atomic>      // FAZ 0: Data race önleme
+#include <stop_token>  // FAZ 0: jthread güvenli kapanış
 #include <string>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -27,12 +29,17 @@ DEFINE_GUID(DoYaDi_SPP_UUID, 0x00001101, 0x0000, 0x1000, 0x80, 0x00, 0x00, 0x80,
 #define MAX_PACKET_SIZE 20
 #define BT_BUFFER_SIZE 512
 
-bool isRunning = true;
+std::atomic<bool> isRunning{true}; // FAZ 0: Data race güvenliği
 std::mutex serverMutex;
 PVIGEM_CLIENT client = nullptr;
 std::string appLang = "tr";
 int maxClients = 1;
 PluginManager pluginManager;
+
+// FAZ 0: Fire-and-forget thread sızıntısını önlemek için
+// BT ProcessCommand thread'lerini takip eden vektör
+std::vector<std::jthread> pendingTasks;
+std::mutex pendingTasksMutex;
 
 // Her bağlantı (slot) için bireysel hafıza ve güvenlik yapısı
 struct ControllerSlot {
@@ -169,8 +176,9 @@ void ResetSlotInputs(int slotIndex) {
 }
 
 // 0. THREAD: Watchdog (Zaman Aşımı ve Slot Temizleyici)
-void WatchdogThread() {
-    while (isRunning) {
+// FAZ 0: std::stop_token ile güvenli kapanış desteği
+void WatchdogThread(std::stop_token stoken) {
+    while (!stoken.stop_requested()) {
         Sleep(100); // Saniyede 10 kez kontrol et (CPU'yu yormaz)
 
         std::lock_guard<std::mutex> lock(serverMutex);
@@ -441,7 +449,8 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
 }
 
 // 1. THREAD: Cihaz Keşfi 
-void DiscoveryListener() {
+// FAZ 0: WSAPoll non-blocking + stop_token ile güvenli kapanış
+void DiscoveryListener(std::stop_token stoken) {
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     sockaddr_in serverAddr = { 0 };
     serverAddr.sin_family = AF_INET;
@@ -459,25 +468,38 @@ void DiscoveryListener() {
         return;
     }
 
+    // FAZ 0: WSAPoll ile non-blocking — veri kaybı sıfır, hızlı stop tepkisi
+    WSAPOLLFD pfd = {};
+    pfd.fd = sock;
+    pfd.events = POLLIN;
+
     char buffer[256];
     sockaddr_in clientAddr;
     int clientAddrLen = sizeof(clientAddr);
 
-    while (isRunning) {
-        int bytes = recvfrom(sock, buffer, 255, 0, (sockaddr*)&clientAddr, &clientAddrLen);
-        if (bytes > 0) {
-            buffer[bytes] = '\0';
-            if (std::string(buffer) == "DOYADI_SEARCH") {
-                std::string reply = "DOYADI_PC_OK";
-                sendto(sock, reply.c_str(), (int)reply.length(), 0, (sockaddr*)&clientAddr, clientAddrLen);
+    while (!stoken.stop_requested()) {
+        int pollResult = WSAPoll(&pfd, 1, 500); // 500ms poll timeout
+        if (pollResult > 0 && (pfd.revents & POLLIN)) {
+            clientAddrLen = sizeof(clientAddr);
+            int bytes = recvfrom(sock, buffer, 255, 0, (sockaddr*)&clientAddr, &clientAddrLen);
+            if (bytes > 0) {
+                buffer[bytes] = '\0';
+                if (std::string(buffer) == "DOYADI_SEARCH") {
+                    std::string reply = "DOYADI_PC_OK";
+                    sendto(sock, reply.c_str(), (int)reply.length(), 0, (sockaddr*)&clientAddr, clientAddrLen);
+                }
             }
         }
+        // pollResult == 0 → timeout, döngü devam eder
+        // pollResult < 0 → socket hatası (kapanış sırasında olabilir)
+        if (pollResult < 0) break;
     }
     closesocket(sock);
 }
 
 // 2. THREAD: Wi-Fi ve USB Dinleyici 
-void UdpDataListener() {
+// FAZ 0: WSAPoll non-blocking + stop_token — sürüş verisi düşük gecikme
+void UdpDataListener(std::stop_token stoken) {
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
@@ -495,9 +517,12 @@ void UdpDataListener() {
         return;
     }
 
-    // 500ms Socket Zaman Aşımı (Threadi kilitlememek için)
-    DWORD timeout = 500;
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+    // FAZ 0: WSAPoll ile non-blocking — SO_RCVTIMEO kaldırıldı
+    // 100ms poll timeout: sürüş verisi ~16ms (60 FPS) aralıklarla geldiğinden
+    // poll genellikle anında döner, timeout sadece veri yokken stop kontrolü için
+    WSAPOLLFD pfd = {};
+    pfd.fd = sock;
+    pfd.events = POLLIN;
 
     unsigned char buffer[MAX_PACKET_SIZE];
     sockaddr_in clientAddr;
@@ -510,33 +535,40 @@ void UdpDataListener() {
         std::cout << "[WIFI/USB] Agda DoYaDi uygulamasi araniyor (Port: 8889)..." << std::endl;
     }
 
-    while (isRunning) {
-        int bytes = recvfrom(sock, (char*)buffer, MAX_PACKET_SIZE, 0, (sockaddr*)&clientAddr, &clientAddrLen);
+    while (!stoken.stop_requested()) {
+        int pollResult = WSAPoll(&pfd, 1, 100); // 100ms — düşük gecikme
+        if (pollResult > 0 && (pfd.revents & POLLIN)) {
+            clientAddrLen = sizeof(clientAddr);
+            int bytes = recvfrom(sock, (char*)buffer, MAX_PACKET_SIZE, 0, (sockaddr*)&clientAddr, &clientAddrLen);
 
-        if (bytes > 0 && (bytes == 6 || bytes == 10 || bytes == 17)) {
-            // GÜMRÜK KONTROLÜ (Sihirli Bayt 221)
-            if (buffer[bytes - 1] != 221) {
-                continue; // Başka bir programdan gelen çöp veriyse yoksay
-            }
-            char ipStr[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &(clientAddr.sin_addr), ipStr, INET_ADDRSTRLEN);
-            std::string endpointId = "UDP_" + std::string(ipStr);
+            if (bytes > 0 && (bytes == 6 || bytes == 10 || bytes == 17)) {
+                // GÜMRÜK KONTROLÜ (Sihirli Bayt 221)
+                if (buffer[bytes - 1] != 221) {
+                    continue; // Başka bir programdan gelen çöp veriyse yoksay
+                }
+                char ipStr[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &(clientAddr.sin_addr), ipStr, INET_ADDRSTRLEN);
+                std::string endpointId = "UDP_" + std::string(ipStr);
 
-            int slotIndex = GetOrAllocateSlot(endpointId);
-            if (slotIndex != -1) {
-                UpdateGamepad(slotIndex, buffer, bytes - 1);
+                int slotIndex = GetOrAllocateSlot(endpointId);
+                if (slotIndex != -1) {
+                    UpdateGamepad(slotIndex, buffer, bytes - 1);
+                }
             }
         }
+        if (pollResult < 0) break;
     }
     closesocket(sock);
 }
 
 // Bluetooth Dinleyici
-void BluetoothListener() {
-    while (isRunning) {
+// FAZ 0: WSAPoll non-blocking accept + stop_token + pending tasks takibi
+void BluetoothListener(std::stop_token stoken) {
+    while (!stoken.stop_requested()) {
         SOCKET bthSock = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
         if (bthSock == INVALID_SOCKET) {
-            Sleep(3000); // Bluetooth kapalıysa uykuya yat, çökmek yok!
+            // Bluetooth kapalıysa bekle, ama stop kontrolü ile
+            for (int i = 0; i < 30 && !stoken.stop_requested(); i++) Sleep(100);
             continue;
         }
 
@@ -549,7 +581,7 @@ void BluetoothListener() {
 
         if (bind(bthSock, (sockaddr*)&bthAddr, sizeof(bthAddr)) == SOCKET_ERROR) {
             closesocket(bthSock);
-            Sleep(3000); // Başka bir sorun varsa bekle ve tekrar dene
+            for (int i = 0; i < 30 && !stoken.stop_requested(); i++) Sleep(100);
             continue;
         }
 
@@ -581,7 +613,18 @@ void BluetoothListener() {
 
         listen(bthSock, 1);
 
-        while (isRunning) {
+        // FAZ 0: WSAPoll ile non-blocking accept — blocking accept artık kullanılmıyor
+        WSAPOLLFD acceptPfd = {};
+        acceptPfd.fd = bthSock;
+        acceptPfd.events = POLLIN;
+
+        while (!stoken.stop_requested()) {
+            int pollResult = WSAPoll(&acceptPfd, 1, 500); // 500ms poll — hızlı stop kontrolü
+            if (pollResult <= 0) {
+                if (pollResult < 0) break; // socket hatası
+                continue; // timeout, döngü devam
+            }
+
             SOCKADDR_BTH clientAddr;
             int clientAddrLen = sizeof(clientAddr);
             SOCKET clientSock = accept(bthSock, (sockaddr*)&clientAddr, &clientAddrLen);
@@ -599,20 +642,20 @@ void BluetoothListener() {
                 std::vector<unsigned char> btStreamBuffer;
                 btStreamBuffer.reserve(1024);
 
-                DWORD timeout = 500;
-                setsockopt(clientSock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+                // FAZ 0: Client socket için de WSAPoll kullan — kesintisiz akış
+                WSAPOLLFD clientPfd = {};
+                clientPfd.fd = clientSock;
+                clientPfd.events = POLLIN;
 
-                while (isRunning) {
+                while (!stoken.stop_requested()) {
+                    int clientPoll = WSAPoll(&clientPfd, 1, 100); // 100ms — düşük gecikme
+                    if (clientPoll < 0) break; // socket hatası
+                    if (clientPoll == 0) continue; // timeout, stop kontrolü
+
                     int bytes = recv(clientSock, (char*)recvBuf, BT_BUFFER_SIZE, 0);
 
                     if (bytes == SOCKET_ERROR) {
-                        int err = WSAGetLastError();
-                        if (err == WSAETIMEDOUT) {
-                            continue;
-                        }
-                        else {
-                            break; // Kopma veya donanım hatası
-                        }
+                        break; // Kopma veya donanım hatası
                     }
                     else if (bytes == 0) {
                         break; // Telefon bağlantıyı bilerek kapattı
@@ -679,16 +722,24 @@ void BluetoothListener() {
                         if (btStreamBuffer.size() >= 3 && btStreamBuffer[0] == 0xEE) {
                             unsigned char pluginID = btStreamBuffer[1];
                             bool turnOn = (btStreamBuffer[2] == 0x01);
+                            // FAZ 0: Fire-and-forget detach yerine takip edilen jthread
                             // Ana BT recv döngüsünü bloklamayacak şekilde ayrı thread'de çalıştır
                             // Böylece DLL'in StartPlugin fonksiyonu uzun sürse bile
                             // sürüş verisi akmaya devam eder.
-                            std::thread([pluginID, turnOn]() {
-                                try {
-                                    pluginManager.ProcessCommand(pluginID, turnOn, "BT");
-                                } catch (...) {
-                                    std::cerr << "[HATA] BT ProcessCommand exception!" << std::endl;
-                                }
-                            }).detach();
+                            {
+                                std::lock_guard<std::mutex> lock(pendingTasksMutex);
+                                // Bitmiş task'leri temizle (joinable olmayan = zaten tamamlanmış)
+                                std::erase_if(pendingTasks, [](const std::jthread& t) {
+                                    return !t.joinable();
+                                });
+                                pendingTasks.emplace_back([pluginID, turnOn]() {
+                                    try {
+                                        pluginManager.ProcessCommand(pluginID, turnOn, "BT");
+                                    } catch (...) {
+                                        std::cerr << "[HATA] BT ProcessCommand exception!" << std::endl;
+                                    }
+                                });
+                            }
                             btStreamBuffer.erase(btStreamBuffer.begin(), btStreamBuffer.begin() + 3);
                             continue;
                         }
@@ -763,10 +814,12 @@ int main() {
 
     pluginManager.Init(".\\DoYaDi_Ek");
 
-    std::thread watchdog(WatchdogThread);
-    std::thread udpDiscovery(DiscoveryListener);
-    std::thread udpData(UdpDataListener);
-    std::thread btData(BluetoothListener);
+    // FAZ 0: std::jthread — scope sonunda otomatik request_stop() + join()
+    // detach() tamamen kaldırıldı, thread sızıntısı artık imkansız
+    std::jthread watchdog(WatchdogThread);
+    std::jthread udpDiscovery(DiscoveryListener);
+    std::jthread udpData(UdpDataListener);
+    std::jthread btData(BluetoothListener);
 
     if (appLang == "english" || appLang == "en") {
         std::cout << ">>> Server is running. Press ENTER to stop... <<<" << std::endl;
@@ -776,10 +829,19 @@ int main() {
     }
 
     std::cin.get();
-    isRunning = false;
+    isRunning.store(false); // FAZ 0: atomic store
 
+    // FAZ 0: Güvenli Kapanış Sırası
+    // 1. Plugin'leri kapat
     pluginManager.Shutdown();
 
+    // 2. Pending BT ProcessCommand task'lerini bekle
+    {
+        std::lock_guard<std::mutex> lock(pendingTasksMutex);
+        pendingTasks.clear(); // jthread destructor → request_stop() + join()
+    }
+
+    // 3. ViGEm temizliği
     for (int i = 0; i < maxClients; i++) {
         if (slots[i].isConnectedToVigem) {
             vigem_target_remove(client, slots[i].pad);
@@ -789,12 +851,14 @@ int main() {
 
     vigem_disconnect(client);
     vigem_free(client);
+
+    // 4. jthread nesneleri scope'dan çıkınca otomatik kapanır:
+    //    btData  → request_stop() → BluetoothListener WSAPoll timeout → join()
+    //    udpData → request_stop() → UdpDataListener WSAPoll timeout → join()
+    //    udpDiscovery → request_stop() → DiscoveryListener WSAPoll timeout → join()
+    //    watchdog → request_stop() → WatchdogThread Sleep döngüsü → join()
+    //    (Ters sırada: btData, udpData, udpDiscovery, watchdog)
+
     WSACleanup();
-
-    watchdog.detach();
-    udpDiscovery.detach();
-    udpData.detach();
-    btData.detach();
-
     return 0;
 }
