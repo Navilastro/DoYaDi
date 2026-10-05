@@ -151,15 +151,21 @@ class SensorManager {
         }
 
         // 2. Gyro-to-Right Analog & Mouse İşleme
-        // Telefon dik tutulduğunda: X ekseni pitch (yukarı/aşağı), Y ekseni yaw (sağa/sola döndürme)
-        double gyroPitchDelta = event.x * (180.0 / math.pi) * dt; // yukarı/aşağı
-        double gyroYawDelta = event.y * (180.0 / math.pi) * dt; // sağa/sola
+        // Landscape mod (yatay tutuş) için:
+        // Cihazın kendi Y ekseni etrafında dönmesi (ileriye/geriye eğme) -> Pitch (Yukarı/Aşağı)
+        // Cihazın kendi X ekseni etrafında dönmesi (sağa/sola döndürme) -> Yaw (Sağa/Sola)
+        // Kullanıcının belirttiği gibi eksenlerin yönlerini düzeltiyoruz.
+        double gyroPitchDelta = event.y * (180.0 / math.pi) * dt; // yukarı/aşağı
+        double gyroYawDelta = event.x * (180.0 / math.pi) * dt; // sağa/sola
+
+        double pDeadzone = settings.includePitchInDeadzone ? rightAnalogDeadzone : 0.0;
+        double mpDeadzone = mouseDeadzone; // Sadece sağ analog için geçerli dendiği için fare pitch deadzone normal çalışır.
 
         // Sağ Analog
         if (rightAnalogMode != 0) {
           if (rightAnalogMode == 1) {
             // Pilot Modu (Mutlak): Açıları topla, sonra stick değerine çevir
-            _accumulatedRaPitch = (_accumulatedRaPitch + gyroPitchDelta).clamp(-rightAnalogDeadzone * 2 - 45.0, rightAnalogDeadzone * 2 + 45.0);
+            _accumulatedRaPitch = (_accumulatedRaPitch + gyroPitchDelta).clamp(-pDeadzone * 2 - 45.0, pDeadzone * 2 + 45.0);
             _accumulatedRaYaw = (_accumulatedRaYaw + gyroYawDelta).clamp(-rightAnalogDeadzone * 2 - 45.0, rightAnalogDeadzone * 2 + 45.0);
             
             // Merkezden Deadzone çıkararak 0-1 arası (max 45 dereceye kadar) normalize et
@@ -168,8 +174,8 @@ class SensorManager {
               raTargetRx = ((_accumulatedRaYaw.abs() - rightAnalogDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedRaYaw.sign;
             }
             double raTargetRy = 0.0;
-            if (_accumulatedRaPitch.abs() > rightAnalogDeadzone) {
-              raTargetRy = ((_accumulatedRaPitch.abs() - rightAnalogDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedRaPitch.sign;
+            if (_accumulatedRaPitch.abs() > pDeadzone) {
+              raTargetRy = ((_accumulatedRaPitch.abs() - pDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedRaPitch.sign;
             }
             
             rightAnalogX = (raTargetRx * rightAnalogSensitivity).clamp(-1.0, 1.0);
@@ -181,16 +187,14 @@ class SensorManager {
                raX = gyroYawDelta * rightAnalogSensitivity; // Sağa/sola hız
             }
             double raY = 0.0;
-            if (gyroPitchDelta.abs() > (rightAnalogDeadzone * dt)) {
+            if (gyroPitchDelta.abs() > (pDeadzone * dt)) {
                raY = gyroPitchDelta * rightAnalogSensitivity; // Yukarı/aşağı hız
             }
             
-            // FPS modu için Stick gibi sürüklenmeli, anlık hızı stick sapması olarak veriyoruz
-            // Stick sapması 0 ile 1 arasında, o yüzden uygun bir çarpan ekliyoruz (örn. /10.0)
-            rightAnalogX += ((raX / 10.0) - rightAnalogX) * 0.3;
-            rightAnalogY += ((raY / 10.0) - rightAnalogY) * 0.3;
-            rightAnalogX = rightAnalogX.clamp(-1.0, 1.0);
-            rightAnalogY = rightAnalogY.clamp(-1.0, 1.0);
+            // FPS modu için anlık hızı stick sapması olarak veriyoruz
+            // Drift olmaması için yumuşatmayı kaldırdık, anında sıfırlanır
+            rightAnalogX = (raX / 10.0).clamp(-1.0, 1.0);
+            rightAnalogY = (raY / 10.0).clamp(-1.0, 1.0);
           }
         } else {
           _accumulatedRaPitch = 0.0;
@@ -201,7 +205,7 @@ class SensorManager {
         if (mouseMode != 0) {
           if (mouseMode == 1) {
             // Pilot Modu (Mutlak) farede pek yaygın değildir, ancak telefonun baktığı yön fare kursorudur.
-            _accumulatedMousePitch = (_accumulatedMousePitch + gyroPitchDelta).clamp(-mouseDeadzone * 2 - 45.0, mouseDeadzone * 2 + 45.0);
+            _accumulatedMousePitch = (_accumulatedMousePitch + gyroPitchDelta).clamp(-mpDeadzone * 2 - 45.0, mpDeadzone * 2 + 45.0);
             _accumulatedMouseYaw = (_accumulatedMouseYaw + gyroYawDelta).clamp(-mouseDeadzone * 2 - 45.0, mouseDeadzone * 2 + 45.0);
 
             double mTargetRx = 0.0;
@@ -209,8 +213,8 @@ class SensorManager {
               mTargetRx = ((_accumulatedMouseYaw.abs() - mouseDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedMouseYaw.sign;
             }
             double mTargetRy = 0.0;
-            if (_accumulatedMousePitch.abs() > mouseDeadzone) {
-              mTargetRy = ((_accumulatedMousePitch.abs() - mouseDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedMousePitch.sign;
+            if (_accumulatedMousePitch.abs() > mpDeadzone) {
+              mTargetRy = ((_accumulatedMousePitch.abs() - mpDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedMousePitch.sign;
             }
 
             double mX = mTargetRx * mouseSensitivity;
@@ -224,7 +228,7 @@ class SensorManager {
             double mx = 0.0;
             if (gyroYawDelta.abs() > (mouseDeadzone * dt)) mx = gyroYawDelta;
             double my = 0.0;
-            if (gyroPitchDelta.abs() > (mouseDeadzone * dt)) my = gyroPitchDelta;
+            if (gyroPitchDelta.abs() > (mpDeadzone * dt)) my = gyroPitchDelta;
 
             mouseDeltaX = mx * mouseSensitivity * 25.0; 
             mouseDeltaY = my * mouseSensitivity * 25.0;

@@ -544,6 +544,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final s = Provider.of<SettingsProvider>(context).settings;
     return Scaffold(
       backgroundColor: const Color(0xFF050510),
       body: Stack(
@@ -625,19 +626,21 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                           color: Colors.orange,
                         ),
                         const SizedBox(width: 8),
-                        _topBtn(
-                          'Sıfırla',
-                          Icons.center_focus_strong,
-                          false,
-                          () {
-                            SensorManager().recenterGyro();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Sensör merkezi sıfırlandı.', style: TextStyle(color: Colors.white))),
-                            );
-                          },
-                          color: Colors.pinkAccent,
-                        ),
-                        const SizedBox(width: 8),
+                        if (s.gyroCenterMode == 2) ...[
+                          _topBtn(
+                            'Sıfırla',
+                            Icons.center_focus_strong,
+                            false,
+                            () {
+                              SensorManager().recenterGyro();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Sensör merkezi sıfırlandı.', style: TextStyle(color: Colors.white))),
+                              );
+                            },
+                            color: Colors.pinkAccent,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         IconButton(
                           icon: const Icon(
                             Icons.info_outline,
@@ -1523,6 +1526,12 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                       item.gyroRightAnalogSensitivity.toStringAsFixed(2),
                       style: const TextStyle(color: Colors.white54, fontSize: 11),
                     ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: Colors.white54, size: 16),
+                      onPressed: () => _update(item.copyWith(gyroRightAnalogSensitivity: 1.0)),
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.only(left: 8),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -1542,6 +1551,12 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                     Text(
                       '${item.gyroRightAnalogDeadzone.toStringAsFixed(1)}°',
                       style: const TextStyle(color: Colors.white54, fontSize: 11),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: Colors.white54, size: 16),
+                      onPressed: () => _update(item.copyWith(gyroRightAnalogDeadzone: 7.0)),
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.only(left: 8),
                     ),
                   ],
                 ),
@@ -1596,6 +1611,12 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                     item.gyroMouseSensitivity.toStringAsFixed(2),
                     style: const TextStyle(color: Colors.white54, fontSize: 11),
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.white54, size: 16),
+                    onPressed: () => _update(item.copyWith(gyroMouseSensitivity: 1.0)),
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.only(left: 8),
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -1615,6 +1636,12 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                   Text(
                     '${item.gyroMouseDeadzone.toStringAsFixed(1)}°',
                     style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.white54, size: 16),
+                    onPressed: () => _update(item.copyWith(gyroMouseDeadzone: 7.0)),
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.only(left: 8),
                   ),
                 ],
               ),

@@ -585,7 +585,9 @@ class _SettingsScreenState extends State<SettingsScreen>
           title: 'Sensör Merkezleme Modu',
           subtitle: s.gyroCenterMode == 0
               ? 'Otomatik (${s.gyroAutoCenterDuration.toInt()} sn hareketsizlik)'
-              : 'Sadece Manuel',
+              : s.gyroCenterMode == 1
+                  ? 'Ayarlar Sayfasından'
+                  : 'Düzenleme Ekranından',
           trailing: Icon(Icons.center_focus_strong, color: ac),
           onTap: () async {
             final val = await radioDialog<int>(
@@ -594,7 +596,8 @@ class _SettingsScreenState extends State<SettingsScreen>
               current: s.gyroCenterMode,
               options: const {
                 'Otomatik (Hareketsizlik)': 0,
-                'Sadece Manuel': 1,
+                'Ayarlar Sayfasından': 1,
+                'Düzenleme Ekranından': 2,
               },
             );
             if (val != null) {
@@ -631,23 +634,41 @@ class _SettingsScreenState extends State<SettingsScreen>
               }
             },
           ),
-        settingsTile(
-          title: 'Merkezi Şimdi Sıfırla',
-          subtitle: 'Sensör merkezini o anki duruşa göre ayarlar.',
-          trailing: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ac,
-              foregroundColor: Colors.black,
-            ),
-            onPressed: () {
-              SensorManager().recenterGyro();
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                const SnackBar(content: Text('Sensör merkezi sıfırlandı.', style: TextStyle(color: Colors.white))),
-              );
-            },
-            child: const Text('Sıfırla'),
+        SwitchListTile(
+          title: const Text(
+            'Ölü Alana (Deadzone) Pitch Dahil Et',
+            style: TextStyle(color: Colors.white, fontSize: 15),
           ),
+          subtitle: const Text(
+            'Yukarı/aşağı eksenindeki harekette ölü alan uygular (Sadece Sağ Analog).',
+            style: TextStyle(color: Colors.white38, fontSize: 12),
+          ),
+          value: s.includePitchInDeadzone,
+          activeThumbColor: ac,
+          onChanged: (val) {
+            s.includePitchInDeadzone = val;
+            prov.updateSettings(s);
+            setState(() {});
+          },
         ),
+        if (s.gyroCenterMode == 1)
+          settingsTile(
+            title: 'Merkezi Şimdi Sıfırla',
+            subtitle: 'Sensör merkezini o anki duruşa göre ayarlar.',
+            trailing: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ac,
+                foregroundColor: Colors.black,
+              ),
+              onPressed: () {
+                SensorManager().recenterGyro();
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('Sensör merkezi sıfırlandı.', style: TextStyle(color: Colors.white))),
+                );
+              },
+              child: const Text('Sıfırla'),
+            ),
+          ),
         settingsTile(
           title: AppTranslations.getText('phone_orientation'),
           subtitle: zeroOrientationOptions.entries

@@ -127,6 +127,8 @@ class AppSettings {
   int gyroCenterMode;
   /// Otomatik merkezleme için hareketsiz kalınması gereken süre (saniye)
   double gyroAutoCenterDuration;
+  /// Sağ analog / imleçte (Pitch ekseni) ölü alanın (deadzone) geçerli olup olmayacağı
+  bool includePitchInDeadzone;
 
   // ── Joystick Çalışma Modu ──────────────────────────────────────────────────
   /// 0: Sabit (Fixed), 1: Sürüklenen (Floating Base), 2: Belirme (Spawn)
@@ -268,6 +270,7 @@ class AppSettings {
     this.joystickSensitivity = 1.0,
     this.gyroCenterMode = 0,
     this.gyroAutoCenterDuration = 10.0,
+    this.includePitchInDeadzone = true,
     this.joystickMode = 0,
     this.globalButtonPressMode = 0,
     this.globalButtonPressDurationMs = 2000,

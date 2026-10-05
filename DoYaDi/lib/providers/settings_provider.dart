@@ -59,6 +59,7 @@ class SettingsProvider with ChangeNotifier {
     _settings.gyroCenterMode = prefs.getInt('gyroCenterMode') ?? 0;
     _settings.gyroAutoCenterDuration =
         (prefs.getDouble('gyroAutoCenterDuration') ?? 10.0).clamp(5.0, 30.0);
+    _settings.includePitchInDeadzone = prefs.getBool('includePitchInDeadzone') ?? true;
     _settings.joystickMode =
         (prefs.getInt('joystickMode') ?? 0).clamp(0, 3);
     final profilesStr = prefs.getString('layout5Profiles');
@@ -350,6 +351,7 @@ class SettingsProvider with ChangeNotifier {
       'gyroAutoCenterDuration',
       _settings.gyroAutoCenterDuration.clamp(5.0, 30.0),
     );
+    await prefs.setBool('includePitchInDeadzone', _settings.includePitchInDeadzone);
     await prefs.setInt(
       'joystickMode',
       _settings.joystickMode.clamp(0, 3),
