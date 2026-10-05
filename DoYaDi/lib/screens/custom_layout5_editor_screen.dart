@@ -1501,8 +1501,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                     },
                     items: const [
                       DropdownMenuItem(value: 0, child: Text('Kapalı')),
-                      DropdownMenuItem(value: 1, child: Text('Pilot Modu (Mutlak)')),
+                      DropdownMenuItem(value: 1, child: Text('Normal (Mutlak)')),
                       DropdownMenuItem(value: 2, child: Text('FPS Modu (Sürüklenmeli)')),
+                      DropdownMenuItem(value: 3, child: Text('Sürücü Modu (Kafadan Bakış)')),
                     ],
                   ),
                 ),
@@ -1586,8 +1587,9 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
                   },
                   items: const [
                     DropdownMenuItem(value: 0, child: Text('Kapalı')),
-                    DropdownMenuItem(value: 1, child: Text('Pilot Modu (Mutlak)')),
+                    DropdownMenuItem(value: 1, child: Text('Normal (Mutlak)')),
                     DropdownMenuItem(value: 2, child: Text('FPS Modu (Hız/Sürüklenmeli)')),
+                    DropdownMenuItem(value: 3, child: Text('Sürücü Modu (Kafadan Bakış)')),
                   ],
                 ),
               ),

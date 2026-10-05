@@ -156,31 +156,53 @@ class SensorManager {
         // Cihazın kendi X ekseni etrafında dönmesi (sağa/sola döndürme) -> Yaw (Sağa/Sola)
         // Kullanıcının belirttiği gibi eksenlerin yönlerini düzeltiyoruz.
         double gyroPitchDelta = event.y * (180.0 / math.pi) * dt; // yukarı/aşağı
-        double gyroYawDelta = event.x * (180.0 / math.pi) * dt; // sağa/sola
+        double gyroYawDelta = -event.x * (180.0 / math.pi) * dt; // sağa/sola ters olduğu için - ekledik
 
         double pDeadzone = settings.includePitchInDeadzone ? rightAnalogDeadzone : 0.0;
         double mpDeadzone = mouseDeadzone; // Sadece sağ analog için geçerli dendiği için fare pitch deadzone normal çalışır.
 
         // Sağ Analog
         if (rightAnalogMode != 0) {
-          if (rightAnalogMode == 1) {
-            // Pilot Modu (Mutlak): Açıları topla, sonra stick değerine çevir
-            _accumulatedRaPitch = (_accumulatedRaPitch + gyroPitchDelta).clamp(-pDeadzone * 2 - 45.0, pDeadzone * 2 + 45.0);
-            _accumulatedRaYaw = (_accumulatedRaYaw + gyroYawDelta).clamp(-rightAnalogDeadzone * 2 - 45.0, rightAnalogDeadzone * 2 + 45.0);
+          if (rightAnalogMode == 1 || rightAnalogMode == 3) {
+            // Sürücü modu (3) için ekstra ölü alan uygulayalım (direksiyon çevirirken kazara bakmayı önlemek için)
+            double rYawDeadzone = rightAnalogMode == 3 ? math.max(rightAnalogDeadzone, 12.0) : rightAnalogDeadzone;
+            double rPitchDeadzone = rightAnalogMode == 3 ? math.max(pDeadzone, 10.0) : pDeadzone;
+
+            // Normal (Mutlak) veya Sürücü Modu
+            _accumulatedRaPitch = (_accumulatedRaPitch + gyroPitchDelta).clamp(-rPitchDeadzone * 2 - 45.0, rPitchDeadzone * 2 + 45.0);
+            _accumulatedRaYaw = (_accumulatedRaYaw + gyroYawDelta).clamp(-rYawDeadzone * 2 - 45.0, rYawDeadzone * 2 + 45.0);
             
-            // Merkezden Deadzone çıkararak 0-1 arası (max 45 dereceye kadar) normalize et
+            // Sürücü modu için çok daha kısa mesafe (15 derece), Normal için 45 derece
+            double range = (rightAnalogMode == 3) ? 15.0 : 45.0;
+
+            // Merkezden Deadzone çıkararak 0-1 arası normalize et
             double raTargetRx = 0.0;
-            if (_accumulatedRaYaw.abs() > rightAnalogDeadzone) {
-              raTargetRx = ((_accumulatedRaYaw.abs() - rightAnalogDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedRaYaw.sign;
+            if (_accumulatedRaYaw.abs() > rYawDeadzone) {
+              raTargetRx = ((_accumulatedRaYaw.abs() - rYawDeadzone) / range).clamp(0.0, 1.0);
+              // Üst seviye hissiyat için Sürücü modunda ivmeli (exponential) hassasiyet
+              if (rightAnalogMode == 3) raTargetRx = raTargetRx * raTargetRx; 
+              raTargetRx *= _accumulatedRaYaw.sign;
             }
             double raTargetRy = 0.0;
-            if (_accumulatedRaPitch.abs() > pDeadzone) {
-              raTargetRy = ((_accumulatedRaPitch.abs() - pDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedRaPitch.sign;
+            if (_accumulatedRaPitch.abs() > rPitchDeadzone) {
+              raTargetRy = ((_accumulatedRaPitch.abs() - rPitchDeadzone) / range).clamp(0.0, 1.0);
+              if (rightAnalogMode == 3) raTargetRy = raTargetRy * raTargetRy;
+              raTargetRy *= _accumulatedRaPitch.sign;
             }
             
-            rightAnalogX = (raTargetRx * rightAnalogSensitivity).clamp(-1.0, 1.0);
-            rightAnalogY = (raTargetRy * rightAnalogSensitivity).clamp(-1.0, 1.0);
-          } else {
+            double finalX = (raTargetRx * rightAnalogSensitivity).clamp(-1.0, 1.0);
+            double finalY = (raTargetRy * rightAnalogSensitivity).clamp(-1.0, 1.0);
+
+            if (rightAnalogMode == 3) {
+              // Sürücü modu: Geçişler çok yumuşak ve akıcı
+              rightAnalogX += (finalX - rightAnalogX) * 0.15; // Biraz daha hızlandırdık ama hala akıcı
+              rightAnalogY += (finalY - rightAnalogY) * 0.15;
+            } else {
+              // Normal mod: Anlık tepki
+              rightAnalogX = finalX;
+              rightAnalogY = finalY;
+            }
+          } else if (rightAnalogMode == 2) {
             // FPS Modu (Açısal hız - Sürekli hareket)
             double raX = 0.0;
             if (gyroYawDelta.abs() > (rightAnalogDeadzone * dt)) {
@@ -203,27 +225,47 @@ class SensorManager {
 
         // Fare
         if (mouseMode != 0) {
-          if (mouseMode == 1) {
-            // Pilot Modu (Mutlak) farede pek yaygın değildir, ancak telefonun baktığı yön fare kursorudur.
-            _accumulatedMousePitch = (_accumulatedMousePitch + gyroPitchDelta).clamp(-mpDeadzone * 2 - 45.0, mpDeadzone * 2 + 45.0);
-            _accumulatedMouseYaw = (_accumulatedMouseYaw + gyroYawDelta).clamp(-mouseDeadzone * 2 - 45.0, mouseDeadzone * 2 + 45.0);
+          if (mouseMode == 1 || mouseMode == 3) {
+            double mYawDeadzone = mouseMode == 3 ? math.max(mouseDeadzone, 12.0) : mouseDeadzone;
+            double mPitchDeadzone = mouseMode == 3 ? math.max(mpDeadzone, 10.0) : mpDeadzone;
+
+            // Normal (Mutlak) veya Sürücü Modu
+            _accumulatedMousePitch = (_accumulatedMousePitch + gyroPitchDelta).clamp(-mPitchDeadzone * 2 - 45.0, mPitchDeadzone * 2 + 45.0);
+            _accumulatedMouseYaw = (_accumulatedMouseYaw + gyroYawDelta).clamp(-mYawDeadzone * 2 - 45.0, mYawDeadzone * 2 + 45.0);
+
+            double range = (mouseMode == 3) ? 15.0 : 45.0;
 
             double mTargetRx = 0.0;
-            if (_accumulatedMouseYaw.abs() > mouseDeadzone) {
-              mTargetRx = ((_accumulatedMouseYaw.abs() - mouseDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedMouseYaw.sign;
+            if (_accumulatedMouseYaw.abs() > mYawDeadzone) {
+              mTargetRx = ((_accumulatedMouseYaw.abs() - mYawDeadzone) / range).clamp(0.0, 1.0);
+              if (mouseMode == 3) mTargetRx = mTargetRx * mTargetRx;
+              mTargetRx *= _accumulatedMouseYaw.sign;
             }
             double mTargetRy = 0.0;
-            if (_accumulatedMousePitch.abs() > mpDeadzone) {
-              mTargetRy = ((_accumulatedMousePitch.abs() - mpDeadzone) / 45.0).clamp(0.0, 1.0) * _accumulatedMousePitch.sign;
+            if (_accumulatedMousePitch.abs() > mPitchDeadzone) {
+              mTargetRy = ((_accumulatedMousePitch.abs() - mPitchDeadzone) / range).clamp(0.0, 1.0);
+              if (mouseMode == 3) mTargetRy = mTargetRy * mTargetRy;
+              mTargetRy *= _accumulatedMousePitch.sign;
             }
 
             double mX = mTargetRx * mouseSensitivity;
             double mY = mTargetRy * mouseSensitivity;
-            mouseDeltaX = (mX - _lastTargetMx) * 100.0;
-            mouseDeltaY = (mY - _lastTargetMy) * 100.0;
-            _lastTargetMx = mX;
-            _lastTargetMy = mY;
-          } else {
+            
+            if (mouseMode == 3) {
+              // Yumuşak geçiş
+              _lastTargetMx += (mX - _lastTargetMx) * 0.15;
+              _lastTargetMy += (mY - _lastTargetMy) * 0.15;
+              mouseDeltaX = (mX - _lastTargetMx) * 100.0;
+              mouseDeltaY = (mY - _lastTargetMy) * 100.0;
+              _lastTargetMx = mX;
+              _lastTargetMy = mY;
+            } else {
+              mouseDeltaX = (mX - _lastTargetMx) * 100.0;
+              mouseDeltaY = (mY - _lastTargetMy) * 100.0;
+              _lastTargetMx = mX;
+              _lastTargetMy = mY;
+            }
+          } else if (mouseMode == 2) {
             // FPS Modu farede asıl Flick/Gyro Aiming'dir (Açısal Hız delta olarak doğrudan gönderilir)
             double mx = 0.0;
             if (gyroYawDelta.abs() > (mouseDeadzone * dt)) mx = gyroYawDelta;
