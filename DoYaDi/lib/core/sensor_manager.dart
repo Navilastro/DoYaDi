@@ -98,14 +98,14 @@ class SensorManager {
 
     if (pitch >= 50.0 && pitch <= 70.0) {
       double t = (pitch - 50.0) / (70.0 - 50.0);
-      multiplier = minMultiplier + (t * (1.0 - minMultiplier));
+      multiplier = maxMultiplier + (t * (1.0 - maxMultiplier));
     } else if (pitch >= 110.0 && pitch <= 130.0) {
       double t = (pitch - 110.0) / (130.0 - 110.0);
-      multiplier = 1.0 + (t * (maxMultiplier - 1.0));
+      multiplier = 1.0 + (t * (minMultiplier - 1.0));
     } else if (pitch < 50.0) {
-      multiplier = minMultiplier;
-    } else if (pitch > 130.0) {
       multiplier = maxMultiplier;
+    } else if (pitch > 130.0) {
+      multiplier = minMultiplier;
     }
 
     // Gyro-to-Right Analog and Mouse will be processed in _processGyroscope

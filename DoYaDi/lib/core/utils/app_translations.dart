@@ -415,6 +415,23 @@ class AppTranslations {
       'steering_icon_color': 'Direksiyon İkonu Rengi',
       'steering_turn_right_color': 'Direksiyon Sağa Dönüş Dolan Rengi',
       'steering_turn_left_color': 'Direksiyon Sola Dönüş Dolan Rengi',
+      
+      // Gyro Look
+      'gyro_look_header': 'Sensörle Bakış (Sağ Analog)',
+      'gyro_look_global': 'Sensörle Bakış (Global)',
+      'gyro_look_global_desc': 'Açıkken sağ analog verisini cihaz hareketinden alır. Mod 5 sol analog kuralı korunur.',
+      'gyro_look_style': 'Bakış Stili',
+      'gyro_look_style_0': 'Sıfır Noktası Modu',
+      'gyro_look_style_1': 'TrackPoint Modu',
+      'gyro_look_style_0_desc': 'Sıfır Noktası (Direksiyon ortadayken)',
+      'gyro_look_style_1_desc': 'TrackPoint (Ekranda mini joystick)',
+      'gyro_look_mode': 'Çalışma Modu',
+      'gyro_look_mode_normal': 'Normal (Mutlak Konum)',
+      'gyro_look_mode_fps': 'FPS (Sürüklenmeli)',
+      'gyro_look_mode_fps_desc': 'FPS (Açısal Hız/Sürüklenme)',
+      'gyro_look_mode_driver': 'Sürücü (Yumuşatılmış)',
+      'gyro_look_sens': 'Hassasiyet',
+      'gyro_look_deadzone': 'Ölü Alan (Deadzone)',
     },
     'en': {
       // ── GENERAL ──
@@ -811,6 +828,23 @@ class AppTranslations {
       'steering_icon_color': 'Steering Icon Color',
       'steering_turn_right_color': 'Steering Turn Right Fill Color',
       'steering_turn_left_color': 'Steering Turn Left Fill Color',
+      
+      // Gyro Look
+      'gyro_look_header': 'Gyro Look (Right Analog)',
+      'gyro_look_global': 'Gyro Look (Global)',
+      'gyro_look_global_desc': 'When enabled, right analog data is driven by device motion. Mode 5 left analog rule applies.',
+      'gyro_look_style': 'Look Style',
+      'gyro_look_style_0': 'Zero Point Mode',
+      'gyro_look_style_1': 'TrackPoint Mode',
+      'gyro_look_style_0_desc': 'Zero Point (When steering is center)',
+      'gyro_look_style_1_desc': 'TrackPoint (Mini joystick on screen)',
+      'gyro_look_mode': 'Operating Mode',
+      'gyro_look_mode_normal': 'Normal (Absolute Position)',
+      'gyro_look_mode_fps': 'FPS (Drift)',
+      'gyro_look_mode_fps_desc': 'FPS (Angular Velocity/Drift)',
+      'gyro_look_mode_driver': 'Driver (Smoothed)',
+      'gyro_look_sens': 'Sensitivity',
+      'gyro_look_deadzone': 'Deadzone',
     },
   };
 

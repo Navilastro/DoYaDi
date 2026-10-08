@@ -19,6 +19,7 @@ enum Layout5ItemType {
   handbrakeBar,   // El freni barı (en fazla 1 adet)
   handbrakeIcon,  // El freni ikonu (en fazla 1 adet)
   steeringWheelIcon, // Direksiyon ikonu (sadece görsel, en fazla 1 adet)
+  steeringBar,    // Direksiyon barı (alt kısımda çevrimi gösterir)
 }
 
 enum ButtonMode {
@@ -96,6 +97,8 @@ class Layout5Item {
   double gyroMouseSensitivity;
   double gyroMouseDeadzone; // Ölü alan (derece)
 
+  int? tapKey;
+  Map<int, int>? customSwipeKeys;
   Layout5Item({
     required this.id,
     required this.type,
@@ -124,6 +127,8 @@ class Layout5Item {
     this.gyroToMouseMode = 0,
     this.gyroMouseSensitivity = 1.0,
     this.gyroMouseDeadzone = 7.0,
+    this.tapKey,
+    this.customSwipeKeys,
   });
 
   Map<String, dynamic> toJson() => {
@@ -154,6 +159,8 @@ class Layout5Item {
     'gyroToMouseMode': gyroToMouseMode,
     'gyroMouseSensitivity': gyroMouseSensitivity,
     'gyroMouseDeadzone': gyroMouseDeadzone,
+    'tapKey': tapKey,
+    'customSwipeKeys': customSwipeKeys?.map((k, v) => MapEntry(k.toString(), v)),
   };
 
   factory Layout5Item.fromJson(Map<String, dynamic> json) {
@@ -210,6 +217,10 @@ class Layout5Item {
       gyroToMouseMode: json['gyroToMouseMode'] as int? ?? 0,
       gyroMouseSensitivity: json['gyroMouseSensitivity'] != null ? (json['gyroMouseSensitivity'] as num).toDouble() : 1.0,
       gyroMouseDeadzone: json['gyroMouseDeadzone'] != null ? (json['gyroMouseDeadzone'] as num).toDouble() : 7.0,
+      tapKey: json['tapKey'],
+      customSwipeKeys: json['customSwipeKeys'] != null
+          ? (json['customSwipeKeys'] as Map<String, dynamic>).map((k, v) => MapEntry(int.parse(k), v as int))
+          : null,
     );
   }
 
@@ -283,6 +294,8 @@ class Layout5Item {
       gyroToMouseMode: gyroToMouseMode ?? this.gyroToMouseMode,
       gyroMouseSensitivity: gyroMouseSensitivity ?? this.gyroMouseSensitivity,
       gyroMouseDeadzone: gyroMouseDeadzone ?? this.gyroMouseDeadzone,
+      tapKey: tapKey ?? this.tapKey,
+      customSwipeKeys: customSwipeKeys ?? this.customSwipeKeys,
     );
   }
 }
@@ -326,6 +339,16 @@ List<Layout5Item> defaultLayout5() {
       width: 0.10,
       height: 0.46,
       bgColor: const Color(0xFF1A1A3E),
+    ),
+    Layout5Item(
+      id: 'steering_bar_0',
+      type: Layout5ItemType.steeringBar,
+      left: 0.10,
+      top: 0.90,
+      width: 0.80,
+      height: 0.10,
+      bgColor: const Color(0xFF000000), // Default transparent or dark
+      textColor: const Color(0xFF40E0D0), // Default indicator color
     ),
   ];
 }

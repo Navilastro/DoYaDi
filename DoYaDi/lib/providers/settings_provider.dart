@@ -60,6 +60,13 @@ class SettingsProvider with ChangeNotifier {
     _settings.gyroAutoCenterDuration =
         (prefs.getDouble('gyroAutoCenterDuration') ?? 10.0).clamp(5.0, 30.0);
     _settings.includePitchInDeadzone = prefs.getBool('includePitchInDeadzone') ?? true;
+    _settings.gyroLookEnabled = prefs.getBool('gyroLookEnabled') ?? false;
+    _settings.gyroLookStyle = prefs.getInt('gyroLookStyle') ?? 0;
+    _settings.gyroLookMode = (prefs.getInt('gyroLookMode') ?? 1).clamp(1, 3);
+    _settings.gyroLookSensitivity =
+        (prefs.getDouble('gyroLookSensitivity') ?? 1.0).clamp(0.2, 3.0);
+    _settings.gyroLookDeadzone =
+        (prefs.getDouble('gyroLookDeadzone') ?? 7.0).clamp(1.0, 30.0);
     _settings.joystickMode =
         (prefs.getInt('joystickMode') ?? 0).clamp(0, 3);
     final profilesStr = prefs.getString('layout5Profiles');
@@ -352,6 +359,17 @@ class SettingsProvider with ChangeNotifier {
       _settings.gyroAutoCenterDuration.clamp(5.0, 30.0),
     );
     await prefs.setBool('includePitchInDeadzone', _settings.includePitchInDeadzone);
+    await prefs.setBool('gyroLookEnabled', _settings.gyroLookEnabled);
+    await prefs.setInt('gyroLookStyle', _settings.gyroLookStyle);
+    await prefs.setInt('gyroLookMode', _settings.gyroLookMode.clamp(1, 3));
+    await prefs.setDouble(
+      'gyroLookSensitivity',
+      _settings.gyroLookSensitivity.clamp(0.2, 3.0),
+    );
+    await prefs.setDouble(
+      'gyroLookDeadzone',
+      _settings.gyroLookDeadzone.clamp(1.0, 30.0),
+    );
     await prefs.setInt(
       'joystickMode',
       _settings.joystickMode.clamp(0, 3),

@@ -130,6 +130,18 @@ class AppSettings {
   /// Sağ analog / imleçte (Pitch ekseni) ölü alanın (deadzone) geçerli olup olmayacağı
   bool includePitchInDeadzone;
 
+  // ── Sensörle Bakış (Gyro Look) — Global Ayar ───────────────────────────────
+  /// Ana açma/kapama anahtarı
+  bool gyroLookEnabled;
+  /// 0: Sıfır Noktası Modu (direksiyon merkezde iken aktif), 1: TrackPoint Modu (mini joystick)
+  int gyroLookStyle;
+  /// 1: Normal (Mutlak), 2: FPS (Açısal Hız), 3: Sürücü (Yumuşatılmış)
+  int gyroLookMode;
+  /// Hassasiyet (0.2 - 3.0)
+  double gyroLookSensitivity;
+  /// Ölü alan (derece)
+  double gyroLookDeadzone;
+
   // ── Joystick Çalışma Modu ──────────────────────────────────────────────────
   /// 0: Sabit (Fixed), 1: Sürüklenen (Floating Base), 2: Belirme (Spawn)
   /// Global ayar — sol ve sağ joystick aynı modu paylaşır.
@@ -271,6 +283,11 @@ class AppSettings {
     this.gyroCenterMode = 0,
     this.gyroAutoCenterDuration = 10.0,
     this.includePitchInDeadzone = true,
+    this.gyroLookEnabled = false,
+    this.gyroLookStyle = 0,
+    this.gyroLookMode = 1,
+    this.gyroLookSensitivity = 1.0,
+    this.gyroLookDeadzone = 7.0,
     this.joystickMode = 0,
     this.globalButtonPressMode = 0,
     this.globalButtonPressDurationMs = 2000,

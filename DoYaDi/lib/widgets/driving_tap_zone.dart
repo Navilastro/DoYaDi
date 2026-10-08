@@ -7,6 +7,7 @@ class TapZone extends StatefulWidget {
   final Color color;
   final VoidCallback onDown;
   final VoidCallback onUp;
+  final bool isActive;
 
   const TapZone({
     super.key,
@@ -14,6 +15,7 @@ class TapZone extends StatefulWidget {
     required this.color,
     required this.onDown,
     required this.onUp,
+    this.isActive = false,
   });
 
   @override
@@ -44,7 +46,7 @@ class _TapZoneState extends State<TapZone> {
         child: RepaintBoundary(
           child: CustomPaint(
             painter: TapAreaPainter(
-              isPressed: _pressed,
+              isPressed: _pressed || widget.isActive,
               baseColor: widget.color,
               label: widget.label,
             ),

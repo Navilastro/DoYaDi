@@ -35,8 +35,9 @@ class PedalTouchState {
   bool isGas;
   bool isBarAction = false;
   int? tapKey;
+  Map<int, int>? customSwipeKeys;
 
-  PedalTouchState(this.start, this.isGas, this.startTime, {this.tapKey});
+  PedalTouchState(this.start, this.isGas, this.startTime, {this.tapKey, this.customSwipeKeys});
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -90,6 +91,23 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   double gyroMouseSensitivity = 1.0;
   double gyroMouseDeadzone = 7.0;
 
+  // Sensörle Bakış (Global Ayar) Aktiflik Durumu
+  bool get isGyroLookActive {
+    final s = Provider.of<SettingsProvider>(context, listen: false).settings;
+    if (!s.gyroLookEnabled || s.gyroLookMode == 0) return false;
+    
+    // Sıfır noktası modunda direksiyon açısı kontrolü
+    if (s.gyroLookStyle == 0) {
+      // Mod 5'te sol joystick varsa direksiyon kuralı geçersiz
+      if (s.defaultDrivingMode == 5 && leftJoystickPresent) return true;
+      // Yoksa direksiyon sıfıra yakın olmalı (%5 eşik)
+      return steeringAngle.abs() < 0.05;
+    }
+    
+    // TrackPoint modu her zaman aktif
+    return true;
+  }
+
   // Mode 5: Joystick item bazlı hassasiyet (sol/sağ ayrı)
   // Layout parse edilirken set edilir. null ise global fallback kullanılır.
   double? leftJoySensitivity;
@@ -136,6 +154,7 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
     bool isGas, {
     bool forceBarAction = false,
     int? tapKey,
+    Map<int, int>? customSwipeKeys,
   }) {
     if (Provider.of<SettingsProvider>(
           context,
@@ -151,6 +170,7 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
       isGas,
       DateTime.now(),
       tapKey: tapKey,
+      customSwipeKeys: customSwipeKeys,
     );
     if (forceBarAction) {
       // Mod 5 barları: yön algılamaya gerek yok, doğrudan bar kontrol
@@ -193,7 +213,9 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
         }
 
         int mappedKey = 0;
-        if (state.isGas) {
+        if (state.customSwipeKeys != null) {
+          mappedKey = state.customSwipeKeys![state.direction.index] ?? -1;
+        } else if (state.isGas) {
           switch (state.direction) {
             case SwipeDir.up:
               mappedKey = s.gasSwipeUp;

@@ -83,9 +83,15 @@ class _DrivingScreenState extends State<DrivingScreen>
     final int currentMode = settings.defaultDrivingMode;
 
     // SensorManager'dan güncel açı değerlerini al
-    _sensorManager.rightAnalogMode = gyroToRightAnalogMode;
-    _sensorManager.rightAnalogSensitivity = gyroRightAnalogSensitivity;
-    _sensorManager.rightAnalogDeadzone = gyroRightAnalogDeadzone;
+    if (isGyroLookActive) {
+      _sensorManager.rightAnalogMode = settings.gyroLookMode;
+      _sensorManager.rightAnalogSensitivity = settings.gyroLookSensitivity;
+      _sensorManager.rightAnalogDeadzone = settings.gyroLookDeadzone;
+    } else {
+      _sensorManager.rightAnalogMode = gyroToRightAnalogMode;
+      _sensorManager.rightAnalogSensitivity = gyroRightAnalogSensitivity;
+      _sensorManager.rightAnalogDeadzone = gyroRightAnalogDeadzone;
+    }
     _sensorManager.mouseMode = gyroToMouseMode;
     _sensorManager.mouseSensitivity = gyroMouseSensitivity;
     _sensorManager.mouseDeadzone = gyroMouseDeadzone;
@@ -180,9 +186,9 @@ class _DrivingScreenState extends State<DrivingScreen>
       buttonsLow, // Byte 4 — XUSB Low Byte
     ];
 
-    // Determine if we need the extended 16/17-byte payload (static for the layout)
+    // Determine if we need the extended 16/17-byte payload (static for the layout or active features)
     final bool useExtended =
-        joystickPresent || touchpadPresent || keyboardKeysPresent || isClutchActive || isHandbrakeBarActive;
+        joystickPresent || touchpadPresent || keyboardKeysPresent || isClutchActive || isHandbrakeBarActive || isGyroLookActive;
 
     if (useExtended) {
       // Bytes 5-8: Joystick axes (128 = neutral when no joystick present)
@@ -201,8 +207,10 @@ class _DrivingScreenState extends State<DrivingScreen>
       double curve1x = j1x.sign * math.pow(j1x.abs(), rightSens);
       double curve1y = j1y.sign * math.pow(j1y.abs(), rightSens);
       
-      // Gyro-to-Right Analog aktifse sensör verisiyle ez
-      if (gyroToRightAnalogMode != 0) {
+      // Gyro-to-Right Analog (eski mod 5 kuralı) veya yeni Global Gyro Look aktifse sensör verisiyle ez
+      final bool useSensorRightAnalog = gyroToRightAnalogMode != 0 || isGyroLookActive;
+      
+      if (useSensorRightAnalog) {
         curve1x = _sensorManager.rightAnalogX;
         curve1y = _sensorManager.rightAnalogY;
       }
@@ -219,19 +227,19 @@ class _DrivingScreenState extends State<DrivingScreen>
       }
 
       int rightStickXByte = 128;
-      if (isHandbrakeBarActive && (gyroToRightAnalogMode == 0 && j1x.abs() < 0.05)) {
+      if (isHandbrakeBarActive && (!useSensorRightAnalog && j1x.abs() < 0.05)) {
         // El Freni Bar değerini Byte 7'ye (Sağ Analog X) aktar
         rightStickXByte = (handbrakePercentage * 255).clamp(0, 255).round();
-      } else if (gyroToRightAnalogMode != 0 || j1x.abs() >= 0.05) {
+      } else if (useSensorRightAnalog || j1x.abs() >= 0.05) {
         rightStickXByte = ((curve1x + 1.0) / 2.0 * 255).clamp(0, 255).round();
         if (rightStickXByte == 127) rightStickXByte = 128;
       }
 
       int rStickYByte = 128;
-      if (isClutchActive && (gyroToRightAnalogMode == 0 && j1y.abs() < 0.05)) {
+      if (isClutchActive && (!useSensorRightAnalog && j1y.abs() < 0.05)) {
         // Debriyaj değerini Byte 8'e (Sağ Analog Y) aktar
         rStickYByte = (clutchPercentage * 255).clamp(0, 255).round();
-      } else if (gyroToRightAnalogMode != 0 || j1y.abs() >= 0.05) {
+      } else if (useSensorRightAnalog || j1y.abs() >= 0.05) {
         rStickYByte = ((curve1y + 1.0) / 2.0 * 255).clamp(0, 255).round();
         if (rStickYByte == 127) rStickYByte = 128;
       }
@@ -339,24 +347,25 @@ class _DrivingScreenState extends State<DrivingScreen>
               Positioned.fill(child: buildLayout(settings, size)),
 
               // Direksiyon göstergesi alt-orta, yüksekliğin %10'u
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: size.height * 0.10,
-                child: IgnorePointer(
-                  child: RepaintBoundary(
-                    child: CustomPaint(
-                      painter: SteeringPainter(
-                        angle: steeringAngle,
-                        pitch: pitchDeg,
-                        indicatorColor: settings.steeringIndicatorColor,
-                        bgColor: settings.steeringBgColor,
+              if (settings.defaultDrivingMode != 5 && settings.defaultDrivingMode != 6)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: size.height * 0.10,
+                  child: IgnorePointer(
+                    child: RepaintBoundary(
+                      child: CustomPaint(
+                        painter: SteeringPainter(
+                          angle: steeringAngle,
+                          pitch: pitchDeg,
+                          indicatorColor: settings.steeringIndicatorColor,
+                          bgColor: settings.steeringBgColor,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
               // Geliştirici debug paneli
               // if (_debugMode)
