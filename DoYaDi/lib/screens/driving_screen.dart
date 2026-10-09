@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 import '../core/network/network_manager.dart';
 import '../core/utils/app_translations.dart';
@@ -25,13 +26,14 @@ class _DrivingScreenState extends State<DrivingScreen>
     with
         SingleTickerProviderStateMixin,
         DrivingInputMixin<DrivingScreen>,
-        DrivingModeBuildMixin<DrivingScreen> {
+        DrivingModeBuildMixin<DrivingScreen>,
+        WidgetsBindingObserver {
   late AnimationController _tickController;
 
   final SensorManager _sensorManager = SensorManager();
 
   // Geliştirici (debug) modu
-  bool _debugMode = false;
+  final bool _debugMode = false;
   List<int> _lastPayload = [128, 0, 0, 0, 0];
 
   static const _volumeChannel = MethodChannel('Navilastro.DoYaDi/volume_keys');
@@ -39,6 +41,7 @@ class _DrivingScreenState extends State<DrivingScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
 
     // Hardware ses tuşu dinleyici
@@ -49,10 +52,12 @@ class _DrivingScreenState extends State<DrivingScreen>
           listen: false,
         ).settings;
         final String event = call.arguments as String;
-        if (event == 'volume_up' && settings.volumeUpAction > 0)
+        if (event == 'volume_up' && settings.volumeUpAction > 0) {
           fireKey(settings.volumeUpAction);
-        if (event == 'volume_down' && settings.volumeDownAction > 0)
+        }
+        if (event == 'volume_down' && settings.volumeDownAction > 0) {
           fireKey(settings.volumeDownAction);
+        }
       }
     });
 
@@ -62,7 +67,21 @@ class _DrivingScreenState extends State<DrivingScreen>
           ..addListener(_onTick)
           ..repeat();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initSensors());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initSensors();
+      final settings = Provider.of<SettingsProvider>(context, listen: false).settings;
+      if (settings.defaultDrivingMode == 8) {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+        ]);
+      } else {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
+    });
   }
 
   void _initSensors() {
@@ -83,7 +102,7 @@ class _DrivingScreenState extends State<DrivingScreen>
     final int currentMode = settings.defaultDrivingMode;
 
     // SensorManager'dan güncel açı değerlerini al
-    if (isGyroLookActive) {
+    if (isGyroLookActive && settings.gyroLookStyle == 0) {
       _sensorManager.rightAnalogMode = settings.gyroLookMode;
       _sensorManager.rightAnalogSensitivity = settings.gyroLookSensitivity;
       _sensorManager.rightAnalogDeadzone = settings.gyroLookDeadzone;
@@ -207,8 +226,8 @@ class _DrivingScreenState extends State<DrivingScreen>
       double curve1x = j1x.sign * math.pow(j1x.abs(), rightSens);
       double curve1y = j1y.sign * math.pow(j1y.abs(), rightSens);
       
-      // Gyro-to-Right Analog (eski mod 5 kuralı) veya yeni Global Gyro Look aktifse sensör verisiyle ez
-      final bool useSensorRightAnalog = gyroToRightAnalogMode != 0 || isGyroLookActive;
+      // Gyro-to-Right Analog (eski mod 5 kuralı) veya yeni Global Gyro Look aktifse (sadece Sıfır Noktası modunda) sensör verisiyle ez
+      final bool useSensorRightAnalog = gyroToRightAnalogMode != 0 || (isGyroLookActive && settings.gyroLookStyle == 0);
       
       if (useSensorRightAnalog) {
         curve1x = _sensorManager.rightAnalogX;
@@ -285,7 +304,9 @@ class _DrivingScreenState extends State<DrivingScreen>
           .map((k) => k - 1000) // Gerçek VK koduna geri çevir (Örn 1013 -> 13)
           .take(4)
           .toList();
-      while (kbKeys.length < 4) kbKeys.add(0);
+      while (kbKeys.length < 4) {
+        kbKeys.add(0);
+      }
       payload.addAll(kbKeys);
 
       // Reset touchpad deltas after sending (but NOT clicks, gestures handle their own release)
@@ -299,10 +320,51 @@ class _DrivingScreenState extends State<DrivingScreen>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    super.didChangeAppLifecycleState(state);
+    final settings = Provider.of<SettingsProvider>(context, listen: false).settings;
+    if (settings.defaultDrivingMode == 8 && settings.chillOverlayEnabled) {
+      if (state == AppLifecycleState.paused) {
+        _tickController.stop();
+        NetworkManager().close();
+        
+        bool isGranted = await FlutterOverlayWindow.isPermissionGranted();
+        if (!isGranted) {
+           await FlutterOverlayWindow.requestPermission();
+        } else {
+           await FlutterOverlayWindow.showOverlay(
+              enableDrag: true,
+              flag: OverlayFlag.defaultFlag,
+              alignment: OverlayAlignment.centerLeft,
+              visibility: NotificationVisibility.visibilityPublic,
+              positionGravity: PositionGravity.auto,
+              height: 250,
+              width: 250,
+           );
+        }
+      } else if (state == AppLifecycleState.resumed) {
+        _tickController.repeat();
+        await FlutterOverlayWindow.closeOverlay();
+        if (NetworkManager().serverIp.isNotEmpty) {
+           NetworkManager().initUdp(NetworkManager().serverIp);
+        }
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
     _tickController.dispose();
     _sensorManager.dispose();
+    
+    // Revert to landscape for the rest of the app
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
     super.dispose();
   }
 
@@ -310,13 +372,15 @@ class _DrivingScreenState extends State<DrivingScreen>
   DateTime? _lastBackPressTime;
   bool _isExiting = false;
 
+  bool _canPop = false;
+
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context).settings;
     final size = MediaQuery.of(context).size;
 
     return PopScope(
-      canPop: false,
+      canPop: _canPop,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         final now = DateTime.now();
@@ -334,7 +398,10 @@ class _DrivingScreenState extends State<DrivingScreen>
             if (mounted) setState(() => _isExiting = false);
           });
         } else {
-          Navigator.pop(context);
+          setState(() => _canPop = true);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.pop(context);
+          });
         }
       },
       child: Scaffold(

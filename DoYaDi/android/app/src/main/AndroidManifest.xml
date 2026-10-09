@@ -26,6 +26,9 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <!-- Haptic / Vibration permission -->
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Background Service and Overlay permissions -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     
     <application
         android:label="DoYaDi"

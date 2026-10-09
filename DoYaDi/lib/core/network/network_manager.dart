@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class NetworkManager {
   static final NetworkManager _instance = NetworkManager._internal();
   factory NetworkManager() => _instance;
@@ -42,6 +44,9 @@ class NetworkManager {
       // 2. Boşluk tuzağını çöz: .trim() ile IP'nin sağındaki/solundaki görünmez boşlukları temizle
       _targetAddress = InternetAddress(ip.trim());
       
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_pc_ip', ip.trim());
+
       _udpSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
     } catch (e) {
       debugPrint("UDP Init Error: $e");

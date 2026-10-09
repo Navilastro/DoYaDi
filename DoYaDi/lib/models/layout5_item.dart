@@ -294,8 +294,8 @@ class Layout5Item {
       gyroToMouseMode: gyroToMouseMode ?? this.gyroToMouseMode,
       gyroMouseSensitivity: gyroMouseSensitivity ?? this.gyroMouseSensitivity,
       gyroMouseDeadzone: gyroMouseDeadzone ?? this.gyroMouseDeadzone,
-      tapKey: tapKey ?? this.tapKey,
-      customSwipeKeys: customSwipeKeys ?? this.customSwipeKeys,
+      tapKey: tapKey ?? tapKey,
+      customSwipeKeys: customSwipeKeys ?? customSwipeKeys,
     );
   }
 }

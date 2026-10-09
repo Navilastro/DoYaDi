@@ -119,14 +119,16 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
   }
 
   String swipeName(int v) {
-    if (v == -1)
+    if (v == -1) {
       return AppTranslations.getText('paired').isEmpty
           ? 'Gaz'
           : AppTranslations.currentLanguage == 'en'
           ? 'Gas'
           : 'Gaz';
-    if (v == -2)
+    }
+    if (v == -2) {
       return AppTranslations.currentLanguage == 'en' ? 'Brake' : 'Fren';
+    }
     return KeyboardKeys.appKeyMap.entries
         .firstWhere((e) => e.value == v, orElse: () => const MapEntry('Yok', 0))
         .key;
@@ -681,6 +683,29 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                   (v) => setStateDialog(() => s.m4TapRight = v),
                 ),
               ];
+            } else if (mode == 7) {
+              tiles = [
+                buildKeyTile(
+                  'Sol Buton',
+                  s.m7Key1,
+                  (v) => setStateDialog(() => s.m7Key1 = v),
+                ),
+                buildKeyTile(
+                  'Üst Buton',
+                  s.m7Key2,
+                  (v) => setStateDialog(() => s.m7Key2 = v),
+                ),
+                buildKeyTile(
+                  'Sağ Buton',
+                  s.m7Key3,
+                  (v) => setStateDialog(() => s.m7Key3 = v),
+                ),
+                buildKeyTile(
+                  'Alt Buton',
+                  s.m7Key4,
+                  (v) => setStateDialog(() => s.m7Key4 = v),
+                ),
+              ];
             }
 
             return AlertDialog(
@@ -690,9 +715,9 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
               ),
               title: Text(
                 mode == -1
-                    ? '${AppTranslations.getText('right_pedal')}'
+                    ? AppTranslations.getText('right_pedal')
                     : mode == -2
-                    ? '${AppTranslations.getText('left_pedal')}'
+                    ? AppTranslations.getText('left_pedal')
                     : 'Mod $mode ${AppTranslations.currentLanguage == 'en' ? 'Key Assignments' : 'Tuş Atamaları'}',
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
@@ -742,6 +767,11 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                         s.m4KeyBottom = 7;
                         s.m4TapLeft = 17;
                         s.m4TapRight = 18;
+                      } else if (mode == 7) {
+                        s.m7Key1 = 7;
+                        s.m7Key2 = 8;
+                        s.m7Key3 = 6;
+                        s.m7Key4 = 5;
                       }
                     });
                   },
@@ -1126,7 +1156,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                       title: Text(AppTranslations.getText('show_clutch'), style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                       value: tempEnableClutch,
                       onChanged: (v) => setStateDialog(() => tempEnableClutch = v),
-                      activeColor: ac,
+                      activeThumbColor: ac,
                     ),
                     if (tempEnableClutch) ...[
                       Padding(
@@ -1213,7 +1243,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                       title: Text(AppTranslations.getText('show_handbrake'), style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                       value: tempEnableHandbrake,
                       onChanged: (v) => setStateDialog(() => tempEnableHandbrake = v),
-                      activeColor: ac,
+                      activeThumbColor: ac,
                     ),
                     if (tempEnableHandbrake) ...[
                       Padding(

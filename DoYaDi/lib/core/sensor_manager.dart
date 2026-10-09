@@ -221,6 +221,8 @@ class SensorManager {
         } else {
           _accumulatedRaPitch = 0.0;
           _accumulatedRaYaw = 0.0;
+          rightAnalogX = 0.0;
+          rightAnalogY = 0.0;
         }
 
         // Fare
@@ -280,6 +282,8 @@ class SensorManager {
           _accumulatedMouseYaw = 0.0;
           mouseDeltaX = 0.0;
           mouseDeltaY = 0.0;
+          _lastTargetMx = 0.0;
+          _lastTargetMy = 0.0;
         }
 
         // Hareketsizlik takibi ve Otomatik Merkezleme

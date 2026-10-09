@@ -53,7 +53,7 @@ class AppSettings {
   double swipeSensitivity; // Pedal %100 için gereken mm mesafesi
   double clickMaxDistance; // Dokunma sayılmak için maks. mm kayma
   double clickMaxDuration; // Dokunma sayılmak için maks. süre (saniye)
-  int defaultDrivingMode; // 0–6
+  int defaultDrivingMode; // 0–10
 
   // ── Kümülatif Direksiyon ────────────────────────────────────────────────────
   /// true ise 180° eşiğinde gyroscope kümülatif toplama devreye girer.
@@ -221,6 +221,53 @@ class AppSettings {
   int gasTap;
   int brakeTap;
 
+  // ── Mod 7 (F1 HUD) Ayarları ───────────────────────────────────────────────
+  /// Birim sistemi: true = mph, false = km/h
+  bool f1UseImperial;
+  /// Telemetri düşük geçiş filtresi alfa (0.05-1.0)
+  double f1LowPassAlpha;
+  /// Rev limiter titreşim geri bildirimi
+  bool f1HapticRevLimiter;
+  /// Lastik kayması titreşim geri bildirimi
+  bool f1HapticWheelSlip;
+  /// Mod 7 merkez butonları
+  int m7Key1; // Sol (Varsayılan X: 7)
+  int m7Key2; // Üst (Varsayılan Y: 8)
+  int m7Key3; // Sağ (Varsayılan B: 6)
+  int m7Key4; // Alt (Varsayılan A: 5)
+
+  // ── Mod 8 (Chill Drive) Ayarları ──────────────────────────────────────────
+  /// Kapsül baloncuk overlay aktif
+  bool chillOverlayEnabled;
+  /// Overlay'de vites butonları göster
+  bool chillOverlayGearButtons;
+  /// Direksiyon ekseni: 0=Roll, 1=Yaw
+  int chillSteeringAxis;
+  /// Direksiyon hassasiyeti (0.2-3.0)
+  double chillSteeringSensitivity;
+  /// Gaz/Fren hassasiyeti (0.2-3.0)
+  double chillGasBrakeSensitivity;
+
+  // ── Mod 9 (Flight Stick) Ayarları ─────────────────────────────────────────
+  /// Pitch hassasiyeti (0.2-3.0)
+  double flightPitchSensitivity;
+  /// Roll hassasiyeti (0.2-3.0)
+  double flightRollSensitivity;
+  /// Yaw hassasiyeti (0.2-3.0)
+  double flightYawSensitivity;
+  /// Kademeli itki bölüm sayısı (2-8)
+  int flightThrustDetents;
+
+  // ── Mod 10 (Flight MFD) Ayarları ──────────────────────────────────────────
+  /// Yapay ufuk göster
+  bool mfdShowArtificialHorizon;
+  /// Hız bandı göster
+  bool mfdShowSpeedTape;
+  /// İrtifa bandı göster
+  bool mfdShowAltitudeTape;
+  /// Gyro filtre alfa (0.05-1.0)
+  double mfdGyroFilterAlpha;
+
   AppSettings({
     this.backgroundColor = const Color(0xFF050510),
     this.detailColor = const Color(0xFF40E0D0),
@@ -346,5 +393,30 @@ class AppSettings {
     this.brakeSwipeDownRight = 0,
     this.gasTap = 18,
     this.brakeTap = 17,
+    // Mod 7 (F1 HUD)
+    this.f1UseImperial = false,
+    this.f1LowPassAlpha = 0.3,
+    this.f1HapticRevLimiter = true,
+    this.f1HapticWheelSlip = true,
+    this.m7Key1 = 7, // X
+    this.m7Key2 = 8, // Y
+    this.m7Key3 = 6, // B
+    this.m7Key4 = 5, // A
+    // Mod 8 (Chill Drive)
+    this.chillOverlayEnabled = false,
+    this.chillOverlayGearButtons = true,
+    this.chillSteeringAxis = 0,
+    this.chillSteeringSensitivity = 1.0,
+    this.chillGasBrakeSensitivity = 1.0,
+    // Mod 9 (Flight Stick)
+    this.flightPitchSensitivity = 1.0,
+    this.flightRollSensitivity = 1.0,
+    this.flightYawSensitivity = 1.0,
+    this.flightThrustDetents = 4,
+    // Mod 10 (Flight MFD)
+    this.mfdShowArtificialHorizon = true,
+    this.mfdShowSpeedTape = true,
+    this.mfdShowAltitudeTape = true,
+    this.mfdGyroFilterAlpha = 0.15,
   });
 }

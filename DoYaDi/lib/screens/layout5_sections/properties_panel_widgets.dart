@@ -490,9 +490,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
   }
 
   void _updateSwipeKey(Layout5Item item, int dir, int v) {
-    if (item.customSwipeKeys == null) {
-      item.customSwipeKeys = {};
-    }
+    item.customSwipeKeys ??= {};
     if (v == 0) {
       item.customSwipeKeys!.remove(dir);
     } else {

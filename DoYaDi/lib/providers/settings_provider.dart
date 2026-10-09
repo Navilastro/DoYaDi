@@ -295,6 +295,43 @@ class SettingsProvider with ChangeNotifier {
       prefs.getInt('steeringTurnLeftColor') ?? const Color(0xFFFF2A6D).toARGB32(),
     );
 
+    // ── Mod 7 (F1 HUD) Ayarları ──
+    _settings.f1UseImperial = prefs.getBool('f1UseImperial') ?? false;
+    _settings.f1LowPassAlpha =
+        (prefs.getDouble('f1LowPassAlpha') ?? 0.3).clamp(0.05, 1.0);
+    _settings.f1HapticRevLimiter = prefs.getBool('f1HapticRevLimiter') ?? true;
+    _settings.f1HapticWheelSlip = prefs.getBool('f1HapticWheelSlip') ?? true;
+    _settings.m7Key1 = prefs.getInt('m7Key1') ?? 7;
+    _settings.m7Key2 = prefs.getInt('m7Key2') ?? 8;
+    _settings.m7Key3 = prefs.getInt('m7Key3') ?? 6;
+    _settings.m7Key4 = prefs.getInt('m7Key4') ?? 5;
+
+    // ── Mod 8 (Chill Drive) Ayarları ──
+    _settings.chillOverlayEnabled = prefs.getBool('chillOverlayEnabled') ?? false;
+    _settings.chillOverlayGearButtons = prefs.getBool('chillOverlayGearButtons') ?? true;
+    _settings.chillSteeringAxis = prefs.getInt('chillSteeringAxis') ?? 0;
+    _settings.chillSteeringSensitivity =
+        (prefs.getDouble('chillSteeringSensitivity') ?? 1.0).clamp(0.2, 3.0);
+    _settings.chillGasBrakeSensitivity =
+        (prefs.getDouble('chillGasBrakeSensitivity') ?? 1.0).clamp(0.2, 3.0);
+
+    // ── Mod 9 (Flight Stick) Ayarları ──
+    _settings.flightPitchSensitivity =
+        (prefs.getDouble('flightPitchSensitivity') ?? 1.0).clamp(0.2, 3.0);
+    _settings.flightRollSensitivity =
+        (prefs.getDouble('flightRollSensitivity') ?? 1.0).clamp(0.2, 3.0);
+    _settings.flightYawSensitivity =
+        (prefs.getDouble('flightYawSensitivity') ?? 1.0).clamp(0.2, 3.0);
+    _settings.flightThrustDetents =
+        (prefs.getInt('flightThrustDetents') ?? 4).clamp(2, 8);
+
+    // ── Mod 10 (Flight MFD) Ayarları ──
+    _settings.mfdShowArtificialHorizon = prefs.getBool('mfdShowArtificialHorizon') ?? true;
+    _settings.mfdShowSpeedTape = prefs.getBool('mfdShowSpeedTape') ?? true;
+    _settings.mfdShowAltitudeTape = prefs.getBool('mfdShowAltitudeTape') ?? true;
+    _settings.mfdGyroFilterAlpha =
+        (prefs.getDouble('mfdGyroFilterAlpha') ?? 0.15).clamp(0.05, 1.0);
+
     notifyListeners();
   }
 
@@ -457,6 +494,35 @@ class SettingsProvider with ChangeNotifier {
 
     // Renk alanları
     await prefs.setInt('backgroundColor', _settings.backgroundColor.toARGB32());
+
+    // ── Mod 7 (F1 HUD) Ayarları ──
+    await prefs.setBool('f1UseImperial', _settings.f1UseImperial);
+    await prefs.setDouble('f1LowPassAlpha', _settings.f1LowPassAlpha.clamp(0.05, 1.0));
+    await prefs.setBool('f1HapticRevLimiter', _settings.f1HapticRevLimiter);
+    await prefs.setBool('f1HapticWheelSlip', _settings.f1HapticWheelSlip);
+    await prefs.setInt('m7Key1', _settings.m7Key1);
+    await prefs.setInt('m7Key2', _settings.m7Key2);
+    await prefs.setInt('m7Key3', _settings.m7Key3);
+    await prefs.setInt('m7Key4', _settings.m7Key4);
+
+    // ── Mod 8 (Chill Drive) Ayarları ──
+    await prefs.setBool('chillOverlayEnabled', _settings.chillOverlayEnabled);
+    await prefs.setBool('chillOverlayGearButtons', _settings.chillOverlayGearButtons);
+    await prefs.setInt('chillSteeringAxis', _settings.chillSteeringAxis);
+    await prefs.setDouble('chillSteeringSensitivity', _settings.chillSteeringSensitivity.clamp(0.2, 3.0));
+    await prefs.setDouble('chillGasBrakeSensitivity', _settings.chillGasBrakeSensitivity.clamp(0.2, 3.0));
+
+    // ── Mod 9 (Flight Stick) Ayarları ──
+    await prefs.setDouble('flightPitchSensitivity', _settings.flightPitchSensitivity.clamp(0.2, 3.0));
+    await prefs.setDouble('flightRollSensitivity', _settings.flightRollSensitivity.clamp(0.2, 3.0));
+    await prefs.setDouble('flightYawSensitivity', _settings.flightYawSensitivity.clamp(0.2, 3.0));
+    await prefs.setInt('flightThrustDetents', _settings.flightThrustDetents.clamp(2, 8));
+
+    // ── Mod 10 (Flight MFD) Ayarları ──
+    await prefs.setBool('mfdShowArtificialHorizon', _settings.mfdShowArtificialHorizon);
+    await prefs.setBool('mfdShowSpeedTape', _settings.mfdShowSpeedTape);
+    await prefs.setBool('mfdShowAltitudeTape', _settings.mfdShowAltitudeTape);
+    await prefs.setDouble('mfdGyroFilterAlpha', _settings.mfdGyroFilterAlpha.clamp(0.05, 1.0));
     await prefs.setInt('detailColor', _settings.detailColor.toARGB32());
     await prefs.setInt(
       'steeringIndicatorColor',

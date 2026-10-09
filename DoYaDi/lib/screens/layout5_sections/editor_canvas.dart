@@ -3,8 +3,13 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
   Widget _buildItem(Layout5Item item, Size size) {
     final double l = item.left * size.width;
     final double t = item.top * size.height;
+    final bool isJoyOrIcon = item.type == Layout5ItemType.leftJoystick ||
+        item.type == Layout5ItemType.rightJoystick ||
+        item.type == Layout5ItemType.gasPedalIcon ||
+        item.type == Layout5ItemType.brakePedalIcon;
+        
     final double w = item.width * size.width;
-    final double h = item.height * size.height;
+    final double h = isJoyOrIcon ? w : item.height * size.height;
     final bool isSelected = _selectedId == item.id;
 
     Widget content = _buildItemContent(item, w, h);
@@ -84,21 +89,25 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
                   double maxW = isPedal ? 0.5 : 0.95;
                   double maxH = isPedal ? 1.0 : 0.95;
 
+                  // Joystickler ve İkonlar kare kalmalı (Genişlik = Yükseklik)
+                  final bool isJoyOrIcon = _items[idx].type == Layout5ItemType.leftJoystick ||
+                      _items[idx].type == Layout5ItemType.rightJoystick ||
+                      _items[idx].type == Layout5ItemType.gasPedalIcon ||
+                      _items[idx].type == Layout5ItemType.brakePedalIcon;
+
                   // Boyutlandırma (Aspect Ratio korunarak)
                   double newW = (_initialScaleW * details.scale).clamp(
                     0.05,
                     maxW,
                   );
-                  double newH = (_initialScaleH * details.scale).clamp(
+                  double newH = isJoyOrIcon ? newW : (_initialScaleH * details.scale).clamp(
                     0.05,
                     maxH,
                   );
 
                   // Joystickler döndürülemesin (yön eksenleri bozulur)
-                  final isJoystick =
-                      _items[idx].type == Layout5ItemType.leftJoystick ||
-                      _items[idx].type == Layout5ItemType.rightJoystick;
-                  double newRot = isJoystick
+                  double newRot = (_items[idx].type == Layout5ItemType.leftJoystick ||
+                          _items[idx].type == Layout5ItemType.rightJoystick)
                       ? _initialRotation // sabit tut
                       : _initialRotation + details.rotation;
 

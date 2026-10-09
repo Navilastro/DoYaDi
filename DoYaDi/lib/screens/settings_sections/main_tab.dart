@@ -23,7 +23,13 @@ extension _SettingsMainTabExt on _SettingsScreenState {
               ctx: ctx,
               title: AppTranslations.getText('default_driving_mode'),
               current: s.defaultDrivingMode,
-              options: {for (var i = 0; i <= 6; i++) 'Mod $i': i},
+              options: {
+                for (var i = 0; i <= 6; i++) 'Mod $i': i,
+                'Mod 7 — F1 Telemetri HUD': 7,
+                'Mod 8 — Rahat Sürüş': 8,
+                'Mod 9 — Uçuş Kontrolü': 9,
+                'Mod 10 — Uçuş MFD': 10,
+              },
             );
             if (val != null) {
               s.defaultDrivingMode = val;

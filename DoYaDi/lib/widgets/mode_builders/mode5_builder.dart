@@ -150,7 +150,7 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           ),
 
         // Normal item'lar (üst katman — hit test önceliği bunlarda)
-        ...items.map((item) => buildMode5Item(item, s, size, joystickMode)).toList(),
+        ...items.map((item) => buildMode5Item(item, s, size, joystickMode)),
       ],
     );
   }
