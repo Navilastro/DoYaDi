@@ -24,6 +24,7 @@
     <ProjectGuid>{73a058be-4340-48d2-9a99-fe2d4ac5e64b}</ProjectGuid>
     <RootNamespace>DoYaDiACTelemetry</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <TargetName>DoYaDi_AC_Hud</TargetName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
