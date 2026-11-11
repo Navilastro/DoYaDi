@@ -43,22 +43,25 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
           },
         ),
         settingsTile(
-          title: 'Sensör Merkezleme Modu',
+          title: AppTranslations.getText('gyro_center_mode'),
           subtitle: s.gyroCenterMode == 0
-              ? 'Otomatik (${s.gyroAutoCenterDuration.toInt()} sn hareketsizlik)'
+              ? '${AppTranslations.getText('gyro_center_auto')} (${s.gyroAutoCenterDuration.toInt()}s)'
               : s.gyroCenterMode == 1
-                  ? 'Ayarlar Sayfasından'
-                  : 'Düzenleme Ekranından',
+                  ? AppTranslations.getText('gyro_center_settings')
+                  : s.gyroCenterMode == 2
+                      ? AppTranslations.getText('gyro_center_editor')
+                      : AppTranslations.getText('gyro_center_mini_btn'),
           trailing: Icon(Icons.center_focus_strong, color: ac),
           onTap: () async {
             final val = await radioDialog<int>(
               ctx: ctx,
-              title: 'Sensör Merkezleme Modu',
+              title: AppTranslations.getText('gyro_center_mode'),
               current: s.gyroCenterMode,
-              options: const {
-                'Otomatik (Hareketsizlik)': 0,
-                'Ayarlar Sayfasından': 1,
-                'Düzenleme Ekranından': 2,
+              options: {
+                AppTranslations.getText('gyro_center_auto'): 0,
+                AppTranslations.getText('gyro_center_settings'): 1,
+                AppTranslations.getText('gyro_center_editor'): 2,
+                AppTranslations.getText('gyro_center_mini_btn'): 3,
               },
             );
             if (val != null) {
@@ -68,24 +71,35 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
             }
           },
         ),
+        if (s.gyroCenterMode == 3)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              AppTranslations.getText('gyro_center_mini_btn_desc'),
+              style: TextStyle(
+                color: ac.withValues(alpha: 0.85),
+                fontSize: 12,
+              ),
+            ),
+          ),
         if (s.gyroCenterMode == 0)
           settingsTile(
-            title: 'Otomatik Merkezleme Süresi',
-            subtitle: '${s.gyroAutoCenterDuration.toInt()} saniye hareketsiz kalınca sıfırlar.',
+            title: AppTranslations.getText('gyro_auto_center_duration'),
+            subtitle: '${s.gyroAutoCenterDuration.toInt()} ${AppTranslations.getText('gyro_auto_center_duration_desc')}',
             trailing: Text(
-              '${s.gyroAutoCenterDuration.toInt()} sn',
+              '${s.gyroAutoCenterDuration.toInt()}s',
               style: TextStyle(color: ac, fontWeight: FontWeight.bold),
             ),
             onTap: () async {
               final val = await radioDialog<double>(
                 ctx: ctx,
-                title: 'Otomatik Merkezleme Süresi',
+                title: AppTranslations.getText('gyro_auto_center_duration'),
                 current: s.gyroAutoCenterDuration,
                 options: const {
-                  '5 sn': 5.0,
-                  '10 sn': 10.0,
-                  '15 sn': 15.0,
-                  '20 sn': 20.0,
+                  '5s': 5.0,
+                  '10s': 10.0,
+                  '15s': 15.0,
+                  '20s': 20.0,
                 },
               );
               if (val != null) {
@@ -96,13 +110,13 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
             },
           ),
         SwitchListTile(
-          title: const Text(
-            'Ölü Alana (Deadzone) Pitch Dahil Et',
-            style: TextStyle(color: Colors.white, fontSize: 15),
+          title: Text(
+            AppTranslations.getText('include_pitch_in_deadzone'),
+            style: const TextStyle(color: Colors.white, fontSize: 15),
           ),
-          subtitle: const Text(
-            'Yukarı/aşağı eksenindeki harekette ölü alan uygular (Sadece Sağ Analog).',
-            style: TextStyle(color: Colors.white38, fontSize: 12),
+          subtitle: Text(
+            AppTranslations.getText('include_pitch_in_deadzone_desc'),
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
           value: s.includePitchInDeadzone,
           activeThumbColor: ac,
@@ -114,8 +128,8 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
         ),
         if (s.gyroCenterMode == 1)
           settingsTile(
-            title: 'Merkezi Şimdi Sıfırla',
-            subtitle: 'Sensör merkezini o anki duruşa göre ayarlar.',
+            title: AppTranslations.getText('recenter_gyro_now'),
+            subtitle: AppTranslations.getText('recenter_gyro_desc'),
             trailing: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: ac,
@@ -124,10 +138,15 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
               onPressed: () {
                 SensorManager().recenterGyro();
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Sensör merkezi sıfırlandı.', style: TextStyle(color: Colors.white))),
+                  SnackBar(
+                    content: Text(
+                      AppTranslations.getText('sensor_centered_success'),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
                 );
               },
-              child: const Text('Sıfırla'),
+              child: Text(AppTranslations.getText('recenter')),
             ),
           ),
         settingsTile(
@@ -175,7 +194,11 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
         if (s.gyroLookEnabled) ...[
           settingsTile(
             title: AppTranslations.getText('gyro_look_style'),
-            subtitle: s.gyroLookStyle == 0 ? AppTranslations.getText('gyro_look_style_0') : AppTranslations.getText('gyro_look_style_1'),
+            subtitle: s.gyroLookStyle == 0
+                ? AppTranslations.getText('gyro_look_style_0')
+                : s.gyroLookStyle == 1
+                    ? AppTranslations.getText('gyro_look_style_1')
+                    : AppTranslations.getText('gyro_look_style_2'),
             trailing: Icon(Icons.style, color: ac),
             onTap: () async {
               final val = await radioDialog<int>(
@@ -185,6 +208,7 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
                 options: {
                   AppTranslations.getText('gyro_look_style_0_desc'): 0,
                   AppTranslations.getText('gyro_look_style_1_desc'): 1,
+                  AppTranslations.getText('gyro_look_style_2_desc'): 2,
                 },
               );
               if (val != null) {

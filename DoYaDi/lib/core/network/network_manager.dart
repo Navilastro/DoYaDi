@@ -12,15 +12,19 @@ class NetworkManager {
   NetworkManager._internal();
 
   RawDatagramSocket? _udpSocket;
+  StreamSubscription<RawSocketEvent>? _udpSub;
   InternetAddress? _targetAddress;
   BluetoothConnection? _btConnection;
   Stream<Uint8List>? _btBroadcastStream;
+  bool _isRebindingUdp = false;
+  int _consecutiveZeroSends = 0;
 
   // BT Seri Port Yazma Kilidi: Sürüş verisi ve DLC komutlarının
   // araya girmesini (interleaving) önler.
   Completer<void>? _btWriteLock;
 
   bool get isBluetoothConnected => _btConnection != null && _btConnection!.isConnected;
+  bool get isUdpReady => _udpSocket != null && _targetAddress != null;
 
   /// DLC telemetri dinleme için BT bağlantısına erişim
   BluetoothConnection? get btConnection => _btConnection;
@@ -36,21 +40,84 @@ class NetworkManager {
   String get serverIp => _targetAddress?.address ?? '';
 
   Future<void> initUdp(String ip) async {
-    if (ip.isEmpty) return;
+    final trimmedIp = ip.trim();
+    if (trimmedIp.isEmpty) return;
     try {
-      // 1. Önceki açık soket varsa MUTLAKA kapat (Port çakışmasını önler)
-      _udpSocket?.close(); 
-      
-      // 2. Boşluk tuzağını çöz: .trim() ile IP'nin sağındaki/solundaki görünmez boşlukları temizle
-      _targetAddress = InternetAddress(ip.trim());
-      
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_pc_ip', ip.trim());
+      // 1. Önceki açık soket ve dinleyici varsa MUTLAKA kapat (Port/kaynak çakışmasını önler)
+      await _udpSub?.cancel();
+      _udpSub = null;
+      _udpSocket?.close();
+      _udpSocket = null;
+      _consecutiveZeroSends = 0;
 
-      _udpSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      // 2. Boşluk tuzağını çöz: .trim() ile IP'nin sağındaki/solundaki görünmez boşlukları temizle
+      _targetAddress = InternetAddress(trimmedIp);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_pc_ip', trimmedIp);
+
+      final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      socket.writeEventsEnabled = false;
+      _udpSocket = socket;
+
+      // 3. Soket olaylarını dinle: gelen paketleri boşalt ve işletim sistemi
+      // soketi kapatırsa (arka plan / uyku / ayarlar ekranında bekleme) algıla
+      _udpSub = socket.listen(
+        (RawSocketEvent event) {
+          if (event == RawSocketEvent.read) {
+            while (_udpSocket?.receive() != null) {}
+          } else if (event == RawSocketEvent.closed) {
+            if (identical(_udpSocket, socket)) {
+              _udpSocket = null;
+            }
+          }
+        },
+        onError: (Object e) {
+          debugPrint("UDP Socket Event Error: $e");
+          if (identical(_udpSocket, socket)) {
+            _udpSocket?.close();
+            _udpSocket = null;
+          }
+        },
+        onDone: () {
+          if (identical(_udpSocket, socket)) {
+            _udpSocket = null;
+          }
+        },
+      );
+
+      // 4. ARP / Wi-Fi yönlendirme tablosunu uyandırmak için keşif portuna (8889) hafif ping gönder
+      try {
+        socket.send(utf8.encode("DOYADI_SEARCH"), _targetAddress!, 8889);
+      } catch (_) {}
     } catch (e) {
       debugPrint("UDP Init Error: $e");
     }
+  }
+
+  /// Sürücü ekranına geri dönüldüğünde veya bağlantı tazelenmesi gerektiğinde
+  /// UDP soketinin açık ve aktif olduğundan emin olur.
+  Future<void> ensureUdpReady([String? ip]) async {
+    if (isBluetoothConnected) return;
+    String targetIp = (ip ?? serverIp).trim();
+    if (targetIp.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      targetIp = (prefs.getString('last_pc_ip') ?? '').trim();
+    }
+    if (targetIp.isEmpty) return;
+    await initUdp(targetIp);
+  }
+
+  void _rebindUdpAuto({bool force = false}) {
+    if (_isRebindingUdp || isBluetoothConnected) return;
+    final ip = serverIp;
+    if (ip.isEmpty) return;
+    if (!force && _udpSocket != null) return;
+
+    _isRebindingUdp = true;
+    initUdp(ip).whenComplete(() {
+      _isRebindingUdp = false;
+    });
   }
 
   Future<String?> discoverServer() async {
@@ -139,11 +206,29 @@ class NetworkManager {
     try {
       if (isBluetoothConnected) {
         _btWriteSafe(bytes);
-      } else if (_udpSocket != null && _targetAddress != null) {
-        _udpSocket!.send(bytes, _targetAddress!, 8888);
+      } else if (_targetAddress != null) {
+        if (_udpSocket == null) {
+          _rebindUdpAuto(force: true);
+          return;
+        }
+        final sent = _udpSocket!.send(bytes, _targetAddress!, 8888);
+        if (sent == 0) {
+          _consecutiveZeroSends++;
+          if (_consecutiveZeroSends >= 12) {
+            _consecutiveZeroSends = 0;
+            _rebindUdpAuto(force: true);
+          }
+        } else {
+          _consecutiveZeroSends = 0;
+        }
       }
     } catch (e) {
       debugPrint("Send Payload Error: $e");
+      if (!isBluetoothConnected && _targetAddress != null) {
+        _udpSocket?.close();
+        _udpSocket = null;
+        _rebindUdpAuto(force: true);
+      }
     }
   }
 
@@ -197,7 +282,10 @@ class NetworkManager {
   }
 
   void close() {
+    _udpSub?.cancel();
+    _udpSub = null;
     _udpSocket?.close();
+    _udpSocket = null;
     disconnectBluetooth();
   }
 }

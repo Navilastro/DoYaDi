@@ -1,4 +1,4 @@
-part of '../../widgets/driving_mode_builders.dart';
+part of '../driving_mode_builders.dart';
 
 /// Mod 7 — F1 Telemetri HUD
 ///
@@ -12,53 +12,58 @@ part of '../../widgets/driving_mode_builders.dart';
 extension _Mode7BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T> {
 
   Widget buildMode7(AppSettings s, Size size) {
-    return _withTrackPoint(s, size, Stack(
-      children: [
-        // 1. Arka plan ve HUD (telemetry + lokal input)
-        Positioned.fill(
-          child: _F1HudContent(
-            settings: s,
-            parentSize: size,
-            gasPercentage: gasPercentage,
-            brakePercentage: brakePercentage,
-            isGasLeft: false, // Mod 1 gibi her zaman Sol Fren
+    return _withTrackPoint(
+      s,
+      size,
+      Stack(
+        children: [
+          // 1. Arka plan ve HUD (telemetry + lokal input)
+          Positioned.fill(
+            child: _F1HudContent(
+              settings: s,
+              parentSize: size,
+              gasPercentage: gasPercentage,
+              brakePercentage: brakePercentage,
+              isGasLeft: false, // Mod 1 gibi her zaman Sol Fren
+            ),
           ),
-        ),
-        
-        // 2. Etkileşim katmanı (Görünmez pedal yüzeyleri)
-        Positioned.fill(
-          child: Row(
-            children: [
-              // Sol - Fren
-              Expanded(
-                child: Listener(
-                  behavior: HitTestBehavior.opaque, // Opaque so it catches touches
-                  onPointerDown: (e) => onPedalDown(e, false, tapKey: s.brakeTap),
-                  onPointerMove: (e) => onPedalMove(e, s),
-                  onPointerUp: onPedalUp,
-                  onPointerCancel: onPedalUp,
-                  child: const SizedBox.expand(),
+          
+          // 2. Etkileşim katmanı (Görünmez pedal yüzeyleri)
+          Positioned.fill(
+            child: Row(
+              children: [
+                // Sol - Fren
+                Expanded(
+                  child: Listener(
+                    behavior: HitTestBehavior.opaque, // Opaque so it catches touches
+                    onPointerDown: (e) => onPedalDown(e, false, tapKey: s.brakeTap),
+                    onPointerMove: (e) => onPedalMove(e, s),
+                    onPointerUp: onPedalUp,
+                    onPointerCancel: onPedalUp,
+                    child: const SizedBox.expand(),
+                  ),
                 ),
-              ),
-              // Sağ - Gaz
-              Expanded(
-                child: Listener(
-                  behavior: HitTestBehavior.opaque,
-                  onPointerDown: (e) => onPedalDown(e, true, tapKey: s.gasTap),
-                  onPointerMove: (e) => onPedalMove(e, s),
-                  onPointerUp: onPedalUp,
-                  onPointerCancel: onPedalUp,
-                  child: const SizedBox.expand(),
+                // Sağ - Gaz
+                Expanded(
+                  child: Listener(
+                    behavior: HitTestBehavior.opaque,
+                    onPointerDown: (e) => onPedalDown(e, true, tapKey: s.gasTap),
+                    onPointerMove: (e) => onPedalMove(e, s),
+                    onPointerUp: onPedalUp,
+                    onPointerCancel: onPedalUp,
+                    child: const SizedBox.expand(),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        
-        // 3. Merkezdeki 4 stilistik yuvarlak buton
-        _buildMode7Buttons(s, size),
-      ],
-    ));
+          
+          // 3. Merkezdeki 4 stilistik yuvarlak buton
+          _buildMode7Buttons(s, size),
+        ],
+      ),
+      mode: 7,
+    );
   }
 
   Widget _buildMode7Buttons(AppSettings s, Size size) {
@@ -185,174 +190,203 @@ class _F1HudContentState extends State<_F1HudContent>
     return ValueListenableBuilder<ExtendedTelemetryData>(
       valueListenable: telemetryService.telemetryNotifier,
       builder: (context, data, _) {
+        final bool isTelemetryActive =
+            telemetryService.isLive && (data.rpmPct > 0 || data.speedRaw > 0 || data.gear > 0);
+        final double effectiveRpm =
+            isTelemetryActive ? data.rpmFraction : (widget.gasPercentage * 0.9);
+        final bool isRevLimiter =
+            isTelemetryActive ? data.isRevLimiter : (widget.gasPercentage > 0.96);
+
         return Container(
           color: s.backgroundColor,
           child: SafeArea(
             child: Column(
               children: [
                 // ── RPM LED Barı ──
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: RepaintBoundary(
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 24,
-                      child: AnimatedBuilder(
-                        animation: _blinkController,
-                        builder: (context, _) {
-                          return CustomPaint(
-                            painter: RpmLedBarPainter(
-                              rpmFraction: data.rpmFraction,
-                              blinkPhase: data.isRevLimiter
-                                  ? _blinkController.value
-                                  : 1.0,
-                            ),
-                            child: const SizedBox.expand(),
-                          );
-                        },
+                if (s.hudShowRpm)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: RepaintBoundary(
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 24,
+                        child: AnimatedBuilder(
+                          animation: _blinkController,
+                          builder: (context, _) {
+                            return CustomPaint(
+                              painter: RpmLedBarPainter(
+                                rpmFraction: effectiveRpm,
+                                blinkPhase: isRevLimiter
+                                    ? _blinkController.value
+                                    : 1.0,
+                              ),
+                              child: const SizedBox.expand(),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
-                ),
 
                 // ── Vites + Hız Satırı ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // DRS Göstergesi
-                      _buildDrsIndicator(data.drsStatus, s),
-                      const SizedBox(width: 12),
-
-                      // Hız
-                      Column(
-                        children: [
-                          Text(
-                            s.f1UseImperial
-                                ? data.speedMph.toStringAsFixed(0)
-                                : data.speedKmh.toStringAsFixed(0),
-                            style: TextStyle(
-                              color: s.detailColor,
-                              fontSize: 42,
-                              fontWeight: FontWeight.w300,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                          Text(
-                            s.f1UseImperial ? 'MPH' : 'KM/H',
-                            style: const TextStyle(
-                              color: Color(0xFF666688),
-                              fontSize: 10,
-                              letterSpacing: 2,
-                            ),
-                          ),
+                if (s.hudShowSpeed || s.hudShowGear || s.hudShowDrsErs)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // DRS Göstergesi
+                        if (s.hudShowDrsErs) ...[
+                          _buildDrsIndicator(data.drsStatus, s),
+                          const SizedBox(width: 12),
                         ],
-                      ),
 
-                      const SizedBox(width: 16),
+                        // Hız
+                        if (s.hudShowSpeed) ...[
+                          Column(
+                            children: [
+                              Text(
+                                s.f1UseImperial
+                                    ? data.speedMph.toStringAsFixed(0)
+                                    : data.speedKmh.toStringAsFixed(0),
+                                style: TextStyle(
+                                  color: s.detailColor,
+                                  fontSize: 42,
+                                  fontWeight: FontWeight.w300,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                              Text(
+                                s.f1UseImperial ? 'MPH' : 'KM/H',
+                                style: const TextStyle(
+                                  color: Color(0xFF666688),
+                                  fontSize: 10,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (s.hudShowGear) const SizedBox(width: 16),
+                        ],
 
-                      // 7-Segment Vites
-                      RepaintBoundary(
-                        child: SizedBox(
-                          width: 48,
-                          height: 72,
-                          child: CustomPaint(
-                            painter: SevenSegmentPainter(
-                              gear: data.gear,
-                              activeColor: _gearColor(data.gear),
+                        // 7-Segment Vites
+                        if (s.hudShowGear) ...[
+                          RepaintBoundary(
+                            child: SizedBox(
+                              width: 48,
+                              height: 72,
+                              child: CustomPaint(
+                                painter: SevenSegmentPainter(
+                                  gear: data.gear,
+                                  activeColor: _gearColor(data.gear),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
+                          if (s.hudShowDrsErs) const SizedBox(width: 12),
+                        ],
 
-                      const SizedBox(width: 12),
-
-                      // ERS Göstergesi
-                      _buildErsBar(data.ersFraction, s),
-                    ],
+                        // ERS Göstergesi
+                        if (s.hudShowDrsErs)
+                          _buildErsBar(data.ersFraction, s),
+                      ],
+                    ),
                   ),
-                ),
 
                 // ── Gaz / Fren Çubukları (Lokal Etkileşim) ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildPedalBar(
-                          widget.isGasLeft ? 'GAZ' : 'FREN',
-                          widget.isGasLeft ? widget.gasPercentage : widget.brakePercentage,
-                          widget.isGasLeft ? s.gasColor : s.brakeColor,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildPedalBar(
-                          widget.isGasLeft ? 'FREN' : 'GAZ',
-                          widget.isGasLeft ? widget.brakePercentage : widget.gasPercentage,
-                          widget.isGasLeft ? s.brakeColor : s.gasColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                // ── Lastik Sıcaklıkları ──
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                if (s.hudShowPedalBars)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Row(
                       children: [
-                        // Lastikler
                         Expanded(
-                          child: TyreTempWidget(
-                            tyreTemps: data.tyreTemps,
-                            tyreWears: data.tyreWears,
+                          child: _buildPedalBar(
+                            widget.isGasLeft ? 'GAZ' : 'FREN',
+                            widget.isGasLeft ? widget.gasPercentage : widget.brakePercentage,
+                            widget.isGasLeft ? s.gasColor : s.brakeColor,
                           ),
                         ),
-
-                        // Delta + Durum
+                        const SizedBox(width: 8),
                         Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Delta Zamanı
-                              _buildDeltaTime(data.deltaTimeSec),
-                              const SizedBox(height: 8),
-
-                              // Durum Bayrakları
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  if (data.isAbsActive)
-                                    _buildStatusChip('ABS', const Color(0xFFFF9800)),
-                                  if (data.isTractionControlActive)
-                                    _buildStatusChip('TC', const Color(0xFFFFEB3B)),
-                                ],
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              // Tekerlek Kayma Göstergesi
-                              if (data.hasWheelSlip)
-                                Text(
-                                  '⚠ SLIP',
-                                  style: TextStyle(
-                                    color: const Color(0xFFFF1744).withValues(alpha: 0.9),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                            ],
+                          child: _buildPedalBar(
+                            widget.isGasLeft ? 'FREN' : 'GAZ',
+                            widget.isGasLeft ? widget.brakePercentage : widget.gasPercentage,
+                            widget.isGasLeft ? s.brakeColor : s.gasColor,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
+
+                const SizedBox(height: 4),
+
+                // ── Lastik Sıcaklıkları & Telemetri Durum Paneli ──
+                if (s.hudShowTyres || s.hudShowRpmBox || s.hudShowStatusFlags)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          // Lastikler
+                          if (s.hudShowTyres)
+                            Expanded(
+                              child: TyreTempWidget(
+                                tyreTemps: data.tyreTemps,
+                                tyreWears: data.tyreWears,
+                              ),
+                            )
+                          else
+                            const Spacer(),
+
+                          // Delta + Durum
+                          if (s.hudShowRpmBox || s.hudShowStatusFlags)
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // RPM Kutusu (kırmızı çerçeveli telemetri kutusu)
+                                  if (s.hudShowRpmBox)
+                                    _buildRpmBox(data, isTelemetryActive, isRevLimiter),
+                                  // Delta Zamanı (yalnızca oyun delta verisi gönderirse)
+                                  if (data.deltaTimeMs != 0) ...[
+                                    const SizedBox(height: 6),
+                                    _buildDeltaTime(data.deltaTimeSec),
+                                  ],
+                                  if (s.hudShowStatusFlags) ...[
+                                    const SizedBox(height: 8),
+                                    // Durum Bayrakları
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        if (data.isAbsActive)
+                                          _buildStatusChip('ABS', const Color(0xFFFF9800)),
+                                        if (data.isTractionControlActive)
+                                          _buildStatusChip('TC', const Color(0xFFFFEB3B)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // Tekerlek Kayma Göstergesi
+                                    if (data.hasWheelSlip)
+                                      Text(
+                                        '⚠ SLIP',
+                                        style: TextStyle(
+                                          color: const Color(0xFFFF1744).withValues(alpha: 0.9),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                  ],
+                                ],
+                              ),
+                            )
+                          else
+                            const Spacer(),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  const Spacer(),
               ],
             ),
           ),
@@ -444,6 +478,60 @@ class _F1HudContentState extends State<_F1HudContent>
           ),
         ),
       ],
+    );
+  }
+
+  /// Kırmızı çerçeveli RPM telemetri kutusu.
+  /// - Yeni DLL (flags bit3): gerçek motor devri (ör. 7450)
+  /// - Eski DLL: yalnızca oran bilindiği için yüzde (ör. %82)
+  /// - Telemetri yok: '----'
+  Widget _buildRpmBox(
+    ExtendedTelemetryData data,
+    bool isTelemetryActive,
+    bool isRevLimiter,
+  ) {
+    const color = Color(0xFFFF1744);
+    final String valueText;
+    if (!isTelemetryActive) {
+      valueText = '----';
+    } else if (data.hasEngineRpm) {
+      valueText = data.engineRpm.toString();
+    } else {
+      valueText = '%${(data.rpmFraction * 100).toStringAsFixed(0)}';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isRevLimiter ? 0.35 : 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withValues(alpha: isRevLimiter ? 0.9 : 0.3),
+          width: isRevLimiter ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            valueText,
+            style: const TextStyle(
+              color: color,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace',
+            ),
+          ),
+          Text(
+            'RPM',
+            style: TextStyle(
+              color: color.withValues(alpha: 0.7),
+              fontSize: 9,
+              letterSpacing: 2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

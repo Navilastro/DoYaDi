@@ -30,6 +30,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   late TabController _tab;
 
   @override
+  void setState(VoidCallback fn) => super.setState(fn);
+
+  @override
   void initState() {
     super.initState();
     _tab = TabController(length: 5, vsync: this);

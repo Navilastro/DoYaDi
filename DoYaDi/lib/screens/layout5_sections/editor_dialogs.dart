@@ -254,7 +254,7 @@ extension _EditorDialogsExt on _CustomLayout5EditorScreenState {
           child: ListView.separated(
             shrinkWrap: true,
             itemCount: templates.length,
-            separatorBuilder: (_, __) =>
+            separatorBuilder: (_, _) =>
                 const Divider(color: Colors.white12, height: 1),
             itemBuilder: (ctx, i) {
               final t = templates[i];

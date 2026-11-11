@@ -5,6 +5,7 @@ import '../core/network/addon_network_service.dart';
 import '../core/haptic_manager.dart';
 import '../providers/connection_provider.dart';
 import '../providers/settings_provider.dart';
+import '../models/app_settings.dart';
 import '../core/utils/app_translations.dart';
 
 /// Ayarlar ekranındaki "Ek İçerik" (DLC/Addon) sekmesi.
@@ -325,6 +326,69 @@ class _AddonManagerTabState extends State<AddonManagerTab>
 
           const SizedBox(height: 16),
 
+          // ── TELEMETRİ İÇERİK YAPILANDIRMA KARTI ──
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.cyanAccent.withValues(alpha: 0.12),
+                  Colors.deepPurpleAccent.withValues(alpha: 0.12),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.25)),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => _showTelemetryConfigModal(context),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.cyanAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.tune, color: Colors.cyanAccent, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              AppTranslations.getText('configure_telemetry_contents'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              AppTranslations.getText('configure_telemetry_contents_desc'),
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
           // Panelin Durumuna Göre İçerik
           if (!_isMasterSwitchActive) ...[
             Container(
@@ -485,6 +549,18 @@ class _AddonManagerTabState extends State<AddonManagerTab>
     );
   }
 
+  void _showTelemetryConfigModal(BuildContext context, {String? initialCategory}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF141426),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (modalContext) => _TelemetryConfigBottomSheet(initialCategory: initialCategory),
+    );
+  }
+
   Widget _buildAddonTile(AddonInfo addon) {
     final catColor = _categoryColor(addon.category);
     final catIcon = _categoryIcon(addon.category);
@@ -500,42 +576,494 @@ class _AddonManagerTabState extends State<AddonManagerTab>
               : Colors.white12,
         ),
       ),
-      child: SwitchListTile(
-        value: addon.value,
-        onChanged: (v) => _toggleAddon(addon, v),
-        activeThumbColor: catColor,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        title: Row(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
           children: [
-            Icon(catIcon, color: catColor, size: 18),
-            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: catColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(catIcon, color: catColor, size: 20),
+            ),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                addon.name,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          addon.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: catColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          addon.category.toUpperCase(),
+                          style: TextStyle(
+                            color: catColor,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    addon.id,
+                    style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  ),
+                ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: catColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                addon.category,
-                style: TextStyle(
-                  color: catColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            IconButton(
+              icon: const Icon(Icons.tune, color: Colors.white70, size: 20),
+              tooltip: AppTranslations.getText('configure_telemetry'),
+              onPressed: () => _showTelemetryConfigModal(context, initialCategory: addon.category),
+            ),
+            Switch(
+              value: addon.value,
+              onChanged: (v) => _toggleAddon(addon, v),
+              activeThumbColor: catColor,
             ),
           ],
         ),
-        subtitle: Text(
-          addon.id,
-          style: const TextStyle(color: Colors.white24, fontSize: 10),
+      ),
+    );
+  }
+}
+
+class _TelemetryConfigBottomSheet extends StatefulWidget {
+  final String? initialCategory;
+  const _TelemetryConfigBottomSheet({this.initialCategory});
+
+  @override
+  State<_TelemetryConfigBottomSheet> createState() => _TelemetryConfigBottomSheetState();
+}
+
+class _TelemetryConfigBottomSheetState extends State<_TelemetryConfigBottomSheet>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    int initialIndex = 0;
+    if (widget.initialCategory != null) {
+      final cat = widget.initialCategory!.toLowerCase();
+      if (cat == 'visual' || cat == 'telemetry') {
+        initialIndex = 1;
+      } else if (cat == 'flight') {
+        initialIndex = 2;
+      }
+    }
+    _tabController = TabController(length: 3, vsync: this, initialIndex: initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prov = Provider.of<SettingsProvider>(context);
+    final s = prov.settings;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.tune, color: Colors.cyanAccent, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    AppTranslations.getText('telemetry_config_title'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
+
+          // Tab Bar
+          TabBar(
+            controller: _tabController,
+            indicatorColor: Colors.cyanAccent,
+            labelColor: Colors.cyanAccent,
+            unselectedLabelColor: Colors.white38,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [
+              Tab(
+                icon: const Icon(Icons.vibration, size: 18),
+                text: AppTranslations.getText('telemetry_tab_haptic'),
+              ),
+              Tab(
+                icon: const Icon(Icons.speed, size: 18),
+                text: AppTranslations.getText('telemetry_tab_hud'),
+              ),
+              Tab(
+                icon: const Icon(Icons.flight, size: 18),
+                text: AppTranslations.getText('telemetry_tab_flight'),
+              ),
+            ],
+          ),
+
+          const Divider(color: Colors.white10, height: 1),
+
+          // Tab Views
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 1: Haptic
+                _buildHapticTab(prov, s),
+                // Tab 2: Visual HUD
+                _buildHudTab(prov, s),
+                // Tab 3: Flight MFD
+                _buildFlightTab(prov, s),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHapticTab(SettingsProvider prov, AppSettings s) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildSubItemTile(
+          title: AppTranslations.getText('haptic_sub_rpm'),
+          subtitle: AppTranslations.getText('haptic_sub_rpm_desc'),
+          value: s.dlcHapticRpm,
+          color: Colors.cyanAccent,
+          icon: Icons.speed,
+          onChanged: (v) {
+            s.dlcHapticRpm = v;
+            prov.updateSettings(s);
+          },
         ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('haptic_sub_slip'),
+          subtitle: AppTranslations.getText('haptic_sub_slip_desc'),
+          value: s.dlcHapticSlip,
+          color: Colors.cyanAccent,
+          icon: Icons.album,
+          onChanged: (v) {
+            s.dlcHapticSlip = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('haptic_sub_gear'),
+          subtitle: AppTranslations.getText('haptic_sub_gear_desc'),
+          value: s.dlcHapticGear,
+          color: Colors.cyanAccent,
+          icon: Icons.electric_bolt,
+          onChanged: (v) {
+            s.dlcHapticGear = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('haptic_sub_collision'),
+          subtitle: AppTranslations.getText('haptic_sub_collision_desc'),
+          value: s.dlcHapticCollision,
+          color: Colors.cyanAccent,
+          icon: Icons.warning_amber_rounded,
+          onChanged: (v) {
+            s.dlcHapticCollision = v;
+            prov.updateSettings(s);
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildResetButton(() {
+          s.dlcHapticRpm = false;
+          s.dlcHapticSlip = true;
+          s.dlcHapticGear = true;
+          s.dlcHapticCollision = true;
+          prov.updateSettings(s);
+        }),
+      ],
+    );
+  }
+
+  Widget _buildHudTab(SettingsProvider prov, AppSettings s) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildSubItemTile(
+          title: AppTranslations.getText('hud_sub_rpm_bar'),
+          subtitle: AppTranslations.getText('hud_sub_rpm_bar_desc'),
+          value: s.hudShowRpm,
+          color: Colors.orangeAccent,
+          icon: Icons.linear_scale,
+          onChanged: (v) {
+            s.hudShowRpm = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('hud_sub_speed'),
+          subtitle: AppTranslations.getText('hud_sub_speed_desc'),
+          value: s.hudShowSpeed,
+          color: Colors.orangeAccent,
+          icon: Icons.speed,
+          onChanged: (v) {
+            s.hudShowSpeed = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('hud_sub_gear'),
+          subtitle: AppTranslations.getText('hud_sub_gear_desc'),
+          value: s.hudShowGear,
+          color: Colors.orangeAccent,
+          icon: Icons.looks_one,
+          onChanged: (v) {
+            s.hudShowGear = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('hud_sub_drs_ers'),
+          subtitle: AppTranslations.getText('hud_sub_drs_ers_desc'),
+          value: s.hudShowDrsErs,
+          color: Colors.orangeAccent,
+          icon: Icons.battery_charging_full,
+          onChanged: (v) {
+            s.hudShowDrsErs = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('hud_sub_pedal_bars'),
+          subtitle: AppTranslations.getText('hud_sub_pedal_bars_desc'),
+          value: s.hudShowPedalBars,
+          color: Colors.orangeAccent,
+          icon: Icons.compare_arrows,
+          onChanged: (v) {
+            s.hudShowPedalBars = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('hud_sub_tyres'),
+          subtitle: AppTranslations.getText('hud_sub_tyres_desc'),
+          value: s.hudShowTyres,
+          color: Colors.orangeAccent,
+          icon: Icons.thermostat,
+          onChanged: (v) {
+            s.hudShowTyres = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('hud_sub_rpm_box'),
+          subtitle: AppTranslations.getText('hud_sub_rpm_box_desc'),
+          value: s.hudShowRpmBox,
+          color: Colors.orangeAccent,
+          icon: Icons.crop_square,
+          onChanged: (v) {
+            s.hudShowRpmBox = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('hud_sub_status_flags'),
+          subtitle: AppTranslations.getText('hud_sub_status_flags_desc'),
+          value: s.hudShowStatusFlags,
+          color: Colors.orangeAccent,
+          icon: Icons.flag,
+          onChanged: (v) {
+            s.hudShowStatusFlags = v;
+            prov.updateSettings(s);
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildResetButton(() {
+          s.hudShowRpm = true;
+          s.hudShowSpeed = true;
+          s.hudShowGear = true;
+          s.hudShowDrsErs = true;
+          s.hudShowPedalBars = true;
+          s.hudShowTyres = true;
+          s.hudShowRpmBox = true;
+          s.hudShowStatusFlags = true;
+          prov.updateSettings(s);
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFlightTab(SettingsProvider prov, AppSettings s) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildSubItemTile(
+          title: AppTranslations.getText('mfd_sub_horizon'),
+          subtitle: AppTranslations.getText('mfd_sub_horizon_desc'),
+          value: s.mfdShowArtificialHorizon,
+          color: Colors.purpleAccent,
+          icon: Icons.explore,
+          onChanged: (v) {
+            s.mfdShowArtificialHorizon = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('mfd_sub_speed_tape'),
+          subtitle: AppTranslations.getText('mfd_sub_speed_tape_desc'),
+          value: s.mfdShowSpeedTape,
+          color: Colors.purpleAccent,
+          icon: Icons.speed,
+          onChanged: (v) {
+            s.mfdShowSpeedTape = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('mfd_sub_altitude_tape'),
+          subtitle: AppTranslations.getText('mfd_sub_altitude_tape_desc'),
+          value: s.mfdShowAltitudeTape,
+          color: Colors.purpleAccent,
+          icon: Icons.height,
+          onChanged: (v) {
+            s.mfdShowAltitudeTape = v;
+            prov.updateSettings(s);
+          },
+        ),
+        _buildSubItemTile(
+          title: AppTranslations.getText('mfd_sub_engine_gauges'),
+          subtitle: AppTranslations.getText('mfd_sub_engine_gauges_desc'),
+          value: s.mfdShowEngineGauges,
+          color: Colors.purpleAccent,
+          icon: Icons.engineering,
+          onChanged: (v) {
+            s.mfdShowEngineGauges = v;
+            prov.updateSettings(s);
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildResetButton(() {
+          s.mfdShowArtificialHorizon = true;
+          s.mfdShowSpeedTape = true;
+          s.mfdShowAltitudeTape = true;
+          s.mfdShowEngineGauges = true;
+          prov.updateSettings(s);
+        }),
+      ],
+    );
+  }
+
+  Widget _buildSubItemTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Color color,
+    required IconData icon,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: value ? color.withValues(alpha: 0.35) : Colors.white10,
+        ),
+      ),
+      child: SwitchListTile(
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: color,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        secondary: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResetButton(VoidCallback onReset) {
+    return OutlinedButton.icon(
+      onPressed: onReset,
+      icon: const Icon(Icons.refresh, size: 16, color: Colors.white54),
+      label: Text(
+        AppTranslations.getText('reset_to_defaults'),
+        style: const TextStyle(color: Colors.white54, fontSize: 12),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Colors.white12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }

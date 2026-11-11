@@ -80,6 +80,8 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   bool get joystickPresent => leftJoystickPresent || rightJoystickPresent;
   bool touchpadPresent = false;
   bool keyboardKeysPresent = false;
+  bool mod5ClutchPresent = false;
+  bool mod5HandbrakePresent = false;
   
   // Gyro-to-Right Analog (Sol Joystick üzerinde)
   int gyroToRightAnalogMode = 0; // 0=Kapalı, 1=Pilot, 2=FPS
@@ -96,15 +98,24 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
     final s = Provider.of<SettingsProvider>(context, listen: false).settings;
     if (!s.gyroLookEnabled || s.gyroLookMode == 0) return false;
     
-    // Sıfır noktası modunda direksiyon açısı kontrolü
+    // Style 0: Yarışçı modu (Sadece Yaw) — Sürüş esnasında her zaman aktif
     if (s.gyroLookStyle == 0) {
+      return true;
+    }
+
+    // Style 1: TrackPoint modu — Ekranda dokunmatik mini joystick
+    if (s.gyroLookStyle == 1) {
+      return true;
+    }
+
+    // Style 2: Sıfır noktası modu (Pitch & Yaw) — Direksiyon sıfıra yakın olmalı (%8 eşik)
+    if (s.gyroLookStyle == 2) {
       // Mod 5'te sol joystick varsa direksiyon kuralı geçersiz
       if (s.defaultDrivingMode == 5 && leftJoystickPresent) return true;
-      // Yoksa direksiyon sıfıra yakın olmalı (%5 eşik)
-      return steeringAngle.abs() < 0.05;
+      // Yoksa direksiyon sıfıra yakın olmalı (%8 eşik)
+      return steeringAngle.abs() < 0.08;
     }
     
-    // TrackPoint modu her zaman aktif
     return true;
   }
 
@@ -113,9 +124,9 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   double? leftJoySensitivity;
   double? rightJoySensitivity;
 
-  // Mode 5: Spawn modu — aktif spawn bilgisi (hangi joystick spawn edildi)
-  // null = hiçbiri spawn değil, true = sol aktif, false = sağ aktif
-  bool? spawnActiveIsLeft;
+  // Mode 5: Spawn modu — aktif spawn bilgisi (sol ve sağ bağımsız olarak aynı anda aktif olabilir)
+  bool spawnLeftActive = false;
+  bool spawnRightActive = false;
 
   // Mode 5/6: pedal icon acceleration state
   double gasPedalIconValue = 0.0;
@@ -136,6 +147,24 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   // Mode 0: single-pointer management (gas or brake)
   int? mod0ActivePointer;
   bool mod0IsGas = false;
+
+  // Mode 8 (Chill Drive / Rahat Sürüş) dokunmatik override ve Hız Sabitleyici (Cruise Control)
+  bool chillTouchGasActive = false;
+  bool chillTouchBrakeActive = false;
+  bool chillCruiseControlLocked = false;
+  double chillCruiseControlGasValue = 0.0;
+
+  // Mode 9 (Arcade Flight / HOTAS - WT, DCS, MSFS) dokunmatik uçuş kolu & dümen & kamera
+  bool flightTouchStickActive = false;
+  double flightTouchRoll = 0.0;
+  double flightTouchPitch = 0.0;
+  double flightRudderTouch = 0.0;
+  bool flightFreeLookTouchActive = false;
+  bool flightWepActive = false;
+  bool flightGearDown = true;
+  bool flightAirbrakeActive = false;
+  int flightFlapStage = 0; // 0=UP, 1=COMBAT, 2=LAND
+  bool flightTargetLocked = false;
 
   // Basılı tuşlar bitmap (1-16)
   final Set<int> pressedKeys = {};

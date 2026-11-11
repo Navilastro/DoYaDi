@@ -706,6 +706,151 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                   (v) => setStateDialog(() => s.m7Key4 = v),
                 ),
               ];
+            } else if (mode == 8) {
+              final currentBgChoice = !s.chillOverlayEnabled
+                  ? -1
+                  : (s.chillOverlayStyle == 0 ? 0 : 1);
+              final currentBgText = !s.chillOverlayEnabled
+                  ? AppTranslations.getText('chill_bg_off')
+                  : (s.chillOverlayStyle == 0
+                      ? AppTranslations.getText('chill_bg_capsule')
+                      : AppTranslations.getText('chill_bg_bubble'));
+
+              tiles = [
+                ListTile(
+                  title: Text(
+                    AppTranslations.getText('chill_bg_title'),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    currentBgText,
+                    style: TextStyle(color: ac, fontSize: 12),
+                  ),
+                  trailing: Icon(
+                    !s.chillOverlayEnabled
+                        ? Icons.layers_clear
+                        : (s.chillOverlayStyle == 0
+                            ? Icons.web_asset
+                            : Icons.bubble_chart),
+                    color: ac,
+                  ),
+                  onTap: () async {
+                    final choice = await radioDialog<int>(
+                      ctx: ctx,
+                      title: AppTranslations.getText('chill_bg_title'),
+                      current: currentBgChoice,
+                      options: {
+                        '${AppTranslations.getText('chill_bg_off')} (${AppTranslations.getText('chill_bg_off_desc')})': -1,
+                        '${AppTranslations.getText('chill_bg_capsule')} (${AppTranslations.getText('chill_bg_capsule_desc')})': 0,
+                        '${AppTranslations.getText('chill_bg_bubble')} (${AppTranslations.getText('chill_bg_bubble_desc')})': 1,
+                      },
+                    );
+                    if (choice != null) {
+                      setStateDialog(() {
+                        if (choice == -1) {
+                          s.chillOverlayEnabled = false;
+                        } else {
+                          s.chillOverlayEnabled = true;
+                          s.chillOverlayStyle = choice;
+                        }
+                      });
+                    }
+                  },
+                ),
+                SwitchListTile(
+                  title: Text(
+                    AppTranslations.getText('chill_show_gear_buttons'),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    AppTranslations.getText('chill_show_gear_buttons_desc'),
+                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  ),
+                  value: s.chillOverlayGearButtons,
+                  activeThumbColor: ac,
+                  onChanged: (val) {
+                    setStateDialog(() => s.chillOverlayGearButtons = val);
+                  },
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('chill_handbrake_key'),
+                  s.handbrakeKey,
+                  (v) => setStateDialog(() => s.handbrakeKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('chill_horn_key'),
+                  s.mod6HornKey,
+                  (v) => setStateDialog(() => s.mod6HornKey = v),
+                ),
+              ];
+            } else if (mode == 9) {
+              tiles = [
+                buildKeyTile(
+                  AppTranslations.getText('flight_fire_key'),
+                  s.m9FireKey,
+                  (v) => setStateDialog(() => s.m9FireKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_heavy_gun_key'),
+                  s.m9HeavyGunKey,
+                  (v) => setStateDialog(() => s.m9HeavyGunKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_missile_key'),
+                  s.m9MissileKey,
+                  (v) => setStateDialog(() => s.m9MissileKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_bomb_key'),
+                  s.m9BombKey,
+                  (v) => setStateDialog(() => s.m9BombKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_lock_key'),
+                  s.m9LockKey,
+                  (v) => setStateDialog(() => s.m9LockKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_flare_key'),
+                  s.m9FlareKey,
+                  (v) => setStateDialog(() => s.m9FlareKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_map_key'),
+                  s.m9MapKey,
+                  (v) => setStateDialog(() => s.m9MapKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_flap_down_key'),
+                  s.m9FlapDownKey,
+                  (v) => setStateDialog(() => s.m9FlapDownKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_flap_up_key'),
+                  s.m9FlapUpKey,
+                  (v) => setStateDialog(() => s.m9FlapUpKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_gear_key'),
+                  s.m9GearKey,
+                  (v) => setStateDialog(() => s.m9GearKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_airbrake_key'),
+                  s.m9AirbrakeKey,
+                  (v) => setStateDialog(() => s.m9AirbrakeKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_rudder_left'),
+                  s.m9RudderLeftKey,
+                  (v) => setStateDialog(() => s.m9RudderLeftKey = v),
+                ),
+                buildKeyTile(
+                  AppTranslations.getText('flight_rudder_right'),
+                  s.m9RudderRightKey,
+                  (v) => setStateDialog(() => s.m9RudderRightKey = v),
+                ),
+              ];
             }
 
             return AlertDialog(
@@ -772,6 +917,26 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                         s.m7Key2 = 8;
                         s.m7Key3 = 6;
                         s.m7Key4 = 5;
+                      } else if (mode == 8) {
+                        s.chillOverlayEnabled = false;
+                        s.chillOverlayStyle = 0;
+                        s.chillOverlayGearButtons = true;
+                        s.handbrakeKey = 7;
+                        s.mod6HornKey = 10;
+                      } else if (mode == 9) {
+                        s.m9FireKey = 5;
+                        s.m9HeavyGunKey = 6;
+                        s.m9MissileKey = 7;
+                        s.m9BombKey = 8;
+                        s.m9LockKey = 9;
+                        s.m9FlareKey = 10;
+                        s.m9MapKey = 14;
+                        s.m9FlapDownKey = 11;
+                        s.m9FlapUpKey = 12;
+                        s.m9GearKey = 13;
+                        s.m9AirbrakeKey = 0;
+                        s.m9RudderLeftKey = 1;
+                        s.m9RudderRightKey = 2;
                       }
                     });
                   },
@@ -882,8 +1047,9 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                               () => s.customButtonPressModes[keyIndex] = val,
                             );
                             if (val == 1) {
+                              if (!dctx.mounted) return;
                               final duration = await radioDialog<int>(
-                                ctx: context,
+                                ctx: dctx,
                                 title:
                                     '${AppTranslations.getText('timed_press_duration')} (${AppTranslations.getText('key_prefix')} $keyIndex)',
                                 current:
@@ -1038,10 +1204,11 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                           },
                         );
                         if (typeVal == null) return;
+                        if (!dctx.mounted) return;
 
                         // 2. Tetikleme Zamanı (0-2)
                         final triggerVal = await radioDialog<int>(
-                          ctx: context,
+                          ctx: dctx,
                           title: '$name - ${AppTranslations.getText('haptic_trigger')}',
                           current: triggerOverride ?? -1,
                           options: {

@@ -25,11 +25,30 @@ class JoystickSpawnInfo {
   });
 }
 
-/// Spawn (Belirme) modu şeffaf katmanı.
+/// Tek bir aktif parmak (pointer) için spawn edilmiş joystick durumu.
+class _ActiveSpawnState {
+  final JoystickSpawnInfo info;
+  final Offset spawnCenter;
+  final JoystickController controller;
+  Offset baseOffset = Offset.zero;
+  Offset thumbPos = Offset.zero;
+
+  _ActiveSpawnState({
+    required this.info,
+    required this.spawnCenter,
+    required this.controller,
+  });
+
+  Offset get visualCenter => spawnCenter + baseOffset;
+}
+
+/// Spawn (Belirme) modu şeffaf katmanı (Multi-Touch / Çift Joystick Destekli).
 ///
 /// Ekranda boş alana dokunulduğunda, dokunma noktasının tüm joystick'lerin
 /// orijinal merkezlerine olan mesafesini karşılaştırır (Voronoi mantığı).
-/// En yakın joystick dokunulan noktada anlık olarak belirir ve aktifleşir.
+/// En yakın joystick (henüz başka bir parmakla aktif değilse) dokunulan noktada
+/// anlık olarak belirir ve aktifleşir. Sol ve Sağ joystick aynı anda bağımsız
+/// iki parmakla kullanılabilir.
 ///
 /// floatingEnabled true olduğunda, spawn edilen joystick floating base
 /// davranışı gösterir: thumb sınıra dayandığında base parmağı takip eder.
@@ -43,9 +62,8 @@ class JoystickSpawnLayer extends StatefulWidget {
   /// Sağ joystick değişim callback'i.
   final void Function(double x, double y) onJoy1Changed;
 
-  /// Aktif spawn bilgisi dışarıya bildirilir (gizleme/gösterme için).
-  /// Parametre: aktif joystick isLeft değeri, null ise hiçbiri aktif değil.
-  final void Function(bool? activeIsLeft)? onActiveChanged;
+  /// Aktif spawn durumu dışarıya bildirilir (orijinal ghost gizleme/gösterme için).
+  final void Function(bool leftActive, bool rightActive)? onActiveChanged;
 
   /// true: spawn + floating base birleşik modu.
   /// false (varsayılan): klasik spawn — base sabit kalır.
@@ -65,20 +83,19 @@ class JoystickSpawnLayer extends StatefulWidget {
 }
 
 class _JoystickSpawnLayerState extends State<JoystickSpawnLayer> {
-  /// Aktif spawn noktası (dokunulan nokta) — joystick bu noktada çizilir.
-  Offset? _spawnCenter;
+  /// Pointer ID -> Aktif spawn durumu (Sol ve Sağ aynı anda aktif olabilir).
+  final Map<int, _ActiveSpawnState> _activeSpawns = {};
 
-  /// Floating base offset (orijinal spawn noktasından kayma).
-  Offset _baseOffset = Offset.zero;
+  bool _isSideActive(bool isLeft) {
+    return _activeSpawns.values.any((s) => s.info.isLeft == isLeft);
+  }
 
-  /// Aktif spawn'a ait joystick bilgisi.
-  JoystickSpawnInfo? _activeInfo;
-
-  /// Thumb pozisyonu.
-  Offset _thumbPos = Offset.zero;
-
-  int? _activePointer;
-  JoystickController? _controller;
+  void _notifyActiveChanged() {
+    widget.onActiveChanged?.call(
+      _isSideActive(true),
+      _isSideActive(false),
+    );
+  }
 
   /// En yakın joystick'i bul (Voronoi / Euclidean mesafe).
   JoystickSpawnInfo? _findNearest(Offset touchPoint) {
@@ -98,119 +115,107 @@ class _JoystickSpawnLayerState extends State<JoystickSpawnLayer> {
     return nearest;
   }
 
-  void _update(Offset localPosition) {
-    if (_spawnCenter == null || _activeInfo == null || _controller == null) {
-      return;
-    }
+  void _update(int pointer, Offset localPosition) {
+    final state = _activeSpawns[pointer];
+    if (state == null) return;
 
     // Mevcut merkez = spawn noktası + base kayması
-    final currentCenter = _spawnCenter! + _baseOffset;
+    final currentCenter = state.spawnCenter + state.baseOffset;
     final delta = localPosition - currentCenter;
-    final clamped = _controller!.clamp(delta);
+    final clamped = state.controller.clamp(delta);
 
     // Floating etkinse: thumb sınıra dayandığında base'i kaydır
-    if (widget.floatingEnabled && delta.distance > _activeInfo!.radius) {
-      final overflow =
-          delta - (delta / delta.distance * _activeInfo!.radius);
-      _baseOffset += overflow;
+    if (widget.floatingEnabled && delta.distance > state.info.radius) {
+      final overflow = delta - (delta / delta.distance * state.info.radius);
+      state.baseOffset += overflow;
     }
 
-    setState(() => _thumbPos = clamped);
+    setState(() => state.thumbPos = clamped);
 
-    final (nx, ny) = _controller!.normalize(clamped);
-    if (_activeInfo!.isLeft) {
+    final (nx, ny) = state.controller.normalize(clamped);
+    if (state.info.isLeft) {
       widget.onJoy0Changed(nx, ny);
     } else {
       widget.onJoy1Changed(nx, ny);
     }
   }
 
-  void _reset() {
-    if (_activeInfo != null) {
-      if (_activeInfo!.isLeft) {
-        widget.onJoy0Changed(0, 0);
-      } else {
-        widget.onJoy1Changed(0, 0);
-      }
+  void _resetPointer(int pointer) {
+    final removed = _activeSpawns.remove(pointer);
+    if (removed == null) return;
+
+    if (removed.info.isLeft) {
+      widget.onJoy0Changed(0, 0);
+    } else {
+      widget.onJoy1Changed(0, 0);
     }
 
-    setState(() {
-      _spawnCenter = null;
-      _baseOffset = Offset.zero;
-      _activeInfo = null;
-      _thumbPos = Offset.zero;
-      _activePointer = null;
-      _controller = null;
-    });
-
-    widget.onActiveChanged?.call(null);
+    setState(() {});
+    _notifyActiveChanged();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Görsel merkezin son konumu (spawn noktası + floating kayması)
-    final Offset? visualCenter =
-        _spawnCenter != null ? _spawnCenter! + _baseOffset : null;
-
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Şeffaf dokunma yakalama katmanı
+        // Şeffaf dokunma yakalama katmanı (Multi-Touch)
         Positioned.fill(
           child: Listener(
             behavior: HitTestBehavior.translucent,
             onPointerDown: (e) {
-              if (_activePointer != null) return;
+              if (_activeSpawns.containsKey(e.pointer)) return;
 
               final nearest = _findNearest(e.localPosition);
               if (nearest == null) return;
 
-              _activePointer = e.pointer;
-              _activeInfo = nearest;
-              _spawnCenter = e.localPosition;
-              _baseOffset = Offset.zero;
-              _controller = JoystickController(
-                radius: nearest.radius,
-                deadzone: 0.08,
+              // Bu joystick (sol veya sağ) zaten başka bir parmak tarafından kullanılıyorsa yoksay
+              if (_isSideActive(nearest.isLeft)) return;
+
+              _activeSpawns[e.pointer] = _ActiveSpawnState(
+                info: nearest,
+                spawnCenter: e.localPosition,
+                controller: JoystickController(
+                  radius: nearest.radius,
+                  deadzone: 0.08,
+                ),
               );
 
-              widget.onActiveChanged?.call(nearest.isLeft);
-
-              // İlk dokunma — thumb merkezde
-              setState(() => _thumbPos = Offset.zero);
+              _notifyActiveChanged();
+              setState(() {});
             },
             onPointerMove: (e) {
-              if (e.pointer != _activePointer) return;
-              _update(e.localPosition);
+              if (!_activeSpawns.containsKey(e.pointer)) return;
+              _update(e.pointer, e.localPosition);
             },
             onPointerUp: (e) {
-              if (e.pointer != _activePointer) return;
-              _reset();
+              if (!_activeSpawns.containsKey(e.pointer)) return;
+              _resetPointer(e.pointer);
             },
             onPointerCancel: (e) {
-              if (e.pointer != _activePointer) return;
-              _reset();
+              if (!_activeSpawns.containsKey(e.pointer)) return;
+              _resetPointer(e.pointer);
             },
             child: const SizedBox.expand(),
           ),
         ),
 
-        // Spawn edilen joystick görseli
-        if (visualCenter != null && _activeInfo != null)
+        // Spawn edilen tüm aktif joystick görselleri (Sol ve Sağ aynı anda çizilebilir)
+        for (final spawn in _activeSpawns.values)
           Positioned(
-            left: visualCenter.dx - _activeInfo!.radius,
-            top: visualCenter.dy - _activeInfo!.radius,
+            left: spawn.visualCenter.dx - spawn.info.radius,
+            top: spawn.visualCenter.dy - spawn.info.radius,
             child: IgnorePointer(
               child: SizedBox(
-                width: _activeInfo!.radius * 2,
-                height: _activeInfo!.radius * 2,
+                width: spawn.info.radius * 2,
+                height: spawn.info.radius * 2,
                 child: CustomPaint(
                   painter: JoystickPainter(
-                    thumbPos: _thumbPos,
-                    radius: _activeInfo!.radius,
-                    baseColor: _activeInfo!.baseColor,
-                    thumbColor: _activeInfo!.thumbColor,
-                    thumbRadius: _activeInfo!.radius * 0.35,
+                    thumbPos: spawn.thumbPos,
+                    radius: spawn.info.radius,
+                    baseColor: spawn.info.baseColor,
+                    thumbColor: spawn.info.thumbColor,
+                    thumbRadius: spawn.info.radius * 0.35,
                     ghostOpacity: 1.0,
                   ),
                 ),

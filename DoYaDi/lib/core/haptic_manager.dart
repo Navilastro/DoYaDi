@@ -19,6 +19,15 @@ class HapticManager {
   /// DLC tarafından yönetilen haptic eklentisi aktif mi
   bool _dlcHapticActive = false;
 
+  /// Aktif ayarlar referansı (SettingsProvider tarafından güncellenir)
+  AppSettings? _settings;
+
+  void updateSettings(AppSettings settings) {
+    _settings = settings;
+  }
+
+  AppSettings get currentSettings => _settings ?? AppSettings();
+
   /// Son işlenen telemetri zamanı (flood engeli)
   DateTime _lastTelemetryTrigger = DateTime(2000);
 
@@ -172,20 +181,24 @@ class HapticManager {
   }
 
   DateTime _lastSlipTrigger = DateTime(2000);
+  DateTime _lastRpmTrigger = DateTime(2000);
 
   // ── DLC Telemetri Bazlı Haptic ─────────────────────────────────────────────
 
   /// Telemetri verisini işleyerek bildirim odaklı haptik/titreşim tetikler.
-  /// - Motor RPM titreşimi KAPALI (motor titreşimi verilmez)
-  /// - Vites geçiş darbeleri (Gear Impact)
-  /// - Tekerlek kayması, kilitlenmesi ve sert fren (Wheel Slip)
+  /// Alt telemetrilerin açılıp kapanma durumları [AppSettings] üzerinden okunur:
+  /// - Motor RPM titreşimi: dlcHapticRpm (Varsayılan KAPALI)
+  /// - Tekerlek kayması & sert fren: dlcHapticSlip (Varsayılan AÇIK)
+  /// - Vites geçiş darbeleri: dlcHapticGear (Varsayılan AÇIK)
+  /// - Çarpışma ve G-kuvveti darbesi: dlcHapticCollision (Varsayılan AÇIK)
   void processTelemetry(TelemetryData data) {
     if (!_dlcHapticActive) return;
 
+    final s = currentSettings;
     final now = DateTime.now();
 
     // 0. Çarpışma / Kaza Titreşimi (Kritik Olay — G-Kuvveti Sıçraması & Hasar)
-    if (data.reserved1 > 0) {
+    if (s.dlcHapticCollision && data.reserved1 > 0) {
       if (now.difference(_lastTelemetryTrigger).inMilliseconds < 150) return;
       _lastTelemetryTrigger = now;
 
@@ -208,7 +221,7 @@ class HapticManager {
     }
 
     // 1. Vites Darbesi (Anlık Vites Değişimi Olayı)
-    if (data.gearImpact > 0) {
+    if (s.dlcHapticGear && data.gearImpact > 0) {
       if (now.difference(_lastTelemetryTrigger).inMilliseconds < 100) return;
       _lastTelemetryTrigger = now;
       _vibrateCustom(
@@ -221,34 +234,47 @@ class HapticManager {
 
     // 2. Çevresel Etkenler & Sert Fren: Tekerlek Kayması (Wheel Slip)
     // LeftSlip / RightSlip 0-255 arası gelir. 90 üzeri kayma / fren kilitlenmesidir.
-    final maxSlip = math.max(data.leftSlip, data.rightSlip);
+    if (s.dlcHapticSlip) {
+      final maxSlip = math.max(data.leftSlip, data.rightSlip);
 
-    if (maxSlip >= 90) {
-      if (now.difference(_lastSlipTrigger).inMilliseconds < 120) return;
-      _lastSlipTrigger = now;
+      if (maxSlip >= 90) {
+        if (now.difference(_lastSlipTrigger).inMilliseconds < 120) return;
+        _lastSlipTrigger = now;
 
-      if (maxSlip >= 180) {
-        // Aşırı sert fren / ağır kayma (kilitlenme)
-        _vibrateCustom(
-          duration: 70,
-          amplitude: 255,
-          fallbackHaptic: HapticFeedback.heavyImpact,
-        );
-      } else if (maxSlip >= 130) {
-        // Orta derece kayma / sert fren
-        _vibrateCustom(
-          duration: 45,
-          amplitude: 160,
-          fallbackHaptic: HapticFeedback.mediumImpact,
-        );
-      } else {
-        // Hafif kayma
-        _vibrateCustom(
-          duration: 25,
-          amplitude: 90,
-          fallbackHaptic: HapticFeedback.lightImpact,
-        );
+        if (maxSlip >= 180) {
+          // Aşırı sert fren / ağır kayma (kilitlenme)
+          _vibrateCustom(
+            duration: 70,
+            amplitude: 255,
+            fallbackHaptic: HapticFeedback.heavyImpact,
+          );
+        } else if (maxSlip >= 130) {
+          // Orta derece kayma / sert fren
+          _vibrateCustom(
+            duration: 45,
+            amplitude: 160,
+            fallbackHaptic: HapticFeedback.mediumImpact,
+          );
+        } else {
+          // Hafif kayma
+          _vibrateCustom(
+            duration: 25,
+            amplitude: 90,
+            fallbackHaptic: HapticFeedback.lightImpact,
+          );
+        }
       }
+    }
+
+    // 3. Motor RPM Titreşimi (Redline / Devir Kesici - Varsayılan Kapalı)
+    if (s.dlcHapticRpm && data.rpm >= 235) { // ~%92+ RPM
+      if (now.difference(_lastRpmTrigger).inMilliseconds < 140) return;
+      _lastRpmTrigger = now;
+      _vibrateCustom(
+        duration: 35,
+        amplitude: 110,
+        fallbackHaptic: HapticFeedback.lightImpact,
+      );
     }
   }
 }

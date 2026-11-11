@@ -14,6 +14,9 @@ enum SwipeDir {
 }
 
 class AppSettings {
+  // ── Giriş ekranı karşılama metni ("Hoşgeldin / Welcome" sonrası yazı) ───────
+  String customDriverName;
+
   // ── Arka plan ve genel renkler ──────────────────────────────────────────────
   Color backgroundColor;
   Color detailColor;
@@ -82,6 +85,16 @@ class AppSettings {
   bool isAddonMasterSwitchActive;
   /// Aktif seçili DLC eklenti paket ID'leri
   List<String> activeAddonIds;
+
+  // ── DLC Haptic Telemetri İçerikleri ───────────────────────────────────────
+  /// Motor RPM / Redline titreşimi (Varsayılan: KAPALI)
+  bool dlcHapticRpm;
+  /// Lastik kayması ve fren kilitlenmesi titreşimi (Varsayılan: AÇIK)
+  bool dlcHapticSlip;
+  /// Vites geçiş darbesi titreşimi (Varsayılan: AÇIK)
+  bool dlcHapticGear;
+  /// Çarpışma ve G-kuvveti darbesi titreşimi (Varsayılan: AÇIK)
+  bool dlcHapticCollision;
   /// Mod 6 Debriyaj aktif mi
   bool mod6EnableClutch;
   /// Mod 6 El Freni aktif mi
@@ -123,7 +136,7 @@ class AppSettings {
   double joystickSensitivity;
 
   // ── Sensör Merkez Noktası Ayarları ─────────────────────────────────────────
-  /// 0: Otomatik (Belirli süre hareketsizlikte), 1: Yalnızca Butonla (Ayarlar/Düzenleyici)
+  /// 0: Otomatik (Hareketsizlik), 1: Ayarlar Sayfasından, 2: Düzenleme Ekranından, 3: Ekranda Mini Buton
   int gyroCenterMode;
   /// Otomatik merkezleme için hareketsiz kalınması gereken süre (saniye)
   double gyroAutoCenterDuration;
@@ -133,7 +146,7 @@ class AppSettings {
   // ── Sensörle Bakış (Gyro Look) — Global Ayar ───────────────────────────────
   /// Ana açma/kapama anahtarı
   bool gyroLookEnabled;
-  /// 0: Sıfır Noktası Modu (direksiyon merkezde iken aktif), 1: TrackPoint Modu (mini joystick)
+  /// 0: Yarışçı Modu (Sadece Yaw), 1: TrackPoint Modu (mini joystick), 2: Sıfır Noktası Modu (Pitch & Yaw - direksiyon merkezde iken)
   int gyroLookStyle;
   /// 1: Normal (Mutlak), 2: FPS (Açısal Hız), 3: Sürücü (Yumuşatılmış)
   int gyroLookMode;
@@ -235,12 +248,31 @@ class AppSettings {
   int m7Key2; // Üst (Varsayılan Y: 8)
   int m7Key3; // Sağ (Varsayılan B: 6)
   int m7Key4; // Alt (Varsayılan A: 5)
+  // ── Mod 7 Gösterge İçerikleri ──
+  /// RPM LED barı göster
+  bool hudShowRpm;
+  /// Hız göstergesi göster
+  bool hudShowSpeed;
+  /// 7-segment vites göstergesi göster
+  bool hudShowGear;
+  /// DRS ve ERS göstergeleri göster
+  bool hudShowDrsErs;
+  /// Gaz ve fren çubukları göster
+  bool hudShowPedalBars;
+  /// Lastik sıcaklıkları ve aşınma widget'ı göster
+  bool hudShowTyres;
+  /// Kırmızı telemetri RPM kutusu göster
+  bool hudShowRpmBox;
+  /// ABS / TC / SLIP durum rozetleri göster
+  bool hudShowStatusFlags;
 
   // ── Mod 8 (Chill Drive) Ayarları ──────────────────────────────────────────
   /// Kapsül baloncuk overlay aktif
   bool chillOverlayEnabled;
   /// Overlay'de vites butonları göster
   bool chillOverlayGearButtons;
+  /// Baloncuk stili: 0=Geniş Kapsül Kart, 1=Dikey Üçlü Yuvarlak (Vites+, Kalibre, Vites-)
+  int chillOverlayStyle;
   /// Direksiyon ekseni: 0=Roll, 1=Yaw
   int chillSteeringAxis;
   /// Direksiyon hassasiyeti (0.2-3.0)
@@ -255,8 +287,28 @@ class AppSettings {
   double flightRollSensitivity;
   /// Yaw hassasiyeti (0.2-3.0)
   double flightYawSensitivity;
+  /// Pitch ölü bölgesi (derece, 0.0-10.0, varsayılan 0.0)
+  double flightPitchDeadzone;
+  /// Roll ölü bölgesi (derece, 0.0-10.0, varsayılan 0.0)
+  double flightRollDeadzone;
+  /// Yaw ölü bölgesi (derece, 0.0-10.0, varsayılan 0.0)
+  double flightYawDeadzone;
   /// Kademeli itki bölüm sayısı (2-8)
   int flightThrustDetents;
+  /// Mod 9 Buton Atamaları
+  int m9FireKey; // Top / Makineli Ateş (Varsayılan A: 5)
+  int m9MissileKey; // Füze / Roket (Varsayılan B: 6)
+  int m9LockKey; // Hedef Kilitleme (Varsayılan X: 7)
+  int m9FlareKey; // Karşı Tedbir Flare/Chaff (Varsayılan Y: 8)
+  int m9HeavyGunKey; // Ağır Silah / Top (Secondary Guns — Varsayılan Back: 14)
+  int m9BombKey; // Bombardıman / Bomba Bırak (Varsayılan D-Pad Sağ: 12)
+  int m9MapKey; // Taktik Harita / Radar (Varsayılan Start: 13)
+  int m9FlapDownKey; // Flap Aç / İndir (Varsayılan D-Pad Aşağı: 10)
+  int m9FlapUpKey; // Flap Topla (Varsayılan D-Pad Yukarı: 9)
+  int m9GearKey; // İniş Takımı Aç/Kapat (Varsayılan L3: 17)
+  int m9AirbrakeKey; // Hava Freni Ek Tuşu (Varsayılan D-Pad Sol: 11)
+  int m9RudderLeftKey; // Sol Dümen Pedalı (Varsayılan LB: 1)
+  int m9RudderRightKey; // Sağ Dümen Pedalı (Varsayılan RB: 2)
 
   // ── Mod 10 (Flight MFD) Ayarları ──────────────────────────────────────────
   /// Yapay ufuk göster
@@ -265,10 +317,13 @@ class AppSettings {
   bool mfdShowSpeedTape;
   /// İrtifa bandı göster
   bool mfdShowAltitudeTape;
+  /// Alt panel motor göstergeleri (N1 / N2 / EGT)
+  bool mfdShowEngineGauges;
   /// Gyro filtre alfa (0.05-1.0)
   double mfdGyroFilterAlpha;
 
   AppSettings({
+    this.customDriverName = '',
     this.backgroundColor = const Color(0xFF050510),
     this.detailColor = const Color(0xFF40E0D0),
     this.steeringIndicatorColor = const Color(0xFF40E0D0),
@@ -307,6 +362,10 @@ class AppSettings {
     this.handbrakeKey = 7, // Varsayılan: X Tuşu
     this.isAddonMasterSwitchActive = false,
     this.activeAddonIds = const [],
+    this.dlcHapticRpm = false,
+    this.dlcHapticSlip = true,
+    this.dlcHapticGear = true,
+    this.dlcHapticCollision = true,
     this.mod6EnableClutch = true,
     this.mod6EnableHandbrake = true,
     this.mod6SteeringStyle = 1, // Varsayılan: Dinamik Sabit Direksiyon
@@ -402,9 +461,18 @@ class AppSettings {
     this.m7Key2 = 8, // Y
     this.m7Key3 = 6, // B
     this.m7Key4 = 5, // A
+    this.hudShowRpm = true,
+    this.hudShowSpeed = true,
+    this.hudShowGear = true,
+    this.hudShowDrsErs = true,
+    this.hudShowPedalBars = true,
+    this.hudShowTyres = true,
+    this.hudShowRpmBox = true,
+    this.hudShowStatusFlags = true,
     // Mod 8 (Chill Drive)
-    this.chillOverlayEnabled = false,
+    this.chillOverlayEnabled = true,
     this.chillOverlayGearButtons = true,
+    this.chillOverlayStyle = 0,
     this.chillSteeringAxis = 0,
     this.chillSteeringSensitivity = 1.0,
     this.chillGasBrakeSensitivity = 1.0,
@@ -412,11 +480,28 @@ class AppSettings {
     this.flightPitchSensitivity = 1.0,
     this.flightRollSensitivity = 1.0,
     this.flightYawSensitivity = 1.0,
+    this.flightPitchDeadzone = 0.0,
+    this.flightRollDeadzone = 0.0,
+    this.flightYawDeadzone = 0.0,
     this.flightThrustDetents = 4,
+    this.m9FireKey = 5,
+    this.m9MissileKey = 6,
+    this.m9LockKey = 7,
+    this.m9FlareKey = 8,
+    this.m9HeavyGunKey = 14,
+    this.m9BombKey = 12,
+    this.m9MapKey = 13,
+    this.m9FlapDownKey = 10,
+    this.m9FlapUpKey = 9,
+    this.m9GearKey = 17,
+    this.m9AirbrakeKey = 11,
+    this.m9RudderLeftKey = 1,
+    this.m9RudderRightKey = 2,
     // Mod 10 (Flight MFD)
     this.mfdShowArtificialHorizon = true,
     this.mfdShowSpeedTape = true,
     this.mfdShowAltitudeTape = true,
+    this.mfdShowEngineGauges = true,
     this.mfdGyroFilterAlpha = 0.15,
   });
 }

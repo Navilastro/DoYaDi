@@ -179,6 +179,7 @@ class TelemetryListenerService {
         gear: raw.gear,
         throttlePct: _filteredThrottle.round(),
         brakePct: _filteredBrake.round(),
+        engineRpm: raw.engineRpm,
         drsStatus: raw.drsStatus,
         ersDeployPct: raw.ersDeployPct,
         tyreTemps: raw.tyreTemps,

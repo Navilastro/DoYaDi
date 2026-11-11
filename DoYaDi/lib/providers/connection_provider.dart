@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/network/network_manager.dart';
 import '../core/utils/result.dart';
 
@@ -18,11 +19,19 @@ enum ConnectionType { none, wifi, bluetooth }
 /// geçiş **ayrı olaylar** olarak ele alınır; `connect*()` başarılı olsa
 /// bile otomatik ekran geçişi yapmaz.
 class ConnectionProvider with ChangeNotifier {
+  static const Duration longInactivityThreshold = Duration(days: 7);
+
   ConnectionStatus _status = ConnectionStatus.disconnected;
   ConnectionType _type = ConnectionType.none;
 
   String _wifiIp = '';
   BluetoothDevice? _selectedDevice;
+  bool _isUsbMethod = false;
+
+  /// En son başarılı giriş yapılan bağlantı yöntemi: 'wifi', 'usb', 'bluetooth' veya ''
+  String _lastConnectionMethod = '';
+  bool _hasRecentLogin = false;
+  bool _isLoaded = false;
 
   /// Son bağlantı hata mesajı (UI'da göstermek için)
   String? _lastError;
@@ -32,6 +41,10 @@ class ConnectionProvider with ChangeNotifier {
   String get wifiIp => _wifiIp;
   BluetoothDevice? get selectedDevice => _selectedDevice;
   String? get lastError => _lastError;
+  bool get isUsbMethod => _isUsbMethod;
+  String get lastConnectionMethod => _lastConnectionMethod;
+  bool get hasRecentLogin => _hasRecentLogin;
+  bool get isLoaded => _isLoaded;
 
   /// Bağlı sunucunun IP adresi (DLC servisleri için).
   /// Wi-Fi/USB: IP doluysa bağlı kabul edilir.
@@ -43,12 +56,87 @@ class ConnectionProvider with ChangeNotifier {
       _status == ConnectionStatus.connected &&
       (_wifiIp.isNotEmpty || NetworkManager().isBluetoothConnected);
 
+  /// Uygulama açılışında son bağlantı türünü ve son giriş zamanını yükler.
+  /// Uzun süre (7 gün) girilmemişse ilk giriş görünümüne döner.
+  Future<void> loadSavedConnection() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final method = prefs.getString('last_conn_method') ?? '';
+      final savedIp = (prefs.getString('last_pc_ip') ?? '').trim();
+      final btAddress = (prefs.getString('last_bt_address') ?? '').trim();
+      final btName = prefs.getString('last_bt_name');
+      final lastLoginMs = prefs.getInt('last_conn_timestamp');
+
+      bool recent = false;
+      if (lastLoginMs != null && method.isNotEmpty) {
+        final lastTime = DateTime.fromMillisecondsSinceEpoch(lastLoginMs);
+        final diff = DateTime.now().difference(lastTime);
+        if (!diff.isNegative && diff <= longInactivityThreshold) {
+          recent = true;
+        }
+      }
+
+      _lastConnectionMethod = method;
+      _hasRecentLogin = recent;
+
+      if (method == 'wifi' || method == 'usb') {
+        _isUsbMethod = (method == 'usb');
+        if (savedIp.isNotEmpty && _wifiIp.isEmpty) {
+          _wifiIp = savedIp;
+        }
+      } else if (method == 'bluetooth') {
+        if (btAddress.isNotEmpty && _selectedDevice == null) {
+          _selectedDevice = BluetoothDevice(
+            address: btAddress,
+            name: btName,
+          );
+        }
+      } else if (savedIp.isNotEmpty && _wifiIp.isEmpty) {
+        _wifiIp = savedIp;
+      }
+    } catch (e) {
+      debugPrint('Saved connection load error: $e');
+    } finally {
+      _isLoaded = true;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _persistConnectionMethod(String method) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      await prefs.setString('last_conn_method', method);
+      await prefs.setInt('last_conn_timestamp', nowMs);
+      if ((method == 'wifi' || method == 'usb') && _wifiIp.isNotEmpty) {
+        await prefs.setString('last_pc_ip', _wifiIp);
+      } else if (method == 'bluetooth' && _selectedDevice != null) {
+        await prefs.setString('last_bt_address', _selectedDevice!.address);
+        if (_selectedDevice!.name != null) {
+          await prefs.setString('last_bt_name', _selectedDevice!.name!);
+        }
+      }
+      _lastConnectionMethod = method;
+      _hasRecentLogin = true;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Persist connection method error: $e');
+    }
+  }
+
   // ── Manuel IP Girişi ───────────────────────────────────────────────────────
 
   /// Kullanıcı IP adresini manuel girer veya discovery sonucu set eder.
   /// Bağlantı durumunu **değiştirmez** — sadece adresi kaydeder.
-  void setWifiIp(String ip) {
+  void setWifiIp(String ip, {bool isUsb = false}) {
     _wifiIp = ip.trim();
+    _isUsbMethod = isUsb;
+    if (_wifiIp.isNotEmpty) {
+      _lastConnectionMethod = isUsb ? 'usb' : 'wifi';
+      if (NetworkManager().isBluetoothConnected) {
+        NetworkManager().disconnectBluetooth();
+      }
+    }
     _lastError = null;
     notifyListeners();
   }
@@ -56,6 +144,7 @@ class ConnectionProvider with ChangeNotifier {
   /// Kullanıcı Bluetooth cihazını seçer (henüz bağlanmaz).
   void setBluetoothDevice(BluetoothDevice device) {
     _selectedDevice = device;
+    _lastConnectionMethod = 'bluetooth';
     _lastError = null;
     notifyListeners();
   }
@@ -113,6 +202,7 @@ class ConnectionProvider with ChangeNotifier {
       _status = ConnectionStatus.connected;
       _type = ConnectionType.wifi;
       _lastError = null;
+      await _persistConnectionMethod(_isUsbMethod ? 'usb' : 'wifi');
       notifyListeners();
       return const Success(null);
     } on TimeoutException {
@@ -161,6 +251,7 @@ class ConnectionProvider with ChangeNotifier {
         _status = ConnectionStatus.connected;
         _type = ConnectionType.bluetooth;
         _lastError = null;
+        await _persistConnectionMethod('bluetooth');
         notifyListeners();
         return const Success(null);
       } else {
@@ -183,6 +274,37 @@ class ConnectionProvider with ChangeNotifier {
       notifyListeners();
       return Failure(_lastError!, e);
     }
+  }
+
+  /// Sürücü ekranına girilirken veya geri dönüldüğünde bağlantıyı otomatik tazeler/kurar.
+  /// Wi-Fi/USB modunda her zaman UDP soketini yeniden bağlar (ayarlar ekranında
+  /// geçen sürede düşen/uyuyan soketi ve sunucu slotunu anında uyandırır).
+  Future<Result<void>> ensureConnectedForDriving() async {
+    if (!_isLoaded) {
+      await loadSavedConnection();
+    }
+
+    // 1. Bluetooth aktifse veya son yöntem Bluetooth ise
+    if (NetworkManager().isBluetoothConnected) {
+      _status = ConnectionStatus.connected;
+      _type = ConnectionType.bluetooth;
+      await _persistConnectionMethod('bluetooth');
+      return const Success(null);
+    }
+
+    if ((_type == ConnectionType.bluetooth ||
+            (_lastConnectionMethod == 'bluetooth' && _wifiIp.isEmpty)) &&
+        _selectedDevice != null) {
+      return connectBluetooth(device: _selectedDevice);
+    }
+
+    // 2. Wi-Fi veya USB IP mevcutsa (veya NetworkManager'da kayıtlıysa) UDP soketini tazele
+    final targetIp = _wifiIp.isNotEmpty ? _wifiIp : NetworkManager().serverIp;
+    if (targetIp.isNotEmpty) {
+      return connectWifi(ip: targetIp);
+    }
+
+    return const Failure('Lütfen önce bağlanılacak cihazı seçin.');
   }
 
   // ── Bağlantı Kesme ─────────────────────────────────────────────────────────

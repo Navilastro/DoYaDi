@@ -2,7 +2,11 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/app_settings.dart';
+import '../providers/settings_provider.dart';
 import '../models/layout5_item.dart';
 import '../models/joystick_mode.dart';
 import '../models/telemetry_data.dart';
@@ -18,12 +22,14 @@ import '../widgets/flight/artificial_horizon_painter.dart';
 import '../widgets/flight/speed_tape_painter.dart';
 import '../widgets/flight/altitude_tape_painter.dart';
 import '../widgets/flight/thrust_lever_widget.dart';
-import '../widgets/flight/tactical_switch_widget.dart';
 import '../widgets/flight/crosshair_painter.dart';
 import '../screens/driving_screen_state.dart';
 import '../core/utils/app_translations.dart';
+import '../core/utils/keyboard_keys.dart';
 import '../core/sensor_manager.dart';
 import '../core/haptic_manager.dart';
+import '../core/network/network_manager.dart';
+import '../providers/connection_provider.dart';
 import '../services/telemetry_listener_service.dart';
 
 part 'mode_builders/mode0_to_4_builder.dart';
@@ -38,6 +44,9 @@ part 'mode_builders/shared_builders.dart';
 /// DrivingInputMixin ile birlikte kullanılır.
 mixin DrivingModeBuildMixin<T extends StatefulWidget>
     on State<T>, DrivingInputMixin<T> {
+  @override
+  void setState(VoidCallback fn) => super.setState(fn);
+
   Widget buildLayout(AppSettings settings, Size size) {
     switch (settings.defaultDrivingMode) {
       case 0:

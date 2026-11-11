@@ -97,18 +97,18 @@ class KeyboardKeys {
       '9': 1057,
       '0': 1048,
       ' ': 1032,
-      '\'': 1222,
+      '\'': 1138, // Özel Unicode (')
       '*': 1106, // Numpad *
       '+': 1137, // Özel Unicode (+)
-      '-': 1189, // OEM_MINUS
-      '/': 1191, // OEM_2
-      '[': 1219, // OEM_4
-      ']': 1221, // OEM_6
-      ';': 1186, // OEM_1
-      '\\': 1220, // OEM_5
-      ',': 1188, // OEM_COMMA
-      '.': 1190, // OEM_PERIOD
-      '=': 1187, // OEM_PLUS
+      '-': 1139, // Özel Unicode (-)
+      '/': 1140, // Özel Unicode (/)
+      '[': 1141, // Özel Unicode ([)
+      ']': 1142, // Özel Unicode (])
+      ';': 1143, // Özel Unicode (;)
+      '\\': 1144, // Özel Unicode (\)
+      ',': 1145, // Özel Unicode (,)
+      '.': 1146, // Özel Unicode (.)
+      '=': 1147, // Özel Unicode (=)
       'del': 1046, // VK_DELETE
       'insert': 1045, // VK_INSERT
       'win': 1091, // VK_LWIN

@@ -1,4 +1,4 @@
-part of '../../widgets/driving_mode_builders.dart';
+part of '../driving_mode_builders.dart';
 
 /// Mod 10 — Uçuş Telemetri MFD (Multi-Function Display)
 ///
@@ -134,9 +134,10 @@ class _FlightMfdContentState extends State<_FlightMfdContent> {
                 ),
 
                 // ── Alt Panel: Motor Telemetrisi ──
-                Container(
-                  height: 64,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                if (s.mfdShowEngineGauges)
+                  Container(
+                    height: 64,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: const BoxDecoration(
                     color: Color(0xFF0A0A18),
                     border: Border(

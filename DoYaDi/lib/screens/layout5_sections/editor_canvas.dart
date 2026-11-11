@@ -151,7 +151,7 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
           radius: min(w, h) / 2,
           baseColor: item.bgColor,
           thumbColor: item.textColor,
-          onChanged: (_, __) {},
+          onChanged: (_, _) {},
         );
       case Layout5ItemType.gasBar:
         return CustomPaint(
@@ -215,7 +215,7 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
                 totalAngleDegrees: 0.0,
                 turnRightColor: item.textColor,
                 turnLeftColor: item.textColor,
-                baseColor: item.textColor.withOpacity(0.3),
+                baseColor: item.textColor.withValues(alpha: 0.3),
               ),
               child: const SizedBox.expand(),
             ),

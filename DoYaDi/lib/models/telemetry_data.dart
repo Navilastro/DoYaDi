@@ -22,6 +22,7 @@ import 'dart:typed_data';
 /// [17]   = rightSlip (0-255)
 /// [18]   = gearImpact (0-255 anlık darbe)
 /// [19-20]= altitudeFt (uint16 big-endian, 0-65535)
+///          — flags bit3 set ise: engineRpm (gerçek motor devri, RPM)
 /// [21-22]= airspeedKnots (uint16 big-endian, 0-65535)
 /// [23]   = pitchDeg (signed int8, -128..127)
 /// [24]   = rollDeg (signed int8, -128..127)
@@ -29,7 +30,8 @@ import 'dart:typed_data';
 /// [26]   = n2Pct (0-255)
 /// [27]   = egtRaw (0-255 haritalanmış)
 /// [28-29]= deltaTimeMs (int16 big-endian, -32768..32767 ms)
-/// [30]   = flags (bitfield: bit0=stallWarning, bit1=absActive, bit2=tcActive)
+/// [30]   = flags (bitfield: bit0=stallWarning, bit1=absActive, bit2=tcActive,
+///          bit3=araç paketi — [19-20] motor devri taşır)
 /// [31]   = reserved
 /// ```
 class ExtendedTelemetryData {
@@ -48,6 +50,10 @@ class ExtendedTelemetryData {
 
   /// Fren pedalı pozisyonu (0-255 → %0-%100)
   final int brakePct;
+
+  /// Gerçek motor devri (RPM). Yalnızca araç paketlerinde (flags bit3) dolu,
+  /// aksi halde 0.
+  final int engineRpm;
 
   // ── F1 Spesifik ────────────────────────────────────────────────────────────
   /// DRS durumu: 0=kapalı, 1=müsait, 2=aktif
@@ -107,6 +113,7 @@ class ExtendedTelemetryData {
     this.gear = 0,
     this.throttlePct = 0,
     this.brakePct = 0,
+    this.engineRpm = 0,
     this.drsStatus = 0,
     this.ersDeployPct = 0,
     this.tyreTemps = const [0, 0, 0, 0],
@@ -168,6 +175,9 @@ class ExtendedTelemetryData {
   /// Çekiş kontrolü aktif mi
   bool get isTractionControlActive => (flags & 0x04) != 0;
 
+  /// Paket gerçek motor devri taşıyor mu (araç paketi, flags bit3)
+  bool get hasEngineRpm => (flags & 0x08) != 0;
+
   /// Rev limiter bölgesinde mi (RPM > %94)
   bool get isRevLimiter => rpmPct > 240;
 
@@ -184,6 +194,10 @@ class ExtendedTelemetryData {
     }
 
     final bd = ByteData.sublistView(Uint8List.fromList(bytes));
+    final int flags = bytes[30];
+    // Araç paketlerinde [19-20] irtifa yerine gerçek motor devrini taşır
+    final bool isCarPacket = (flags & 0x08) != 0;
+    final int field19 = bd.getUint16(19, Endian.big);
 
     return ExtendedTelemetryData(
       rpmPct: bytes[1],
@@ -191,6 +205,7 @@ class ExtendedTelemetryData {
       gear: bytes[3],
       throttlePct: bytes[4],
       brakePct: bytes[5],
+      engineRpm: isCarPacket ? field19 : 0,
       drsStatus: bytes[6],
       ersDeployPct: bytes[7],
       tyreTemps: [bytes[8], bytes[9], bytes[10], bytes[11]],
@@ -198,7 +213,7 @@ class ExtendedTelemetryData {
       leftSlip: bytes[16],
       rightSlip: bytes[17],
       gearImpact: bytes[18],
-      altitudeFt: bd.getUint16(19, Endian.big),
+      altitudeFt: isCarPacket ? 0 : field19,
       airspeedKnots: bd.getUint16(21, Endian.big),
       pitchDeg: bd.getInt8(23),
       rollDeg: bd.getInt8(24),
@@ -206,7 +221,7 @@ class ExtendedTelemetryData {
       n2Pct: bytes[26],
       egtRaw: bytes[27],
       deltaTimeMs: bd.getInt16(28, Endian.big),
-      flags: bytes[30],
+      flags: flags,
     );
   }
 

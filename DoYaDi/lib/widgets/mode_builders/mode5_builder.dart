@@ -54,6 +54,24 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
               e.keyIndex >= 100 ||
               e.keyIndex >= 2000),
     );
+    final bool hasClutch = items.any(
+      (e) =>
+          e.type == Layout5ItemType.clutchBar ||
+          e.type == Layout5ItemType.clutchIcon ||
+          ((e.type == Layout5ItemType.buttonSquare ||
+                  e.type == Layout5ItemType.buttonSoft ||
+                  e.type == Layout5ItemType.buttonCircle) &&
+              e.mode == ButtonMode.clutchPct),
+    );
+    final bool hasHandbrake = items.any(
+      (e) =>
+          e.type == Layout5ItemType.handbrakeBar ||
+          e.type == Layout5ItemType.handbrakeIcon ||
+          ((e.type == Layout5ItemType.buttonSquare ||
+                  e.type == Layout5ItemType.buttonSoft ||
+                  e.type == Layout5ItemType.buttonCircle) &&
+              e.mode == ButtonMode.handbrakePct),
+    );
 
     // Item bazlı hassasiyet değerlerini çıkar (sol/sağ ayrı)
     double? parsedLeftSens;
@@ -70,6 +88,8 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         rightJoystickPresent != hasRightJoy ||
         touchpadPresent != hasTouchpad ||
         keyboardKeysPresent != hasKbKeys ||
+        mod5ClutchPresent != hasClutch ||
+        mod5HandbrakePresent != hasHandbrake ||
         leftJoySensitivity != parsedLeftSens ||
         rightJoySensitivity != parsedRightSens ||
         gyroToRightAnalogMode != parsedGyroRightAnalogMode ||
@@ -85,6 +105,8 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
             rightJoystickPresent = hasRightJoy;
             touchpadPresent = hasTouchpad;
             keyboardKeysPresent = hasKbKeys;
+            mod5ClutchPresent = hasClutch;
+            mod5HandbrakePresent = hasHandbrake;
             leftJoySensitivity = parsedLeftSens;
             rightJoySensitivity = parsedRightSens;
             gyroToRightAnalogMode = parsedGyroRightAnalogMode;
@@ -143,8 +165,9 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                 joy1x = x;
                 joy1y = y;
               }),
-              onActiveChanged: (isLeft) => setState(() {
-                spawnActiveIsLeft = isLeft;
+              onActiveChanged: (leftActive, rightActive) => setState(() {
+                spawnLeftActive = leftActive;
+                spawnRightActive = rightActive;
               }),
             ),
           ),
@@ -156,8 +179,6 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
   }
 
   Widget buildMode5Item(Layout5Item item, AppSettings s, Size size, [JoystickMode joystickMode = JoystickMode.fixed]) {
-    final double l = item.left * size.width;
-    final double t = item.top * size.height;
     final bool isJoyOrIcon = item.type == Layout5ItemType.leftJoystick ||
         item.type == Layout5ItemType.rightJoystick ||
         item.type == Layout5ItemType.gasPedalIcon ||
@@ -177,7 +198,7 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
       case Layout5ItemType.leftJoystick:
         // Spawn tabanlı modlarda: aktif olan joystick spawn layer'da çizilir,
         // orijinal konumdaki ghost yarı saydam gösterilir
-        final bool isSpawnHidden = joystickMode.isSpawnLike && spawnActiveIsLeft == true;
+        final bool isSpawnHidden = joystickMode.isSpawnLike && spawnLeftActive;
         final double ghostOpacity = joystickMode.isSpawnLike
             ? (isSpawnHidden ? 0.0 : 0.2)
             : 1.0;
@@ -197,7 +218,7 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         );
         break;
       case Layout5ItemType.rightJoystick:
-        final bool isSpawnHidden = joystickMode.isSpawnLike && spawnActiveIsLeft == false;
+        final bool isSpawnHidden = joystickMode.isSpawnLike && spawnRightActive;
         final double ghostOpacity = joystickMode.isSpawnLike
             ? (isSpawnHidden ? 0.0 : 0.2)
             : 1.0;
@@ -734,7 +755,9 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: handbrakePressed ? Colors.redAccent : Colors.redAccent.withOpacity(0.15),
+              color: handbrakePressed
+                  ? Colors.redAccent
+                  : Colors.redAccent.withValues(alpha: 0.15),
               border: Border.all(
                 color: Colors.redAccent,
                 width: 2.5,

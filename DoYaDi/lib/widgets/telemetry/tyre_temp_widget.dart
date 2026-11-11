@@ -58,7 +58,9 @@ class TyreTempWidget extends StatelessWidget {
     final temp = tyreTemps[index];
     final wear = tyreWears[index].clamp(0, 100);
     final tempColor = _tempToColor(temp);
-    final health = 100 - wear;
+    // Assetto Corsa ve simülasyonlarda tyreWear kalan lastik sağlığıdır (%100 yeni, %0 bitmiş)
+    // Henüz telemetri verisi yoksa varsayılan 100 kabul edilir
+    final health = (wear == 0 && temp == 0) ? 100 : wear;
     final healthFraction = health / 100.0;
 
     // Aşınma rengi: yeşil → sarı → kırmızı
@@ -83,9 +85,9 @@ class TyreTempWidget extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            '${_tempToCelsius(temp)}°',
+            temp <= 0 ? '--' : '$temp°',
             style: TextStyle(
-              color: const Color(0xFF101018), // Yazı rengi koyu yapıldı (okunabilirlik için)
+              color: temp <= 0 ? Colors.white38 : const Color(0xFF101018),
               fontSize: fontSize,
               fontWeight: FontWeight.bold,
               fontFamily: 'monospace',
@@ -116,14 +118,12 @@ class TyreTempWidget extends StatelessWidget {
     );
   }
 
-  /// Sıcaklık değerini (0-255) °C'ye dönüştürür (50°-150° aralığı)
-  int _tempToCelsius(int raw) => (raw * 100 ~/ 255) + 50;
-
-  /// Sıcaklık değerine göre renk (soğuk:mavi → optimal:yeşil → sıcak:kırmızı)
-  Color _tempToColor(int raw) {
-    if (raw < 80) return const Color(0xFF42A5F5); // Soğuk — Mavi
-    if (raw < 140) return const Color(0xFF66BB6A); // Optimal — Yeşil
-    if (raw < 200) return const Color(0xFFFFC107); // Sıcak — Sarı
-    return const Color(0xFFFF1744); // Aşırı — Kırmızı
+  /// Sıcaklık değerine göre renk (soğuk:mavi → optimal:yeşil → sıcak:sarı → aşırı:kırmızı)
+  Color _tempToColor(int celsius) {
+    if (celsius <= 0) return const Color(0xFF1E1E2E); // Veri yok / boş
+    if (celsius < 65) return const Color(0xFF42A5F5); // Soğuk — Mavi (<65°C)
+    if (celsius <= 100) return const Color(0xFF66BB6A); // Optimal — Yeşil (65-100°C)
+    if (celsius <= 118) return const Color(0xFFFFC107); // Sıcak / Uyarı — Sarı (100-118°C)
+    return const Color(0xFFFF1744); // Aşırı Sıcak — Kırmızı (>118°C)
   }
 }

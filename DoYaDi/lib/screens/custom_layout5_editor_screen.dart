@@ -28,6 +28,9 @@ class CustomLayout5EditorScreen extends StatefulWidget {
 }
 
 class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
+  @override
+  void setState(VoidCallback fn) => super.setState(fn);
+
   List<Layout5Item> _items = [];
   bool _editMode = false;
   bool _removeMode = false;
@@ -95,8 +98,10 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _topBtn(
                           AppTranslations.getText('profiles'),
@@ -172,6 +177,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                     ),
                   ),
                 ),
+              ),
               ],
             ),
           ),
@@ -194,31 +200,35 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                       horizontal: 12,
                       vertical: 6,
                     ),
-                    child: Row(
-                      children: [
-                        // Ekle
-                        _addMenuButton(),
-                        const SizedBox(width: 8),
-                        // Kaldır
-                        _topBtn(
-                          AppTranslations.getText('remove'),
-                          Icons.remove_circle,
-                          _removeMode,
-                          () {
-                            setState(() => _removeMode = !_removeMode);
-                          },
-                          color: Colors.red,
-                        ),
-                        const Spacer(),
-                        if (_selected != null)
-                          Text(
-                            '${AppTranslations.getText('selected')}: ${_selected!.id.split('_').first}',
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 12,
-                            ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          // Ekle
+                          _addMenuButton(),
+                          const SizedBox(width: 8),
+                          // Kaldır
+                          _topBtn(
+                            AppTranslations.getText('remove'),
+                            Icons.remove_circle,
+                            _removeMode,
+                            () {
+                              setState(() => _removeMode = !_removeMode);
+                            },
+                            color: Colors.red,
                           ),
-                      ],
+                          if (_selected != null) ...[
+                            const SizedBox(width: 16),
+                            Text(
+                              '${AppTranslations.getText('selected')}: ${_selected!.id.split('_').first}',
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -260,6 +270,9 @@ class _PropertiesPanel extends StatefulWidget {
 }
 
 class _PropertiesPanelState extends State<_PropertiesPanel> {
+  @override
+  void setState(VoidCallback fn) => super.setState(fn);
+
   late TextEditingController _labelCtrl;
   late TextEditingController _zIndexCtrl;
   bool _lockAspectRatio = false;

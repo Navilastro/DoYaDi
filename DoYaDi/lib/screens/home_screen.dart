@@ -7,7 +7,6 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 import '../providers/settings_provider.dart';
 import '../providers/connection_provider.dart';
-import '../core/network/network_manager.dart';
 import '../core/utils/result.dart';
 import 'settings_screen.dart';
 import 'driving_screen.dart';
@@ -23,10 +22,39 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _isConnectionOptionsExpanded = false;
+
   @override
   void initState() {
     super.initState();
     _requestPermissions();
+  }
+
+  String _rememberedConnectionLabel(ConnectionProvider connection) {
+    final method = connection.lastConnectionMethod;
+    if (method == 'bluetooth') {
+      final devName = connection.selectedDevice?.name ??
+          connection.selectedDevice?.address ??
+          '';
+      final base = AppTranslations.getText('last_conn_bt');
+      return devName.isNotEmpty ? '$base ($devName)' : base;
+    } else if (method == 'usb') {
+      final ip = connection.wifiIp;
+      final base = AppTranslations.getText('last_conn_usb');
+      return ip.isNotEmpty ? '$base ($ip)' : base;
+    } else if (method == 'wifi') {
+      final ip = connection.wifiIp;
+      final base = AppTranslations.getText('last_conn_wifi');
+      return ip.isNotEmpty ? '$base ($ip)' : base;
+    }
+    return AppTranslations.getText('change_conn_type');
+  }
+
+  IconData _rememberedConnectionIcon(ConnectionProvider connection) {
+    final method = connection.lastConnectionMethod;
+    if (method == 'bluetooth') return Icons.bluetooth_connected;
+    if (method == 'usb') return Icons.cable;
+    return Icons.wifi;
   }
 
   Future<void> _requestPermissions() async {
@@ -60,68 +88,76 @@ class _HomeScreenState extends State<HomeScreen> {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(AppTranslations.getText('connection_settings')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: ipController,
-                      decoration: InputDecoration(
-                        labelText: AppTranslations.getText('pc_local_ip'),
-                        border: const OutlineInputBorder(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: ipController,
+                        decoration: InputDecoration(
+                          labelText: AppTranslations.getText('pc_local_ip'),
+                          border: const OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (val) {
+                          connectionProvider.setWifiIp(val, isUsb: false);
+                        },
                       ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (val) {
-                        connectionProvider.setWifiIp(val);
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () async {
+                        // Yükleniyor göstergesi
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(AppTranslations.getText('scanning_network')), duration: const Duration(seconds: 1)),
+                        );
+                        final result = await connectionProvider.discoverServer();
+                        switch (result) {
+                          case Success(:final value):
+                            ipController.text = value;
+                            connectionProvider.setWifiIp(value, isUsb: false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(AppTranslations.getText('pc_found_ready')), backgroundColor: Colors.green),
+                              );
+                            }
+                          case Failure(:final message):
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(message), backgroundColor: Colors.red),
+                              );
+                            }
+                        }
                       },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(AppTranslations.getText('auto_find')),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () async {
-                      // Yükleniyor göstergesi
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(AppTranslations.getText('scanning_network')), duration: const Duration(seconds: 1)),
-                      );
-                      final result = await connectionProvider.discoverServer();
-                      switch (result) {
-                        case Success(:final value):
-                          ipController.text = value;
-                          connectionProvider.setWifiIp(value);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(AppTranslations.getText('pc_found_ready')), backgroundColor: Colors.green),
-                            );
-                          }
-                        case Failure(:final message):
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(message), backgroundColor: Colors.red),
-                            );
-                          }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                    ),
-                    child: Text(AppTranslations.getText('auto_find')),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  _showBluetoothDevicesDialog(context, connectionProvider);
-                },
-                icon: const Icon(Icons.bluetooth),
-                label: Text(AppTranslations.getText('select_bt_device')),
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    _showBluetoothDevicesDialog(context, connectionProvider);
+                  },
+                  icon: const Icon(Icons.bluetooth),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(AppTranslations.getText('select_bt_device')),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -216,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               content: SizedBox(
                 width: double.maxFinite,
-                height: 320,
+                height: math.min(320.0, MediaQuery.of(context).size.height * 0.55),
                 child: devices.isEmpty
                     ? Center(
                         child: Column(
@@ -359,32 +395,36 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Icon(Icons.cable, color: Colors.cyan, size: 28),
               const SizedBox(width: 10),
-              Text(
-                AppTranslations.getText('usb_zero_delay'),
-                style: const TextStyle(color: Colors.white, fontSize: 18),
+              Expanded(
+                child: Text(
+                  AppTranslations.getText('usb_zero_delay'),
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                ),
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.looks_one, color: Colors.cyan),
-                title: Text(AppTranslations.getText('usb_step_1'), style: const TextStyle(color: Colors.white70)),
-                contentPadding: EdgeInsets.zero,
-              ),
-              ListTile(
-                leading: const Icon(Icons.looks_two, color: Colors.cyan),
-                title: Text(AppTranslations.getText('usb_step_2'), style: const TextStyle(color: Colors.white70)),
-                contentPadding: EdgeInsets.zero,
-              ),
-              ListTile(
-                leading: const Icon(Icons.looks_3, color: Colors.cyan),
-                title: Text(AppTranslations.getText('usb_step_3'), style: const TextStyle(color: Colors.white70)),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.looks_one, color: Colors.cyan),
+                  title: Text(AppTranslations.getText('usb_step_1'), style: const TextStyle(color: Colors.white70)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                ListTile(
+                  leading: const Icon(Icons.looks_two, color: Colors.cyan),
+                  title: Text(AppTranslations.getText('usb_step_2'), style: const TextStyle(color: Colors.white70)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                ListTile(
+                  leading: const Icon(Icons.looks_3, color: Colors.cyan),
+                  title: Text(AppTranslations.getText('usb_step_3'), style: const TextStyle(color: Colors.white70)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -402,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 final usbResult = await connectionProvider.discoverServer();
                 switch (usbResult) {
                   case Success(:final value):
-                    connectionProvider.setWifiIp(value);
+                    connectionProvider.setWifiIp(value, isUsb: true);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(AppTranslations.getText('pc_found_ready')), backgroundColor: Colors.green),
@@ -497,102 +537,400 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () => _showConnectionDialog(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: settings.detailColor.withValues(alpha: 0.2),
-                foregroundColor: settings.detailColor,
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  side: BorderSide(color: settings.detailColor, width: 2),
-                ),
-              ),
-              child: Text(
-                AppTranslations.getText('select_device_to_connect'),
-                style: const TextStyle(fontSize: 18),
-              ),
-            ),
-            const SizedBox(height: 15),
-            ElevatedButton.icon(
-              onPressed: () => _showUsbTetheringDialog(context),
-              icon: const Icon(Icons.cable, color: Colors.white),
-              label: Text(
-                AppTranslations.getText('wired_connect_usb'),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: settings.detailColor.withValues(alpha: 0.15),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(color: settings.detailColor.withValues(alpha: 0.5), width: 1.5),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () async {
-                final connection = Provider.of<ConnectionProvider>(context, listen: false);
-                
-                // GÜVENLİK KONTROLÜ: Bağlantı yoksa sürüşe izin verme
-                if (!connection.isConnected) {
-                  // IP girilmiş ama bağlantı kurulmamışsa otomatik bağlan
-                  if (connection.wifiIp.isNotEmpty) {
-                    final wifiResult = await connection.connectWifi();
-                    if (wifiResult.isFailure) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(wifiResult.errorMessage ?? AppTranslations.getText('please_select_device_first')),
-                            backgroundColor: Colors.red,
-                            duration: const Duration(seconds: 3),
+        child: Consumer<ConnectionProvider>(
+          builder: (context, connection, _) {
+            final bool hasRecentLogin = connection.hasRecentLogin;
+            final bool showExpandedOptions =
+                !hasRecentLogin || _isConnectionOptionsExpanded;
+            final String welcomePrefix = AppTranslations.getText('welcome_prefix');
+            final String defaultDriver = AppTranslations.getText('default_driver_name');
+            final String driverName = settings.customDriverName.trim().isNotEmpty
+                ? settings.customDriverName.trim()
+                : defaultDriver;
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _DriverSketchWelcomeBanner(
+                    prefix: welcomePrefix,
+                    driverName: driverName,
+                    accentColor: settings.detailColor,
+                  ),
+                  const SizedBox(height: 18),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeInOut,
+                    child: showExpandedOptions
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // İlk girişten sonraki girişlerde yeniden gizleyebilmek için üstte ok işareti
+                              if (hasRecentLogin) ...[
+                                Tooltip(
+                                  message: AppTranslations.getText('hide_conn_types'),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(24),
+                                    onTap: () {
+                                      setState(() {
+                                        _isConnectionOptionsExpanded = false;
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: settings.detailColor.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(
+                                          color: settings.detailColor.withValues(alpha: 0.45),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.keyboard_arrow_up_rounded,
+                                        color: settings.detailColor,
+                                        size: 28,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              ElevatedButton(
+                                onPressed: () => _showConnectionDialog(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: settings.detailColor.withValues(alpha: 0.2),
+                                  foregroundColor: settings.detailColor,
+                                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                    side: BorderSide(color: settings.detailColor, width: 2),
+                                  ),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    AppTranslations.getText('select_device_to_connect'),
+                                    style: const TextStyle(fontSize: 18),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 15),
+                              ElevatedButton.icon(
+                                onPressed: () => _showUsbTetheringDialog(context),
+                                icon: const Icon(Icons.cable, color: Colors.white),
+                                label: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    AppTranslations.getText('wired_connect_usb'),
+                                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: settings.detailColor.withValues(alpha: 0.15),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                    side: BorderSide(color: settings.detailColor.withValues(alpha: 0.5), width: 1.5),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _isConnectionOptionsExpanded = true;
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: settings.detailColor.withValues(alpha: 0.16),
+                              foregroundColor: settings.detailColor,
+                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(26),
+                                side: BorderSide(
+                                  color: settings.detailColor.withValues(alpha: 0.7),
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _rememberedConnectionIcon(connection),
+                                    color: settings.detailColor,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    _rememberedConnectionLabel(connection),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: settings.detailColor,
+                                    size: 24,
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        );
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final conn = Provider.of<ConnectionProvider>(context, listen: false);
+
+                      // Sürüşe girerken (veya ayarlardan geri dönüldüğünde) bağlantıyı
+                      // ve UDP soketini otomatik olarak yeniden kur / tazele
+                      final connResult = await conn.ensureConnectedForDriving();
+                      if (connResult.isFailure) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                conn.wifiIp.isEmpty && conn.selectedDevice == null
+                                    ? AppTranslations.getText('please_select_device_first')
+                                    : (connResult.errorMessage ??
+                                        AppTranslations.getText('please_select_device_first')),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        return;
                       }
-                      return;
-                    }
-                  } else if (!NetworkManager().isBluetoothConnected) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(AppTranslations.getText('please_select_device_first')),
-                          backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 3),
-                        ),
+
+                      if (mounted) {
+                        setState(() {
+                          _isConnectionOptionsExpanded = false;
+                        });
+                      }
+
+                      if (!context.mounted) return;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const DrivingScreen()),
                       );
-                    }
-                    return;
-                  }
-                }
-                
-                if (!context.mounted) return;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DrivingScreen()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: settings.detailColor,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 25),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                elevation: 10,
-                shadowColor: settings.detailColor.withValues(alpha: 0.5),
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: settings.detailColor,
+                      foregroundColor: Colors.black,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: math.min(60.0, MediaQuery.of(context).size.width * 0.12),
+                        vertical: 25,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      elevation: 10,
+                      shadowColor: settings.detailColor.withValues(alpha: 0.5),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        AppTranslations.getText('start_steering_mode'),
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              child: Text(
-                AppTranslations.getText('start_steering_mode'),
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
+  }
+}
+
+/// El yazısı / imza (signature) stilinde ikonsuz karşılama başlığı
+class _DriverSketchWelcomeBanner extends StatelessWidget {
+  final String prefix;
+  final String driverName;
+  final Color accentColor;
+
+  const _DriverSketchWelcomeBanner({
+    required this.prefix,
+    required this.driverName,
+    required this.accentColor,
+  });
+
+  static const List<String> _signatureFontFallback = [
+    'Dancing Script',
+    'Segoe Script',
+    'Brush Script MT',
+    'Snell Roundhand',
+    'Lucida Handwriting',
+    'cursive',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final String fullGreeting = '$prefix $driverName';
+
+    return CustomPaint(
+      painter: _SignatureSwashPainter(accentColor: accentColor),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.skewX(-0.14)..rotateZ(-0.035),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 1. Katman: Yumuşak kalem mürekkebi derinlik gölgesi
+                Transform.translate(
+                  offset: const Offset(2.0, 2.5),
+                  child: Text(
+                    fullGreeting,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'cursive',
+                      fontFamilyFallback: _signatureFontFallback,
+                      fontSize: 38,
+                      fontWeight: FontWeight.w600,
+                      fontStyle: FontStyle.italic,
+                      letterSpacing: 1.2,
+                      foreground: Paint()
+                        ..style = PaintingStyle.stroke
+                        ..strokeWidth = 3.2
+                        ..strokeCap = StrokeCap.round
+                        ..strokeJoin = StrokeJoin.round
+                        ..color = Colors.black.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ),
+                // 2. Katman: İnce kalem ucu dış konturu (Pen Nib Stroke)
+                Text(
+                  fullGreeting,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'cursive',
+                    fontFamilyFallback: _signatureFontFallback,
+                    fontSize: 38,
+                    fontWeight: FontWeight.w600,
+                    fontStyle: FontStyle.italic,
+                    letterSpacing: 1.2,
+                    foreground: Paint()
+                      ..style = PaintingStyle.stroke
+                      ..strokeWidth = 1.6
+                      ..strokeCap = StrokeCap.round
+                      ..strokeJoin = StrokeJoin.round
+                      ..color = accentColor.withValues(alpha: 0.9),
+                  ),
+                ),
+                // 3. Katman: Akıcı imza mürekkebi dolgusu
+                ShaderMask(
+                  shaderCallback: (bounds) {
+                    return LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white,
+                        Colors.white.withValues(alpha: 0.95),
+                        accentColor,
+                        Colors.white,
+                      ],
+                      stops: const [0.0, 0.45, 0.80, 1.0],
+                    ).createShader(bounds);
+                  },
+                  child: Text(
+                    fullGreeting,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'cursive',
+                      fontFamilyFallback: _signatureFontFallback,
+                      fontSize: 38,
+                      fontWeight: FontWeight.w600,
+                      fontStyle: FontStyle.italic,
+                      letterSpacing: 1.2,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: accentColor.withValues(alpha: 0.5),
+                          blurRadius: 12,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// İkonsuz, sadece el yazısı imzanın altındaki zarif kalem kuyruğu (signature flourish)
+class _SignatureSwashPainter extends CustomPainter {
+  final Color accentColor;
+
+  _SignatureSwashPainter({required this.accentColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    final Paint mainPen = Paint()
+      ..color = accentColor.withValues(alpha: 0.78)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final Paint featherPen = Paint()
+      ..color = accentColor.withValues(alpha: 0.32)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9
+      ..strokeCap = StrokeCap.round;
+
+    // İmza alt kuyruk darbesi (sağdan sola doğru kıvrılıp tekrar sağa uzanan gerçek imza çizgisi)
+    final Path swash = Path()
+      ..moveTo(w * 0.14, h - 4)
+      ..cubicTo(
+        w * 0.38,
+        h - 11,
+        w * 0.68,
+        h - 9,
+        w * 0.88,
+        h - 5,
+      )
+      ..quadraticBezierTo(
+        w * 0.72,
+        h - 1,
+        w * 0.44,
+        h + 1,
+      );
+
+    final Path echoSwash = Path()
+      ..moveTo(w * 0.22, h - 2)
+      ..quadraticBezierTo(w * 0.56, h - 6, w * 0.84, h - 3);
+
+    canvas.drawPath(swash, mainPen);
+    canvas.drawPath(echoSwash, featherPen);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SignatureSwashPainter oldDelegate) {
+    return oldDelegate.accentColor != accentColor;
   }
 }

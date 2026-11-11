@@ -6,6 +6,7 @@ import 'providers/settings_provider.dart';
 import 'providers/connection_provider.dart';
 import 'screens/home_screen.dart';
 import 'core/network/addon_network_service.dart';
+export 'core/overlay_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +24,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SettingsProvider()..loadSettings()),
-        ChangeNotifierProvider(create: (_) => ConnectionProvider()),
+        ChangeNotifierProvider(create: (_) => ConnectionProvider()..loadSavedConnection()),
       ],
       child: const DoYaDiApp(),
     ),

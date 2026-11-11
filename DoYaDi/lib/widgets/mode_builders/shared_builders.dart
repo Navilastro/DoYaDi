@@ -4,36 +4,160 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
   // Yardımcılar
   // ──────────────────────────────────────────────────────────────────────────
 
-  /// TrackPoint (Mini Joystick) wrapper (Mod 0-4 için)
-  Widget _withTrackPoint(AppSettings s, Size size, Widget child) {
-    if (!s.gyroLookEnabled || s.gyroLookStyle != 1) return child;
-    
-    final double joySize = 40.0; // küçük kırmızı nokta
+  /// TrackPoint (Mini Joystick) ve Kare Merkezleme Butonu wrapper'ı.
+  /// Mod 0, 1, 2, 3, 4, 6 ve 7'de geçerlidir.
+  /// Mod 6 ve 7'deki butonlarla çakışmayacak şekilde ama olabildiğince merkezde yerleşir.
+  Widget _withTrackPoint(
+    AppSettings s,
+    Size size,
+    Widget child, {
+    int mode = 0,
+  }) {
+    const supportedModes = [0, 1, 2, 3, 4, 6, 7];
+    final bool isModeSupported = supportedModes.contains(mode);
+
+    final bool showTrackPoint = isModeSupported && s.gyroLookEnabled && s.gyroLookStyle == 1;
+    final bool showRecenterBtn = isModeSupported && s.gyroCenterMode == 3;
+
+    if (!showTrackPoint && !showRecenterBtn) return child;
+
+    const double joySize = 40.0;
+    const double gap = 8.0;
+    final double centerX = size.width / 2;
+    final double centerY = size.height / 2;
+
+    // Y ekseni hesaplama (Mod 6 ve 7 butonlarıyla çakışmayacak şekilde ama olabildiğince merkezde)
+    double targetY;
+    if (mode == 6) {
+      // Mod 6: Ortada direksiyon korna butonu var (hubDiameter)
+      final minDim = math.min(size.width, size.height);
+      final hubDiameter = (minDim / 2.2) * 0.70;
+      final hubTop = (size.height - hubDiameter) / 2;
+      // Korna dairesinin hemen üstünde
+      targetY = hubTop - joySize - 10.0;
+    } else if (mode == 7) {
+      // Mod 7: Ortada 4 buton var. En üstteki buton: bottomY - 55 (bottomY = size.height - 130)
+      final double bottomY = size.height - 130;
+      final double topButtonTop = bottomY - 55;
+      // 4 butonun hemen üstünde
+      targetY = topButtonTop - joySize - 10.0;
+    } else {
+      // Mod 0, 1, 2, 3, 4: Tam ortada
+      targetY = centerY - joySize / 2;
+    }
+
+    final List<Widget> overlays = [];
+
+    if (showTrackPoint && showRecenterBtn) {
+      // İkisi birden aktif: Yan yana, ekran merkezine simetrik
+      final double trackPointLeft = centerX - joySize - (gap / 2);
+      final double recenterBtnLeft = centerX + (gap / 2);
+
+      overlays.add(
+        Positioned(
+          left: trackPointLeft,
+          top: targetY,
+          width: joySize,
+          height: joySize,
+          child: _buildTrackPointWidget(joySize),
+        ),
+      );
+
+      overlays.add(
+        Positioned(
+          left: recenterBtnLeft,
+          top: targetY,
+          width: joySize,
+          height: joySize,
+          child: _buildMiniRecenterButton(s, joySize),
+        ),
+      );
+    } else if (showTrackPoint) {
+      // Sadece TrackPoint aktif: Tam merkezde
+      overlays.add(
+        Positioned(
+          left: centerX - joySize / 2,
+          top: targetY,
+          width: joySize,
+          height: joySize,
+          child: _buildTrackPointWidget(joySize),
+        ),
+      );
+    } else if (showRecenterBtn) {
+      // Sadece Kare Merkezleme Butonu aktif: Tam merkezde
+      overlays.add(
+        Positioned(
+          left: centerX - joySize / 2,
+          top: targetY,
+          width: joySize,
+          height: joySize,
+          child: _buildMiniRecenterButton(s, joySize),
+        ),
+      );
+    }
+
     return Stack(
       children: [
         child,
-        Positioned(
-          left: (size.width - joySize) / 2,
-          top: (size.height - joySize) / 2,
-          width: joySize,
-          height: joySize,
-          child: Opacity(
-            opacity: 0.6,
-            child: JoystickWidget(
-              radius: joySize / 2,
-              baseColor: Colors.black.withValues(alpha: 0.1),
-              thumbColor: Colors.redAccent,
-              mode: JoystickMode.fixed,
-              onChanged: (x, y) {
-                setState(() {
-                  joy1x = x;
-                  joy1y = y;
-                });
-              },
+        ...overlays,
+      ],
+    );
+  }
+
+  Widget _buildTrackPointWidget(double joySize) {
+    return Opacity(
+      opacity: 0.65,
+      child: JoystickWidget(
+        radius: joySize / 2,
+        baseColor: Colors.black.withValues(alpha: 0.2),
+        thumbColor: Colors.redAccent,
+        mode: JoystickMode.fixed,
+        onChanged: (x, y) {
+          setState(() {
+            joy1x = x;
+            joy1y = y;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildMiniRecenterButton(AppSettings s, double size) {
+    return Opacity(
+      opacity: 0.8,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          SensorManager().recenterGyro();
+          HapticManager().triggerMedium(s);
+        },
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0E1322).withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: s.detailColor.withValues(alpha: 0.75),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 6,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Center(
+            child: Icon(
+              Icons.center_focus_strong,
+              color: s.detailColor,
+              size: size * 0.55,
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 

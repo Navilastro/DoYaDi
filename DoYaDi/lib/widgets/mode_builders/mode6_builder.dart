@@ -369,8 +369,11 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
       );
     }
 
-    return Stack(
-      children: [
+    return _withTrackPoint(
+      s,
+      size,
+      Stack(
+        children: [
         // ── 3. ORTA ALAN: Direksiyon Simidi (Ekranın %32'si - Ortada) ──
         Positioned(
           left: size.width * 0.34,
@@ -461,6 +464,8 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
             child: wrapSlotWidget(rightWidget),
           ),
       ],
-    );
+    ),
+    mode: 6,
+  );
   }
 }

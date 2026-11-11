@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings.dart';
 import '../core/utils/template_profiles.dart';
 import '../core/utils/app_translations.dart';
+import '../core/haptic_manager.dart';
 
 class SettingsProvider with ChangeNotifier {
   AppSettings _settings = AppSettings();
@@ -29,6 +30,7 @@ class SettingsProvider with ChangeNotifier {
     _currentLanguage = savedLang;
     await AppTranslations.setLanguage(savedLang);
 
+    _settings.customDriverName = prefs.getString('customDriverName') ?? '';
     _settings.useGyroscope = prefs.getBool('useGyroscope') ?? false;
     _settings.zeroOrientation = prefs.getInt('zeroOrientation') ?? 0;
     _settings.calibPitchOffset = prefs.getDouble('calibPitchOffset') ?? 0.0;
@@ -52,6 +54,10 @@ class SettingsProvider with ChangeNotifier {
     _settings.activeAddonIds = [];
     prefs.setBool('isAddonMasterSwitchActive', false);
     prefs.setStringList('activeAddonIds', []);
+    _settings.dlcHapticRpm = prefs.getBool('dlcHapticRpm') ?? false;
+    _settings.dlcHapticSlip = prefs.getBool('dlcHapticSlip') ?? true;
+    _settings.dlcHapticGear = prefs.getBool('dlcHapticGear') ?? true;
+    _settings.dlcHapticCollision = prefs.getBool('dlcHapticCollision') ?? true;
     _settings.customLayout5Json = prefs.getString('customLayout5Json');
     _settings.activeLayout5Profile = prefs.getString('activeLayout5Profile');
     _settings.joystickSensitivity =
@@ -305,10 +311,19 @@ class SettingsProvider with ChangeNotifier {
     _settings.m7Key2 = prefs.getInt('m7Key2') ?? 8;
     _settings.m7Key3 = prefs.getInt('m7Key3') ?? 6;
     _settings.m7Key4 = prefs.getInt('m7Key4') ?? 5;
+    _settings.hudShowRpm = prefs.getBool('hudShowRpm') ?? true;
+    _settings.hudShowSpeed = prefs.getBool('hudShowSpeed') ?? true;
+    _settings.hudShowGear = prefs.getBool('hudShowGear') ?? true;
+    _settings.hudShowDrsErs = prefs.getBool('hudShowDrsErs') ?? true;
+    _settings.hudShowPedalBars = prefs.getBool('hudShowPedalBars') ?? true;
+    _settings.hudShowTyres = prefs.getBool('hudShowTyres') ?? true;
+    _settings.hudShowRpmBox = prefs.getBool('hudShowRpmBox') ?? true;
+    _settings.hudShowStatusFlags = prefs.getBool('hudShowStatusFlags') ?? true;
 
     // ── Mod 8 (Chill Drive) Ayarları ──
-    _settings.chillOverlayEnabled = prefs.getBool('chillOverlayEnabled') ?? false;
+    _settings.chillOverlayEnabled = prefs.getBool('chillOverlayEnabled') ?? true;
     _settings.chillOverlayGearButtons = prefs.getBool('chillOverlayGearButtons') ?? true;
+    _settings.chillOverlayStyle = prefs.getInt('chillOverlayStyle') ?? 0;
     _settings.chillSteeringAxis = prefs.getInt('chillSteeringAxis') ?? 0;
     _settings.chillSteeringSensitivity =
         (prefs.getDouble('chillSteeringSensitivity') ?? 1.0).clamp(0.2, 3.0);
@@ -322,22 +337,45 @@ class SettingsProvider with ChangeNotifier {
         (prefs.getDouble('flightRollSensitivity') ?? 1.0).clamp(0.2, 3.0);
     _settings.flightYawSensitivity =
         (prefs.getDouble('flightYawSensitivity') ?? 1.0).clamp(0.2, 3.0);
+    _settings.flightPitchDeadzone =
+        (prefs.getDouble('flightPitchDeadzone') ?? 0.0).clamp(0.0, 10.0);
+    _settings.flightRollDeadzone =
+        (prefs.getDouble('flightRollDeadzone') ?? 0.0).clamp(0.0, 10.0);
+    _settings.flightYawDeadzone =
+        (prefs.getDouble('flightYawDeadzone') ?? 0.0).clamp(0.0, 10.0);
     _settings.flightThrustDetents =
         (prefs.getInt('flightThrustDetents') ?? 4).clamp(2, 8);
+    _settings.m9FireKey = prefs.getInt('m9FireKey') ?? 5;
+    _settings.m9MissileKey = prefs.getInt('m9MissileKey') ?? 6;
+    _settings.m9LockKey = prefs.getInt('m9LockKey') ?? 7;
+    _settings.m9FlareKey = prefs.getInt('m9FlareKey') ?? 8;
+    _settings.m9HeavyGunKey =
+        prefs.getInt('m9HeavyGunKey') ?? prefs.getInt('m9ViewKey') ?? 14;
+    _settings.m9BombKey = prefs.getInt('m9BombKey') ?? 12;
+    _settings.m9MapKey = prefs.getInt('m9MapKey') ?? 13;
+    _settings.m9FlapDownKey = prefs.getInt('m9FlapDownKey') ?? 10;
+    _settings.m9FlapUpKey = prefs.getInt('m9FlapUpKey') ?? 9;
+    _settings.m9GearKey = prefs.getInt('m9GearKey') ?? 17;
+    _settings.m9AirbrakeKey = prefs.getInt('m9AirbrakeKey') ?? 11;
+    _settings.m9RudderLeftKey = prefs.getInt('m9RudderLeftKey') ?? 1;
+    _settings.m9RudderRightKey = prefs.getInt('m9RudderRightKey') ?? 2;
 
     // ── Mod 10 (Flight MFD) Ayarları ──
     _settings.mfdShowArtificialHorizon = prefs.getBool('mfdShowArtificialHorizon') ?? true;
     _settings.mfdShowSpeedTape = prefs.getBool('mfdShowSpeedTape') ?? true;
     _settings.mfdShowAltitudeTape = prefs.getBool('mfdShowAltitudeTape') ?? true;
+    _settings.mfdShowEngineGauges = prefs.getBool('mfdShowEngineGauges') ?? true;
     _settings.mfdGyroFilterAlpha =
         (prefs.getDouble('mfdGyroFilterAlpha') ?? 0.15).clamp(0.05, 1.0);
 
+    HapticManager().updateSettings(_settings);
     notifyListeners();
   }
 
   Future<void> saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
+    await prefs.setString('customDriverName', _settings.customDriverName);
     await prefs.setBool('useGyroscope', _settings.useGyroscope);
     await prefs.setInt('zeroOrientation', _settings.zeroOrientation);
     await prefs.setDouble('calibPitchOffset', _settings.calibPitchOffset);
@@ -364,6 +402,10 @@ class SettingsProvider with ChangeNotifier {
     );
     await prefs.setBool('isAddonMasterSwitchActive', _settings.isAddonMasterSwitchActive);
     await prefs.setStringList('activeAddonIds', _settings.activeAddonIds);
+    await prefs.setBool('dlcHapticRpm', _settings.dlcHapticRpm);
+    await prefs.setBool('dlcHapticSlip', _settings.dlcHapticSlip);
+    await prefs.setBool('dlcHapticGear', _settings.dlcHapticGear);
+    await prefs.setBool('dlcHapticCollision', _settings.dlcHapticCollision);
     await prefs.setInt('globalHapticType', _settings.globalHapticType);
     await prefs.setInt('globalHapticTrigger', _settings.globalHapticTrigger);
 
@@ -504,10 +546,19 @@ class SettingsProvider with ChangeNotifier {
     await prefs.setInt('m7Key2', _settings.m7Key2);
     await prefs.setInt('m7Key3', _settings.m7Key3);
     await prefs.setInt('m7Key4', _settings.m7Key4);
+    await prefs.setBool('hudShowRpm', _settings.hudShowRpm);
+    await prefs.setBool('hudShowSpeed', _settings.hudShowSpeed);
+    await prefs.setBool('hudShowGear', _settings.hudShowGear);
+    await prefs.setBool('hudShowDrsErs', _settings.hudShowDrsErs);
+    await prefs.setBool('hudShowPedalBars', _settings.hudShowPedalBars);
+    await prefs.setBool('hudShowTyres', _settings.hudShowTyres);
+    await prefs.setBool('hudShowRpmBox', _settings.hudShowRpmBox);
+    await prefs.setBool('hudShowStatusFlags', _settings.hudShowStatusFlags);
 
     // ── Mod 8 (Chill Drive) Ayarları ──
     await prefs.setBool('chillOverlayEnabled', _settings.chillOverlayEnabled);
     await prefs.setBool('chillOverlayGearButtons', _settings.chillOverlayGearButtons);
+    await prefs.setInt('chillOverlayStyle', _settings.chillOverlayStyle);
     await prefs.setInt('chillSteeringAxis', _settings.chillSteeringAxis);
     await prefs.setDouble('chillSteeringSensitivity', _settings.chillSteeringSensitivity.clamp(0.2, 3.0));
     await prefs.setDouble('chillGasBrakeSensitivity', _settings.chillGasBrakeSensitivity.clamp(0.2, 3.0));
@@ -516,12 +567,29 @@ class SettingsProvider with ChangeNotifier {
     await prefs.setDouble('flightPitchSensitivity', _settings.flightPitchSensitivity.clamp(0.2, 3.0));
     await prefs.setDouble('flightRollSensitivity', _settings.flightRollSensitivity.clamp(0.2, 3.0));
     await prefs.setDouble('flightYawSensitivity', _settings.flightYawSensitivity.clamp(0.2, 3.0));
+    await prefs.setDouble('flightPitchDeadzone', _settings.flightPitchDeadzone.clamp(0.0, 10.0));
+    await prefs.setDouble('flightRollDeadzone', _settings.flightRollDeadzone.clamp(0.0, 10.0));
+    await prefs.setDouble('flightYawDeadzone', _settings.flightYawDeadzone.clamp(0.0, 10.0));
     await prefs.setInt('flightThrustDetents', _settings.flightThrustDetents.clamp(2, 8));
+    await prefs.setInt('m9FireKey', _settings.m9FireKey);
+    await prefs.setInt('m9MissileKey', _settings.m9MissileKey);
+    await prefs.setInt('m9LockKey', _settings.m9LockKey);
+    await prefs.setInt('m9FlareKey', _settings.m9FlareKey);
+    await prefs.setInt('m9HeavyGunKey', _settings.m9HeavyGunKey);
+    await prefs.setInt('m9BombKey', _settings.m9BombKey);
+    await prefs.setInt('m9MapKey', _settings.m9MapKey);
+    await prefs.setInt('m9FlapDownKey', _settings.m9FlapDownKey);
+    await prefs.setInt('m9FlapUpKey', _settings.m9FlapUpKey);
+    await prefs.setInt('m9GearKey', _settings.m9GearKey);
+    await prefs.setInt('m9AirbrakeKey', _settings.m9AirbrakeKey);
+    await prefs.setInt('m9RudderLeftKey', _settings.m9RudderLeftKey);
+    await prefs.setInt('m9RudderRightKey', _settings.m9RudderRightKey);
 
     // ── Mod 10 (Flight MFD) Ayarları ──
     await prefs.setBool('mfdShowArtificialHorizon', _settings.mfdShowArtificialHorizon);
     await prefs.setBool('mfdShowSpeedTape', _settings.mfdShowSpeedTape);
     await prefs.setBool('mfdShowAltitudeTape', _settings.mfdShowAltitudeTape);
+    await prefs.setBool('mfdShowEngineGauges', _settings.mfdShowEngineGauges);
     await prefs.setDouble('mfdGyroFilterAlpha', _settings.mfdGyroFilterAlpha.clamp(0.05, 1.0));
     await prefs.setInt('detailColor', _settings.detailColor.toARGB32());
     await prefs.setInt(
@@ -552,6 +620,7 @@ class SettingsProvider with ChangeNotifier {
 
   void updateSettings(AppSettings newSettings) {
     _settings = newSettings;
+    HapticManager().updateSettings(_settings);
     saveSettings();
   }
 
