@@ -138,28 +138,37 @@ class _FlightMfdContentState extends State<_FlightMfdContent> {
                   Container(
                     height: 64,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF0A0A18),
-                    border: Border(
-                      top: BorderSide(color: Color(0xFF1E1E3A)),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0A0A18),
+                      border: Border(
+                        top: BorderSide(color: Color(0xFF1E1E3A)),
+                      ),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildEngineGauge('N1', data.n1Pct / 255.0, s),
+                          const SizedBox(width: 14),
+                          _buildEngineGauge('N2', data.n2Pct / 255.0, s),
+                          const SizedBox(width: 14),
+                          _buildEgtGauge(data.egtRaw, s),
+                          const SizedBox(width: 14),
+                          _buildInfoBox('ALT', '${data.altitudeFt} ft', s),
+                          const SizedBox(width: 10),
+                          _buildInfoBox('SPD', '${data.airspeedKnots} kts', s),
+                          const SizedBox(width: 10),
+                          _buildInfoBox(
+                            'HDG',
+                            '${data.rollDeg.abs()}°${data.rollDeg >= 0 ? 'R' : 'L'}',
+                            s,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildEngineGauge('N1', data.n1Pct / 255.0, s),
-                      _buildEngineGauge('N2', data.n2Pct / 255.0, s),
-                      _buildEgtGauge(data.egtRaw, s),
-                      _buildInfoBox('ALT', '${data.altitudeFt} ft', s),
-                      _buildInfoBox('SPD', '${data.airspeedKnots} kts', s),
-                      _buildInfoBox(
-                        'HDG',
-                        '${data.rollDeg.abs()}°${data.rollDeg >= 0 ? 'R' : 'L'}',
-                        s,
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),

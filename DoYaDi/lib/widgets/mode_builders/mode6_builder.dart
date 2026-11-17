@@ -5,6 +5,72 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
     final sensor = SensorManager();
     final steerRad = steeringAngle * 75.0 * math.pi / 180.0;
 
+    final gasBg = s.separatePedalBg ? s.rightPedalBgColor : s.pedalBgColor;
+    final gasBgMedia = s.separatePedalBg ? s.rightPedalBgMediaPath : s.pedalBarBgMediaPath;
+    final brakeBg = s.separatePedalBg ? s.leftPedalBgColor : s.pedalBgColor;
+    final brakeBgMedia = s.separatePedalBg ? s.leftPedalBgMediaPath : s.pedalBarBgMediaPath;
+
+    Widget buildTouchBtn({
+      required String label,
+      required IconData icon,
+      required Color iconColor,
+      required Color bgColor,
+      required Color borderColor,
+      required bool isPressed,
+      String? mediaPath,
+    }) {
+      final hasMedia = AppMediaHelper.hasMedia(mediaPath);
+      final fg = hasMedia ? Colors.white : s.contrastTextFor(bgColor);
+      final labelRow = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: hasMedia ? Colors.white : iconColor, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      );
+      if (!hasMedia) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isPressed ? bgColor.withValues(alpha: 0.8) : bgColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor.withValues(alpha: 0.5)),
+          ),
+          child: labelRow,
+        );
+      }
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: LoopingMediaWidget(mediaPath: mediaPath, fit: BoxFit.cover),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isPressed ? bgColor.withValues(alpha: 0.45) : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: borderColor.withValues(alpha: 0.7)),
+              ),
+              child: BlurredTextChip(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                child: labelRow,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     // Pedal kontrol widget'ı (Bar veya İkon)
     Widget gasControl;
     Widget brakeControl;
@@ -35,15 +101,11 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
             gasPercentage = 0.0;
           });
         },
-        child: RepaintBoundary(
-          child: CustomPaint(
-            painter: PedalIconPainter(
-              fillPercentage: gasPedalIconValue,
-              baseColor: s.gasIconColor,
-              isGas: true,
-            ),
-            child: const SizedBox.expand(),
-          ),
+        child: CustomizablePedalIcon(
+          fillPercentage: gasPedalIconValue,
+          baseColor: s.gasIconColor,
+          isGas: true,
+          mediaPath: s.mod6AccelIconsMediaPath,
         ),
       );
       brakeControl = Listener(
@@ -70,15 +132,11 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
             brakePercentage = 0.0;
           });
         },
-        child: RepaintBoundary(
-          child: CustomPaint(
-            painter: PedalIconPainter(
-              fillPercentage: brakePedalIconValue,
-              baseColor: s.brakeIconColor,
-              isGas: false,
-            ),
-            child: const SizedBox.expand(),
-          ),
+        child: CustomizablePedalIcon(
+          fillPercentage: brakePedalIconValue,
+          baseColor: s.brakeIconColor,
+          isGas: false,
+          mediaPath: s.mod6AccelIconsMediaPath,
         ),
       );
     } else {
@@ -88,16 +146,14 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         onPointerMove: (e) => onPedalMove(e, s),
         onPointerUp: onPedalUp,
         onPointerCancel: onPedalUp,
-        child: RepaintBoundary(
-          child: CustomPaint(
-            painter: PedalPainter(
-              fillPercentage: gasPercentage,
-              baseColor: s.gasColor,
-              bgColor: s.pedalBgColor,
-              yetsoreColor: s.yetsoreColor,
-            ),
-            child: const SizedBox.expand(),
-          ),
+        child: CustomizablePedalBar(
+          fillPercentage: gasPercentage,
+          baseColor: s.gasColor,
+          bgColor: gasBg,
+          yetsoreColor: s.yetsoreColor,
+          fillMediaPath: s.gasBarMediaPath,
+          bgMediaPath: gasBgMedia,
+          yetsoreMediaPath: s.yetsoreMediaPath,
         ),
       );
       brakeControl = Listener(
@@ -105,16 +161,14 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         onPointerMove: (e) => onPedalMove(e, s),
         onPointerUp: onPedalUp,
         onPointerCancel: onPedalUp,
-        child: RepaintBoundary(
-          child: CustomPaint(
-            painter: PedalPainter(
-              fillPercentage: brakePercentage,
-              baseColor: s.brakeColor,
-              bgColor: s.pedalBgColor,
-              yetsoreColor: s.yetsoreColor,
-            ),
-            child: const SizedBox.expand(),
-          ),
+        child: CustomizablePedalBar(
+          fillPercentage: brakePercentage,
+          baseColor: s.brakeColor,
+          bgColor: brakeBg,
+          yetsoreColor: s.yetsoreColor,
+          fillMediaPath: s.brakeBarMediaPath,
+          bgMediaPath: brakeBgMedia,
+          yetsoreMediaPath: s.yetsoreMediaPath,
         ),
       );
     }
@@ -143,7 +197,7 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           painter: SteeringWheelPainter(
             angle: steerRad,
             fullTurns: sensor.fullTurns,
-            rimColor: s.steeringIndicatorColor,
+            rimColor: s.steeringWheelColor,
           ),
           child: const SizedBox.expand(),
         ),
@@ -162,30 +216,14 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           },
           onPointerUp: (_) => handleButtonUp(s.clutchKey),
           onPointerCancel: (_) => handleButtonUp(s.clutchKey),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: pressedKeys.contains(s.clutchKey)
-                  ? s.clutchButtonColor.withValues(alpha: 0.8)
-                  : s.clutchButtonColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: s.clutchColor.withValues(alpha: 0.5)),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.tune, color: Colors.cyanAccent, size: 16),
-                SizedBox(width: 6),
-                Text(
-                  'DEBRİYAJ',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+          child: buildTouchBtn(
+            label: 'DEBRİYAJ',
+            icon: Icons.tune,
+            iconColor: s.clutchColor,
+            bgColor: s.clutchButtonColor,
+            borderColor: s.clutchColor,
+            isPressed: pressedKeys.contains(s.clutchKey),
+            mediaPath: s.mod6ButtonsMediaPath,
           ),
         );
       } else if (s.clutchType == 2) {
@@ -214,12 +252,11 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           child: SizedBox(
             width: 70,
             height: 70,
-            child: CustomPaint(
-              painter: PedalIconPainter(
-                fillPercentage: clutchIconValue,
-                baseColor: s.clutchIconColor,
-                isGas: false,
-              ),
+            child: CustomizablePedalIcon(
+              fillPercentage: clutchIconValue,
+              baseColor: s.clutchIconColor,
+              isGas: false,
+              mediaPath: s.mod6AccelIconsMediaPath,
             ),
           ),
         );
@@ -251,13 +288,14 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                 },
                 onPointerUp: (_) => setState(() => clutchPercentage = 0.0),
                 onPointerCancel: (_) => setState(() => clutchPercentage = 0.0),
-                child: CustomPaint(
-                  painter: PedalPainter(
-                    fillPercentage: clutchPercentage,
-                    baseColor: s.clutchColor,
-                    bgColor: s.pedalBgColor,
-                    yetsoreColor: s.clutchYetsoreColor,
-                  ),
+                child: CustomizablePedalBar(
+                  fillPercentage: clutchPercentage,
+                  baseColor: s.clutchColor,
+                  bgColor: s.pedalBgColor,
+                  yetsoreColor: s.clutchYetsoreColor,
+                  fillMediaPath: s.clutchBarMediaPath,
+                  bgMediaPath: s.pedalBarBgMediaPath,
+                  yetsoreMediaPath: s.yetsoreMediaPath,
                 ),
               );
             },
@@ -297,13 +335,14 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                 },
                 onPointerUp: (_) => setState(() => handbrakePercentage = 0.0),
                 onPointerCancel: (_) => setState(() => handbrakePercentage = 0.0),
-                child: CustomPaint(
-                  painter: PedalPainter(
-                    fillPercentage: handbrakePercentage,
-                    baseColor: s.handbrakeColor,
-                    bgColor: s.pedalBgColor,
-                    yetsoreColor: s.handbrakeYetsoreColor,
-                  ),
+                child: CustomizablePedalBar(
+                  fillPercentage: handbrakePercentage,
+                  baseColor: s.handbrakeColor,
+                  bgColor: s.pedalBgColor,
+                  yetsoreColor: s.handbrakeYetsoreColor,
+                  fillMediaPath: s.handbrakeBarMediaPath,
+                  bgMediaPath: s.pedalBarBgMediaPath,
+                  yetsoreMediaPath: s.yetsoreMediaPath,
                 ),
               );
             },
@@ -318,30 +357,14 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           },
           onPointerUp: (_) => handleButtonUp(s.handbrakeKey),
           onPointerCancel: (_) => handleButtonUp(s.handbrakeKey),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: pressedKeys.contains(s.handbrakeKey)
-                  ? s.handbrakeButtonColor.withValues(alpha: 0.8)
-                  : s.handbrakeButtonColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: s.handbrakeColor.withValues(alpha: 0.5)),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.sports_motorsports, color: Colors.redAccent, size: 16),
-                SizedBox(width: 6),
-                Text(
-                  'EL FRENİ',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+          child: buildTouchBtn(
+            label: 'EL FRENİ',
+            icon: Icons.sports_motorsports,
+            iconColor: s.handbrakeColor,
+            bgColor: s.handbrakeButtonColor,
+            borderColor: s.handbrakeColor,
+            isPressed: pressedKeys.contains(s.handbrakeKey),
+            mediaPath: s.mod6ButtonsMediaPath,
           ),
         );
       }
@@ -389,6 +412,9 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
             final minDim = math.min(size.width, size.height);
             final hubDiameter = (minDim / 2.2) * 0.70; // Mavi göbek çapı
             final isHornPressed = pressedKeys.contains(s.mod6HornKey);
+            final hasHornMedia = AppMediaHelper.hasMedia(s.mod6HornMediaPath);
+            final hornColor = s.mod6HornColor;
+            final hornFg = hasHornMedia ? Colors.white : s.contrastTextFor(hornColor);
 
             return Positioned(
               left: (size.width - hubDiameter) / 2,
@@ -403,21 +429,48 @@ extension _Mode6BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                 },
                 onPointerUp: (_) => handleButtonUp(s.mod6HornKey),
                 onPointerCancel: (_) => handleButtonUp(s.mod6HornKey),
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isHornPressed
-                        ? Colors.cyanAccent.withValues(alpha: 0.35)
-                        : Colors.transparent,
-                    border: isHornPressed
-                        ? Border.all(color: Colors.cyanAccent, width: 2)
-                        : null,
+                child: ClipOval(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (hasHornMedia)
+                        LoopingMediaWidget(
+                          mediaPath: s.mod6HornMediaPath,
+                          fit: BoxFit.cover,
+                        ),
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: hasHornMedia
+                              ? (isHornPressed
+                                  ? hornColor.withValues(alpha: 0.45)
+                                  : Colors.transparent)
+                              : hornColor.withValues(alpha: isHornPressed ? 0.85 : 0.30),
+                          border: Border.all(
+                            color: hornColor.withValues(alpha: isHornPressed ? 1.0 : 0.7),
+                            width: isHornPressed ? 2.5 : 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: hasHornMedia
+                              ? BlurredTextChip(
+                                  borderRadius: BorderRadius.circular(20),
+                                  padding: const EdgeInsets.all(6),
+                                  child: Icon(
+                                    Icons.volume_up,
+                                    color: hornFg,
+                                    size: isHornPressed ? 22 : 18,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.volume_up,
+                                  color: hornFg.withValues(alpha: isHornPressed ? 1.0 : 0.75),
+                                  size: isHornPressed ? 22 : 18,
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: isHornPressed
-                      ? const Center(
-                          child: Icon(Icons.volume_up, color: Colors.cyanAccent, size: 20),
-                        )
-                      : null,
                 ),
               ),
             );

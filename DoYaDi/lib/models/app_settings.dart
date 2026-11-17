@@ -13,6 +13,58 @@ enum SwipeDir {
   downRight,
 }
 
+extension AppSettingsThemeExt on AppSettings {
+  /// Arka plan parlaklığına göre dinamik zıt yazı rengi (Siyah veya Beyaz)
+  Color get textColor =>
+      backgroundColor.computeLuminance() > 0.5 ? const Color(0xFF111111) : Colors.white;
+
+  /// İkincil zıt yazı rengi (Gri tonları)
+  Color get textSecondaryColor =>
+      backgroundColor.computeLuminance() > 0.5 ? const Color(0xFF555555) : Colors.white70;
+
+  /// Açıklama ve pasif yazı rengi
+  Color get textDisabledColor =>
+      backgroundColor.computeLuminance() > 0.5 ? const Color(0xFF777777) : Colors.white38;
+
+  /// Ayırıcı çizgi rengi
+  Color get dividerColor =>
+      backgroundColor.computeLuminance() > 0.5 ? Colors.black12 : Colors.white12;
+
+  /// Belirli bir arka plan rengi için dinamik zıt yazı rengi
+  Color contrastTextFor(Color bg) =>
+      bg.computeLuminance() > 0.5 ? const Color(0xFF111111) : Colors.white;
+
+  /// Mod bazlı aktif sayfa arka plan rengi
+  Color modeBackgroundColor(int mode) {
+    if (mode == 0 || mode == 1) return mod01BgColor;
+    if (mode >= 2 && mode <= 4) return mod234BgColor;
+    if (mode == 5) return mod5BgColor;
+    if (mode == 6) return mod6BgColor;
+    if (mode == 7) return mod7BgColor;
+    if (mode == 8) return mod8BgColor;
+    if (mode == 9) return mod9BgColor;
+    return backgroundColor;
+  }
+
+  /// Mod bazlı aktif sayfa arka plan medyası
+  String? modeBackgroundMedia(int mode) {
+    if (mode == 0 || mode == 1) return mod01BgMediaPath ?? bgMediaPath;
+    if (mode >= 2 && mode <= 4) return mod234BgMediaPath ?? bgMediaPath;
+    if (mode == 5) return mod5BgMediaPath ?? bgMediaPath;
+    if (mode == 6) return mod6BgMediaPath ?? bgMediaPath;
+    if (mode == 7) return mod7BgMediaPath ?? bgMediaPath;
+    if (mode == 8) return mod8BgMediaPath ?? bgMediaPath;
+    if (mode == 9) return mod9BgMediaPath ?? bgMediaPath;
+    return bgMediaPath;
+  }
+}
+
+extension ColorContrastExt on Color {
+  /// Herhangi bir renge zıt yazı rengi döndürür (Siyah veya Beyaz)
+  Color get contrastingTextColor =>
+      computeLuminance() > 0.5 ? const Color(0xFF111111) : Colors.white;
+}
+
 class AppSettings {
   // ── Giriş ekranı karşılama metni ("Hoşgeldin / Welcome" sonrası yazı) ───────
   String customDriverName;
@@ -20,6 +72,41 @@ class AppSettings {
   // ── Arka plan ve genel renkler ──────────────────────────────────────────────
   Color backgroundColor;
   Color detailColor;
+
+  // ── Tema Renkleri & Font ──────────────────────────────────────────────────
+  String appFontFamily;
+  Color secondaryColor;
+  Color tertiaryColor;
+  Color warningColor;
+  Color surfaceColor;
+  bool preventIncompatibleColors;
+  Color homeStartBtnColor;
+
+  // ── Medya Arka Planları (Görsel / GIF / Döngülü Video) ────────────────────
+  String? bgMediaPath;
+  String? homeStartBtnMediaPath;
+  String? generalButtonMediaPath;
+  String? gasBarMediaPath;
+  String? brakeBarMediaPath;
+  String? pedalBarBgMediaPath;
+  bool separatePedalBg;
+  Color leftPedalBgColor;
+  Color rightPedalBgColor;
+  String? leftPedalBgMediaPath;
+  String? rightPedalBgMediaPath;
+  String? yetsoreMediaPath;
+  String? steeringBarMediaPath;
+  Color mode234ButtonColor;
+  String? mode234ButtonMediaPath;
+  Color mod01BgColor;
+  String? mod01BgMediaPath;
+  Color mod234BgColor;
+  String? mod234BgMediaPath;
+  Color mod5BgColor;
+  String? mod5BgMediaPath;
+  String? mod5JoystickMediaPath;
+  String? mod5JoystickBaseMediaPath;
+  String? mod5ButtonMediaPath;
 
   // ── Direksiyon göstergesi renkleri ─────────────────────────────────────────
   Color steeringIndicatorColor;
@@ -31,7 +118,9 @@ class AppSettings {
   Color yetsoreColor; // %70+ geri bildirim rengi
   Color pedalBgColor; // Pedal arka plan rengi
 
-  // ── Mod 6 Özel Renkler ────────────────────────────────────────────────────
+  // ── Mod 6 Özel Renkler & Görseller ─────────────────────────────────────────
+  Color mod6BgColor;
+  String? mod6BgMediaPath;
   Color clutchColor;
   Color clutchYetsoreColor;
   Color handbrakeColor;
@@ -43,6 +132,59 @@ class AppSettings {
   Color handbrakeIconColor;
   Color handbrakeButtonColor;
   Color steeringWheelColor;
+  Color mod6HornColor;
+  String? mod6HornMediaPath;
+  String? mod6ButtonsMediaPath;
+  String? mod6AccelIconsMediaPath;
+  String? clutchBarMediaPath;
+  String? handbrakeBarMediaPath;
+
+  // ── Mod 7 (F1 HUD) Renkler, Geçişler (Gradient) & Medya ────────────────────
+  Color mod7BgColor;
+  String? mod7BgMediaPath;
+  Color mod7TyreColdColor;
+  Color mod7TyreOptColor;
+  Color mod7TyreHotColor;
+  Color mod7TyreCritColor;
+  Color mod7RpmLowColor;
+  Color mod7RpmMidColor;
+  Color mod7RpmHighColor;
+  Color mod7RpmLimColor;
+  Color mod7GearColor;
+  Color mod7SpeedColor;
+  Color mod7DrsActiveColor;
+  Color mod7ErsColor;
+  Color mod7RpmBoxColor;
+  Color mod7ButtonsColor;
+
+  // ── Mod 8 (Rahat Sürüş) Sayfa İçi & Sayfa Dışı (Overlay) Renkler ──────────
+  Color mod8BgColor;
+  String? mod8BgMediaPath;
+  Color mod8SteerColor;
+  Color mod8GasColor;
+  Color mod8BrakeColor;
+  Color mod8RadarColor;
+  Color mod8CruiseColor;
+  Color mod8HoldButtonsColor;
+  Color mod8GearBtnColor;
+  Color mod8OverlayBgColor;
+  Color mod8OverlayBorderColor;
+  Color mod8OverlaySteerColor;
+  Color mod8OverlayGasColor;
+  Color mod8OverlayBrakeColor;
+  Color mod8OverlayGearBtnColor;
+
+  // ── Mod 9 (Uçuş HOTAS) Renkler & Medya ────────────────────────────────────
+  Color mod9BgColor;
+  String? mod9BgMediaPath;
+  Color mod9ThrottleColor;
+  Color mod9WepColor;
+  Color mod9AvionicsColor;
+  Color mod9RudderColor;
+  Color mod9HudColor;
+  Color mod9FireBtnColor;
+  Color mod9WeaponBtnColor;
+  Color mod9HatSwitchColor;
 
   // ── İvmeölçer kalibrasyonu ─────────────────────────────────────────────────
   /// 0: Auto, 1: Ekran üstte, 2: Ekran vücuda bakıyor
@@ -293,6 +435,12 @@ class AppSettings {
   double flightRollDeadzone;
   /// Yaw ölü bölgesi (derece, 0.0-10.0, varsayılan 0.0)
   double flightYawDeadzone;
+  /// Uçuş Pitch ekseni tersinirliği
+  bool flightInvertPitch;
+  /// Uçuş Roll ekseni tersinirliği
+  bool flightInvertRoll;
+  /// Uçuş Yaw ekseni tersinirliği
+  bool flightInvertYaw;
   /// Kademeli itki bölüm sayısı (2-8)
   int flightThrustDetents;
   /// Mod 9 Buton Atamaları
@@ -324,14 +472,47 @@ class AppSettings {
 
   AppSettings({
     this.customDriverName = '',
+    this.appFontFamily = 'Roboto',
     this.backgroundColor = const Color(0xFF050510),
     this.detailColor = const Color(0xFF40E0D0),
+    this.secondaryColor = const Color(0xFF7C4DFF),
+    this.tertiaryColor = const Color(0xFFFF6D00),
+    this.warningColor = const Color(0xFFFF5252),
+    this.surfaceColor = const Color(0xFF0A0A20),
+    this.preventIncompatibleColors = false,
+    this.homeStartBtnColor = const Color(0xFF40E0D0),
+    this.bgMediaPath,
+    this.homeStartBtnMediaPath,
+    this.generalButtonMediaPath,
+    this.gasBarMediaPath,
+    this.brakeBarMediaPath,
+    this.pedalBarBgMediaPath,
+    this.separatePedalBg = false,
+    this.leftPedalBgColor = const Color(0xFF050525),
+    this.rightPedalBgColor = const Color(0xFF050525),
+    this.leftPedalBgMediaPath,
+    this.rightPedalBgMediaPath,
+    this.yetsoreMediaPath,
+    this.steeringBarMediaPath,
+    this.mode234ButtonColor = const Color(0xFF40E0D0),
+    this.mode234ButtonMediaPath,
+    this.mod01BgColor = const Color(0xFF050510),
+    this.mod01BgMediaPath,
+    this.mod234BgColor = const Color(0xFF050510),
+    this.mod234BgMediaPath,
+    this.mod5BgColor = const Color(0xFF08080F),
+    this.mod5BgMediaPath,
+    this.mod5JoystickMediaPath,
+    this.mod5JoystickBaseMediaPath,
+    this.mod5ButtonMediaPath,
     this.steeringIndicatorColor = const Color(0xFF40E0D0),
     this.steeringBgColor = const Color(0xFF0A0A20),
     this.gasColor = const Color(0xFF00C853),
     this.brakeColor = const Color(0xFFD50000),
     this.yetsoreColor = const Color(0xFFFFD600),
     this.pedalBgColor = const Color(0xFF050525),
+    this.mod6BgColor = const Color(0xFF0A0A12),
+    this.mod6BgMediaPath,
     this.clutchColor = const Color(0xFF448AFF),
     this.clutchYetsoreColor = const Color(0xFFFFD600),
     this.handbrakeColor = const Color(0xFFFF5252),
@@ -343,6 +524,53 @@ class AppSettings {
     this.handbrakeIconColor = const Color(0xFFFF5252),
     this.handbrakeButtonColor = const Color(0xFF381E1E),
     this.steeringWheelColor = const Color(0xFF222234),
+    this.mod6HornColor = const Color(0xFF40E0D0),
+    this.mod6HornMediaPath,
+    this.mod6ButtonsMediaPath,
+    this.mod6AccelIconsMediaPath,
+    this.clutchBarMediaPath,
+    this.handbrakeBarMediaPath,
+    this.mod7BgColor = const Color(0xFF050508),
+    this.mod7BgMediaPath,
+    this.mod7TyreColdColor = const Color(0xFF1565C0),
+    this.mod7TyreOptColor = const Color(0xFF2E7D32),
+    this.mod7TyreHotColor = const Color(0xFFE65100),
+    this.mod7TyreCritColor = const Color(0xFFC62828),
+    this.mod7RpmLowColor = const Color(0xFF00E676),
+    this.mod7RpmMidColor = const Color(0xFFFFEA00),
+    this.mod7RpmHighColor = const Color(0xFFFF1744),
+    this.mod7RpmLimColor = const Color(0xFFD500F9),
+    this.mod7GearColor = const Color(0xFFFFFFFF),
+    this.mod7SpeedColor = const Color(0xFFFFFFFF),
+    this.mod7DrsActiveColor = const Color(0xFF00E676),
+    this.mod7ErsColor = const Color(0xFFFFD600),
+    this.mod7RpmBoxColor = const Color(0xFFFF1744),
+    this.mod7ButtonsColor = const Color(0xFF40E0D0),
+    this.mod8BgColor = const Color(0xFF0A0E14),
+    this.mod8BgMediaPath,
+    this.mod8SteerColor = const Color(0xFF00E5FF),
+    this.mod8GasColor = const Color(0xFF4CAF50),
+    this.mod8BrakeColor = const Color(0xFFEF5350),
+    this.mod8RadarColor = const Color(0xFF00E5FF),
+    this.mod8CruiseColor = const Color(0xFF00E676),
+    this.mod8HoldButtonsColor = const Color(0xFFFFB300),
+    this.mod8GearBtnColor = const Color(0xFF00E5FF),
+    this.mod8OverlayBgColor = const Color(0xE610141E),
+    this.mod8OverlayBorderColor = const Color(0x6600E5FF),
+    this.mod8OverlaySteerColor = const Color(0xFF00E5FF),
+    this.mod8OverlayGasColor = const Color(0xFF81C784),
+    this.mod8OverlayBrakeColor = const Color(0xFFE57373),
+    this.mod8OverlayGearBtnColor = const Color(0xFF00E5FF),
+    this.mod9BgColor = const Color(0xFF080C0A),
+    this.mod9BgMediaPath,
+    this.mod9ThrottleColor = const Color(0xFF00E676),
+    this.mod9WepColor = const Color(0xFFFF1744),
+    this.mod9AvionicsColor = const Color(0xFF00E676),
+    this.mod9RudderColor = const Color(0xFF00E676),
+    this.mod9HudColor = const Color(0xFF00E676),
+    this.mod9FireBtnColor = const Color(0xFFD50000),
+    this.mod9WeaponBtnColor = const Color(0xFFFF5252),
+    this.mod9HatSwitchColor = const Color(0xFF00E676),
     this.zeroOrientation = 0,
     this.calibPitchOffset = 0.0,
     this.calibRollOffset = 0.0,
@@ -483,6 +711,9 @@ class AppSettings {
     this.flightPitchDeadzone = 0.0,
     this.flightRollDeadzone = 0.0,
     this.flightYawDeadzone = 0.0,
+    this.flightInvertPitch = false,
+    this.flightInvertRoll = false,
+    this.flightInvertYaw = false,
     this.flightThrustDetents = 4,
     this.m9FireKey = 5,
     this.m9MissileKey = 6,
@@ -504,4 +735,796 @@ class AppSettings {
     this.mfdShowEngineGauges = true,
     this.mfdGyroFilterAlpha = 0.15,
   });
+
+  /// Tüm özelleştirme (renk, medya, font) ayarlarını varsayılan değerlere döndürür.
+  void resetCustomizationToDefaults() {
+    appFontFamily = 'Roboto';
+    backgroundColor = const Color(0xFF050510);
+    detailColor = const Color(0xFF40E0D0);
+    secondaryColor = const Color(0xFF7C4DFF);
+    tertiaryColor = const Color(0xFFFF6D00);
+    warningColor = const Color(0xFFFF5252);
+    surfaceColor = const Color(0xFF0A0A20);
+    preventIncompatibleColors = false;
+    homeStartBtnColor = const Color(0xFF40E0D0);
+
+    bgMediaPath = null;
+    homeStartBtnMediaPath = null;
+    generalButtonMediaPath = null;
+    gasBarMediaPath = null;
+    brakeBarMediaPath = null;
+    pedalBarBgMediaPath = null;
+    separatePedalBg = false;
+    leftPedalBgColor = const Color(0xFF050525);
+    rightPedalBgColor = const Color(0xFF050525);
+    leftPedalBgMediaPath = null;
+    rightPedalBgMediaPath = null;
+    yetsoreMediaPath = null;
+    steeringBarMediaPath = null;
+    mode234ButtonColor = const Color(0xFF40E0D0);
+    mode234ButtonMediaPath = null;
+    mod01BgColor = const Color(0xFF050510);
+    mod01BgMediaPath = null;
+    mod234BgColor = const Color(0xFF050510);
+    mod234BgMediaPath = null;
+    mod5BgColor = const Color(0xFF08080F);
+    mod5BgMediaPath = null;
+    mod5JoystickMediaPath = null;
+    mod5JoystickBaseMediaPath = null;
+    mod5ButtonMediaPath = null;
+
+    steeringIndicatorColor = const Color(0xFF40E0D0);
+    steeringBgColor = const Color(0xFF0A0A20);
+    gasColor = const Color(0xFF00C853);
+    brakeColor = const Color(0xFFD50000);
+    yetsoreColor = const Color(0xFFFFD600);
+    pedalBgColor = const Color(0xFF050525);
+
+    mod6BgColor = const Color(0xFF0A0A12);
+    mod6BgMediaPath = null;
+    clutchColor = const Color(0xFF448AFF);
+    clutchYetsoreColor = const Color(0xFFFFD600);
+    handbrakeColor = const Color(0xFFFF5252);
+    handbrakeYetsoreColor = const Color(0xFFFFD600);
+    gasIconColor = const Color(0xFF69F0AE);
+    brakeIconColor = const Color(0xFFFF5252);
+    clutchIconColor = const Color(0xFF448AFF);
+    clutchButtonColor = const Color(0xFF1E1E38);
+    handbrakeIconColor = const Color(0xFFFF5252);
+    handbrakeButtonColor = const Color(0xFF381E1E);
+    steeringWheelColor = const Color(0xFF222234);
+    steeringTurnRightColor = const Color(0xFF00E5FF);
+    steeringTurnLeftColor = const Color(0xFFFF2A6D);
+    mod6HornColor = const Color(0xFF40E0D0);
+    mod6HornMediaPath = null;
+    mod6ButtonsMediaPath = null;
+    mod6AccelIconsMediaPath = null;
+    clutchBarMediaPath = null;
+    handbrakeBarMediaPath = null;
+
+    mod7BgColor = const Color(0xFF050508);
+    mod7BgMediaPath = null;
+    mod7TyreColdColor = const Color(0xFF1565C0);
+    mod7TyreOptColor = const Color(0xFF2E7D32);
+    mod7TyreHotColor = const Color(0xFFE65100);
+    mod7TyreCritColor = const Color(0xFFC62828);
+    mod7RpmLowColor = const Color(0xFF00E676);
+    mod7RpmMidColor = const Color(0xFFFFEA00);
+    mod7RpmHighColor = const Color(0xFFFF1744);
+    mod7RpmLimColor = const Color(0xFFD500F9);
+    mod7GearColor = const Color(0xFFFFFFFF);
+    mod7SpeedColor = const Color(0xFFFFFFFF);
+    mod7DrsActiveColor = const Color(0xFF00E676);
+    mod7ErsColor = const Color(0xFFFFD600);
+    mod7RpmBoxColor = const Color(0xFFFF1744);
+    mod7ButtonsColor = const Color(0xFF40E0D0);
+
+    mod8BgColor = const Color(0xFF0A0E14);
+    mod8BgMediaPath = null;
+    mod8SteerColor = const Color(0xFF00E5FF);
+    mod8GasColor = const Color(0xFF4CAF50);
+    mod8BrakeColor = const Color(0xFFEF5350);
+    mod8RadarColor = const Color(0xFF00E5FF);
+    mod8CruiseColor = const Color(0xFF00E676);
+    mod8HoldButtonsColor = const Color(0xFFFFB300);
+    mod8GearBtnColor = const Color(0xFF00E5FF);
+    mod8OverlayBgColor = const Color(0xE610141E);
+    mod8OverlayBorderColor = const Color(0x6600E5FF);
+    mod8OverlaySteerColor = const Color(0xFF00E5FF);
+    mod8OverlayGasColor = const Color(0xFF81C784);
+    mod8OverlayBrakeColor = const Color(0xFFE57373);
+    mod8OverlayGearBtnColor = const Color(0xFF00E5FF);
+
+    mod9BgColor = const Color(0xFF080C0A);
+    mod9BgMediaPath = null;
+    mod9ThrottleColor = const Color(0xFF00E676);
+    mod9WepColor = const Color(0xFFFF1744);
+    mod9AvionicsColor = const Color(0xFF00E676);
+    mod9RudderColor = const Color(0xFF00E676);
+    mod9HudColor = const Color(0xFF00E676);
+    mod9FireBtnColor = const Color(0xFFD50000);
+    mod9WeaponBtnColor = const Color(0xFFFF5252);
+    mod9HatSwitchColor = const Color(0xFF00E676);
+  }
+
+  /// Tüm uygulama ayarlarını tek bir JSON haritasına dönüştürür (Snapshot için).
+  Map<String, dynamic> toJson() {
+    return {
+      'customDriverName': customDriverName,
+      'appFontFamily': appFontFamily,
+      'backgroundColor': backgroundColor.toARGB32(),
+      'detailColor': detailColor.toARGB32(),
+      'secondaryColor': secondaryColor.toARGB32(),
+      'tertiaryColor': tertiaryColor.toARGB32(),
+      'warningColor': warningColor.toARGB32(),
+      'surfaceColor': surfaceColor.toARGB32(),
+      'preventIncompatibleColors': preventIncompatibleColors,
+      'homeStartBtnColor': homeStartBtnColor.toARGB32(),
+      'bgMediaPath': bgMediaPath,
+      'homeStartBtnMediaPath': homeStartBtnMediaPath,
+      'generalButtonMediaPath': generalButtonMediaPath,
+      'gasBarMediaPath': gasBarMediaPath,
+      'brakeBarMediaPath': brakeBarMediaPath,
+      'pedalBarBgMediaPath': pedalBarBgMediaPath,
+      'separatePedalBg': separatePedalBg,
+      'leftPedalBgColor': leftPedalBgColor.toARGB32(),
+      'rightPedalBgColor': rightPedalBgColor.toARGB32(),
+      'leftPedalBgMediaPath': leftPedalBgMediaPath,
+      'rightPedalBgMediaPath': rightPedalBgMediaPath,
+      'yetsoreMediaPath': yetsoreMediaPath,
+      'steeringBarMediaPath': steeringBarMediaPath,
+      'mode234ButtonColor': mode234ButtonColor.toARGB32(),
+      'mode234ButtonMediaPath': mode234ButtonMediaPath,
+      'mod01BgColor': mod01BgColor.toARGB32(),
+      'mod01BgMediaPath': mod01BgMediaPath,
+      'mod234BgColor': mod234BgColor.toARGB32(),
+      'mod234BgMediaPath': mod234BgMediaPath,
+      'mod5BgColor': mod5BgColor.toARGB32(),
+      'mod5BgMediaPath': mod5BgMediaPath,
+      'mod5JoystickMediaPath': mod5JoystickMediaPath,
+      'mod5JoystickBaseMediaPath': mod5JoystickBaseMediaPath,
+      'mod5ButtonMediaPath': mod5ButtonMediaPath,
+      'steeringIndicatorColor': steeringIndicatorColor.toARGB32(),
+      'steeringBgColor': steeringBgColor.toARGB32(),
+      'gasColor': gasColor.toARGB32(),
+      'brakeColor': brakeColor.toARGB32(),
+      'yetsoreColor': yetsoreColor.toARGB32(),
+      'pedalBgColor': pedalBgColor.toARGB32(),
+      'mod6BgColor': mod6BgColor.toARGB32(),
+      'mod6BgMediaPath': mod6BgMediaPath,
+      'clutchColor': clutchColor.toARGB32(),
+      'clutchYetsoreColor': clutchYetsoreColor.toARGB32(),
+      'handbrakeColor': handbrakeColor.toARGB32(),
+      'handbrakeYetsoreColor': handbrakeYetsoreColor.toARGB32(),
+      'gasIconColor': gasIconColor.toARGB32(),
+      'brakeIconColor': brakeIconColor.toARGB32(),
+      'clutchIconColor': clutchIconColor.toARGB32(),
+      'clutchButtonColor': clutchButtonColor.toARGB32(),
+      'handbrakeIconColor': handbrakeIconColor.toARGB32(),
+      'handbrakeButtonColor': handbrakeButtonColor.toARGB32(),
+      'steeringWheelColor': steeringWheelColor.toARGB32(),
+      'mod6HornColor': mod6HornColor.toARGB32(),
+      'mod6HornMediaPath': mod6HornMediaPath,
+      'mod6ButtonsMediaPath': mod6ButtonsMediaPath,
+      'mod6AccelIconsMediaPath': mod6AccelIconsMediaPath,
+      'clutchBarMediaPath': clutchBarMediaPath,
+      'handbrakeBarMediaPath': handbrakeBarMediaPath,
+      'mod7BgColor': mod7BgColor.toARGB32(),
+      'mod7BgMediaPath': mod7BgMediaPath,
+      'mod7TyreColdColor': mod7TyreColdColor.toARGB32(),
+      'mod7TyreOptColor': mod7TyreOptColor.toARGB32(),
+      'mod7TyreHotColor': mod7TyreHotColor.toARGB32(),
+      'mod7TyreCritColor': mod7TyreCritColor.toARGB32(),
+      'mod7RpmLowColor': mod7RpmLowColor.toARGB32(),
+      'mod7RpmMidColor': mod7RpmMidColor.toARGB32(),
+      'mod7RpmHighColor': mod7RpmHighColor.toARGB32(),
+      'mod7RpmLimColor': mod7RpmLimColor.toARGB32(),
+      'mod7GearColor': mod7GearColor.toARGB32(),
+      'mod7SpeedColor': mod7SpeedColor.toARGB32(),
+      'mod7DrsActiveColor': mod7DrsActiveColor.toARGB32(),
+      'mod7ErsColor': mod7ErsColor.toARGB32(),
+      'mod7RpmBoxColor': mod7RpmBoxColor.toARGB32(),
+      'mod7ButtonsColor': mod7ButtonsColor.toARGB32(),
+      'mod8BgColor': mod8BgColor.toARGB32(),
+      'mod8BgMediaPath': mod8BgMediaPath,
+      'mod8SteerColor': mod8SteerColor.toARGB32(),
+      'mod8GasColor': mod8GasColor.toARGB32(),
+      'mod8BrakeColor': mod8BrakeColor.toARGB32(),
+      'mod8RadarColor': mod8RadarColor.toARGB32(),
+      'mod8CruiseColor': mod8CruiseColor.toARGB32(),
+      'mod8HoldButtonsColor': mod8HoldButtonsColor.toARGB32(),
+      'mod8GearBtnColor': mod8GearBtnColor.toARGB32(),
+      'mod8OverlayBgColor': mod8OverlayBgColor.toARGB32(),
+      'mod8OverlayBorderColor': mod8OverlayBorderColor.toARGB32(),
+      'mod8OverlaySteerColor': mod8OverlaySteerColor.toARGB32(),
+      'mod8OverlayGasColor': mod8OverlayGasColor.toARGB32(),
+      'mod8OverlayBrakeColor': mod8OverlayBrakeColor.toARGB32(),
+      'mod8OverlayGearBtnColor': mod8OverlayGearBtnColor.toARGB32(),
+      'mod9BgColor': mod9BgColor.toARGB32(),
+      'mod9BgMediaPath': mod9BgMediaPath,
+      'mod9ThrottleColor': mod9ThrottleColor.toARGB32(),
+      'mod9WepColor': mod9WepColor.toARGB32(),
+      'mod9AvionicsColor': mod9AvionicsColor.toARGB32(),
+      'mod9RudderColor': mod9RudderColor.toARGB32(),
+      'mod9HudColor': mod9HudColor.toARGB32(),
+      'mod9FireBtnColor': mod9FireBtnColor.toARGB32(),
+      'mod9WeaponBtnColor': mod9WeaponBtnColor.toARGB32(),
+      'mod9HatSwitchColor': mod9HatSwitchColor.toARGB32(),
+      'zeroOrientation': zeroOrientation,
+      'calibPitchOffset': calibPitchOffset,
+      'calibRollOffset': calibRollOffset,
+      'useGyroscope': useGyroscope,
+      'steeringAngle': steeringAngle,
+      'swipeSensitivity': swipeSensitivity,
+      'clickMaxDistance': clickMaxDistance,
+      'clickMaxDuration': clickMaxDuration,
+      'defaultDrivingMode': defaultDrivingMode,
+      'isCumulativeSteering': isCumulativeSteering,
+      'pedalIconAccelerationRate': pedalIconAccelerationRate,
+      'mod6PedalStyle': mod6PedalStyle,
+      'clutchIconAccelerationRate': clutchIconAccelerationRate,
+      'clutchType': clutchType,
+      'clutchKey': clutchKey,
+      'handbrakeType': handbrakeType,
+      'handbrakeKey': handbrakeKey,
+      'isAddonMasterSwitchActive': isAddonMasterSwitchActive,
+      'activeAddonIds': List<String>.from(activeAddonIds),
+      'dlcHapticRpm': dlcHapticRpm,
+      'dlcHapticSlip': dlcHapticSlip,
+      'dlcHapticGear': dlcHapticGear,
+      'dlcHapticCollision': dlcHapticCollision,
+      'mod6EnableClutch': mod6EnableClutch,
+      'mod6EnableHandbrake': mod6EnableHandbrake,
+      'mod6SteeringStyle': mod6SteeringStyle,
+      'steeringTurnRightColor': steeringTurnRightColor.toARGB32(),
+      'steeringTurnLeftColor': steeringTurnLeftColor.toARGB32(),
+      'mod6HornKey': mod6HornKey,
+      'mod6SlotLeft': mod6SlotLeft,
+      'mod6SlotLeftInner': mod6SlotLeftInner,
+      'mod6SlotRightInner': mod6SlotRightInner,
+      'mod6SlotRight': mod6SlotRight,
+      'simulatedHapticEnabled': simulatedHapticEnabled,
+      'globalHapticType': globalHapticType,
+      'globalHapticTrigger': globalHapticTrigger,
+      'customButtonHapticTypes': customButtonHapticTypes.map(
+        (k, v) => MapEntry(k.toString(), v),
+      ),
+      'customButtonHapticTriggers': customButtonHapticTriggers.map(
+        (k, v) => MapEntry(k.toString(), v),
+      ),
+      'customButtonHapticEnabled': customButtonHapticEnabled.map(
+        (k, v) => MapEntry(k.toString(), v),
+      ),
+      'customLayout5Json': customLayout5Json,
+      'layout5Profiles': Map<String, String>.from(layout5Profiles),
+      'activeLayout5Profile': activeLayout5Profile,
+      'joystickSensitivity': joystickSensitivity,
+      'gyroCenterMode': gyroCenterMode,
+      'gyroAutoCenterDuration': gyroAutoCenterDuration,
+      'includePitchInDeadzone': includePitchInDeadzone,
+      'gyroLookEnabled': gyroLookEnabled,
+      'gyroLookStyle': gyroLookStyle,
+      'gyroLookMode': gyroLookMode,
+      'gyroLookSensitivity': gyroLookSensitivity,
+      'gyroLookDeadzone': gyroLookDeadzone,
+      'joystickMode': joystickMode,
+      'globalButtonPressMode': globalButtonPressMode,
+      'globalButtonPressDurationMs': globalButtonPressDurationMs,
+      'customButtonPressModes': customButtonPressModes.map(
+        (k, v) => MapEntry(k.toString(), v),
+      ),
+      'customButtonPressDurationsMs': customButtonPressDurationsMs.map(
+        (k, v) => MapEntry(k.toString(), v),
+      ),
+      'customMacros': customMacros.map(
+        (k, v) => MapEntry(k.toString(), List<int>.from(v)),
+      ),
+      'volumeUpAction': volumeUpAction,
+      'volumeDownAction': volumeDownAction,
+      'm0TapLeft': m0TapLeft,
+      'm0TapRight': m0TapRight,
+      'm1TapLeft': m1TapLeft,
+      'm1TapRight': m1TapRight,
+      'm2Key1': m2Key1,
+      'm2Key2': m2Key2,
+      'm2Key3': m2Key3,
+      'm2Key4': m2Key4,
+      'm2TapLeft': m2TapLeft,
+      'm2TapRight': m2TapRight,
+      'm3Key1': m3Key1,
+      'm3Key2': m3Key2,
+      'm3Key3': m3Key3,
+      'm3Key4': m3Key4,
+      'm3Key5': m3Key5,
+      'm3TapLeft': m3TapLeft,
+      'm3TapRight': m3TapRight,
+      'm4Key1': m4Key1,
+      'm4Key2': m4Key2,
+      'm4Key3': m4Key3,
+      'm4Key4': m4Key4,
+      'm4KeyBottom': m4KeyBottom,
+      'm4TapLeft': m4TapLeft,
+      'm4TapRight': m4TapRight,
+      'gasSwipeUp': gasSwipeUp,
+      'gasSwipeDown': gasSwipeDown,
+      'gasSwipeLeft': gasSwipeLeft,
+      'gasSwipeRight': gasSwipeRight,
+      'gasSwipeUpLeft': gasSwipeUpLeft,
+      'gasSwipeUpRight': gasSwipeUpRight,
+      'gasSwipeDownLeft': gasSwipeDownLeft,
+      'gasSwipeDownRight': gasSwipeDownRight,
+      'brakeSwipeUp': brakeSwipeUp,
+      'brakeSwipeDown': brakeSwipeDown,
+      'brakeSwipeLeft': brakeSwipeLeft,
+      'brakeSwipeRight': brakeSwipeRight,
+      'brakeSwipeUpLeft': brakeSwipeUpLeft,
+      'brakeSwipeUpRight': brakeSwipeUpRight,
+      'brakeSwipeDownLeft': brakeSwipeDownLeft,
+      'brakeSwipeDownRight': brakeSwipeDownRight,
+      'gasTap': gasTap,
+      'brakeTap': brakeTap,
+      'f1UseImperial': f1UseImperial,
+      'f1LowPassAlpha': f1LowPassAlpha,
+      'f1HapticRevLimiter': f1HapticRevLimiter,
+      'f1HapticWheelSlip': f1HapticWheelSlip,
+      'm7Key1': m7Key1,
+      'm7Key2': m7Key2,
+      'm7Key3': m7Key3,
+      'm7Key4': m7Key4,
+      'hudShowRpm': hudShowRpm,
+      'hudShowSpeed': hudShowSpeed,
+      'hudShowGear': hudShowGear,
+      'hudShowDrsErs': hudShowDrsErs,
+      'hudShowPedalBars': hudShowPedalBars,
+      'hudShowTyres': hudShowTyres,
+      'hudShowRpmBox': hudShowRpmBox,
+      'hudShowStatusFlags': hudShowStatusFlags,
+      'chillOverlayEnabled': chillOverlayEnabled,
+      'chillOverlayGearButtons': chillOverlayGearButtons,
+      'chillOverlayStyle': chillOverlayStyle,
+      'chillSteeringAxis': chillSteeringAxis,
+      'chillSteeringSensitivity': chillSteeringSensitivity,
+      'chillGasBrakeSensitivity': chillGasBrakeSensitivity,
+      'flightPitchSensitivity': flightPitchSensitivity,
+      'flightRollSensitivity': flightRollSensitivity,
+      'flightYawSensitivity': flightYawSensitivity,
+      'flightPitchDeadzone': flightPitchDeadzone,
+      'flightRollDeadzone': flightRollDeadzone,
+      'flightYawDeadzone': flightYawDeadzone,
+      'flightInvertPitch': flightInvertPitch,
+      'flightInvertRoll': flightInvertRoll,
+      'flightInvertYaw': flightInvertYaw,
+      'flightThrustDetents': flightThrustDetents,
+      'm9FireKey': m9FireKey,
+      'm9MissileKey': m9MissileKey,
+      'm9LockKey': m9LockKey,
+      'm9FlareKey': m9FlareKey,
+      'm9HeavyGunKey': m9HeavyGunKey,
+      'm9BombKey': m9BombKey,
+      'm9MapKey': m9MapKey,
+      'm9FlapDownKey': m9FlapDownKey,
+      'm9FlapUpKey': m9FlapUpKey,
+      'm9GearKey': m9GearKey,
+      'm9AirbrakeKey': m9AirbrakeKey,
+      'm9RudderLeftKey': m9RudderLeftKey,
+      'm9RudderRightKey': m9RudderRightKey,
+      'mfdShowArtificialHorizon': mfdShowArtificialHorizon,
+      'mfdShowSpeedTape': mfdShowSpeedTape,
+      'mfdShowAltitudeTape': mfdShowAltitudeTape,
+      'mfdShowEngineGauges': mfdShowEngineGauges,
+      'mfdGyroFilterAlpha': mfdGyroFilterAlpha,
+    };
+  }
+
+  static Color _colorFromJson(dynamic raw, Color fallback) {
+    if (raw is int) return Color(raw);
+    if (raw is num) return Color(raw.toInt());
+    return fallback;
+  }
+
+  static double _doubleFromJson(dynamic raw, double fallback) {
+    if (raw is num) return raw.toDouble();
+    return fallback;
+  }
+
+  static int _intFromJson(dynamic raw, int fallback) {
+    if (raw is num) return raw.toInt();
+    return fallback;
+  }
+
+  static bool _boolFromJson(dynamic raw, bool fallback) {
+    if (raw is bool) return raw;
+    return fallback;
+  }
+
+  static Map<int, int> _intIntMapFromJson(dynamic raw) {
+    if (raw is! Map) return const {};
+    final out = <int, int>{};
+    raw.forEach((k, v) {
+      final ki = int.tryParse(k.toString());
+      if (ki != null && v is num) out[ki] = v.toInt();
+    });
+    return out;
+  }
+
+  static Map<int, bool> _intBoolMapFromJson(dynamic raw) {
+    if (raw is! Map) return const {};
+    final out = <int, bool>{};
+    raw.forEach((k, v) {
+      final ki = int.tryParse(k.toString());
+      if (ki != null && v is bool) out[ki] = v;
+    });
+    return out;
+  }
+
+  static Map<int, List<int>> _macrosMapFromJson(dynamic raw) {
+    if (raw is! Map) return const {};
+    final out = <int, List<int>>{};
+    raw.forEach((k, v) {
+      final ki = int.tryParse(k.toString());
+      if (ki != null && v is List) {
+        out[ki] = v.whereType<num>().map((e) => e.toInt()).toList();
+      }
+    });
+    return out;
+  }
+
+  factory AppSettings.fromJson(Map<String, dynamic> m) {
+    final defaults = AppSettings();
+    return AppSettings(
+      customDriverName: m['customDriverName']?.toString() ?? defaults.customDriverName,
+      appFontFamily: m['appFontFamily']?.toString() ?? defaults.appFontFamily,
+      backgroundColor: _colorFromJson(m['backgroundColor'], defaults.backgroundColor),
+      detailColor: _colorFromJson(m['detailColor'], defaults.detailColor),
+      secondaryColor: _colorFromJson(m['secondaryColor'], defaults.secondaryColor),
+      tertiaryColor: _colorFromJson(m['tertiaryColor'], defaults.tertiaryColor),
+      warningColor: _colorFromJson(m['warningColor'], defaults.warningColor),
+      surfaceColor: _colorFromJson(m['surfaceColor'], defaults.surfaceColor),
+      preventIncompatibleColors: _boolFromJson(
+        m['preventIncompatibleColors'],
+        defaults.preventIncompatibleColors,
+      ),
+      homeStartBtnColor: _colorFromJson(m['homeStartBtnColor'], defaults.homeStartBtnColor),
+      bgMediaPath: m['bgMediaPath'] as String?,
+      homeStartBtnMediaPath: m['homeStartBtnMediaPath'] as String?,
+      generalButtonMediaPath: m['generalButtonMediaPath'] as String?,
+      gasBarMediaPath: m['gasBarMediaPath'] as String?,
+      brakeBarMediaPath: m['brakeBarMediaPath'] as String?,
+      pedalBarBgMediaPath: m['pedalBarBgMediaPath'] as String?,
+      separatePedalBg: _boolFromJson(m['separatePedalBg'], defaults.separatePedalBg),
+      leftPedalBgColor: _colorFromJson(m['leftPedalBgColor'], defaults.leftPedalBgColor),
+      rightPedalBgColor: _colorFromJson(m['rightPedalBgColor'], defaults.rightPedalBgColor),
+      leftPedalBgMediaPath: m['leftPedalBgMediaPath'] as String?,
+      rightPedalBgMediaPath: m['rightPedalBgMediaPath'] as String?,
+      yetsoreMediaPath: m['yetsoreMediaPath'] as String?,
+      steeringBarMediaPath: m['steeringBarMediaPath'] as String?,
+      mode234ButtonColor: _colorFromJson(m['mode234ButtonColor'], defaults.mode234ButtonColor),
+      mode234ButtonMediaPath: m['mode234ButtonMediaPath'] as String?,
+      mod01BgColor: _colorFromJson(m['mod01BgColor'], defaults.mod01BgColor),
+      mod01BgMediaPath: m['mod01BgMediaPath'] as String?,
+      mod234BgColor: _colorFromJson(m['mod234BgColor'], defaults.mod234BgColor),
+      mod234BgMediaPath: m['mod234BgMediaPath'] as String?,
+      mod5BgColor: _colorFromJson(m['mod5BgColor'], defaults.mod5BgColor),
+      mod5BgMediaPath: m['mod5BgMediaPath'] as String?,
+      mod5JoystickMediaPath: m['mod5JoystickMediaPath'] as String?,
+      mod5JoystickBaseMediaPath: m['mod5JoystickBaseMediaPath'] as String?,
+      mod5ButtonMediaPath: m['mod5ButtonMediaPath'] as String?,
+      steeringIndicatorColor: _colorFromJson(
+        m['steeringIndicatorColor'],
+        defaults.steeringIndicatorColor,
+      ),
+      steeringBgColor: _colorFromJson(m['steeringBgColor'], defaults.steeringBgColor),
+      gasColor: _colorFromJson(m['gasColor'], defaults.gasColor),
+      brakeColor: _colorFromJson(m['brakeColor'], defaults.brakeColor),
+      yetsoreColor: _colorFromJson(m['yetsoreColor'], defaults.yetsoreColor),
+      pedalBgColor: _colorFromJson(m['pedalBgColor'], defaults.pedalBgColor),
+      mod6BgColor: _colorFromJson(m['mod6BgColor'], defaults.mod6BgColor),
+      mod6BgMediaPath: m['mod6BgMediaPath'] as String?,
+      clutchColor: _colorFromJson(m['clutchColor'], defaults.clutchColor),
+      clutchYetsoreColor: _colorFromJson(m['clutchYetsoreColor'], defaults.clutchYetsoreColor),
+      handbrakeColor: _colorFromJson(m['handbrakeColor'], defaults.handbrakeColor),
+      handbrakeYetsoreColor: _colorFromJson(
+        m['handbrakeYetsoreColor'],
+        defaults.handbrakeYetsoreColor,
+      ),
+      gasIconColor: _colorFromJson(m['gasIconColor'], defaults.gasIconColor),
+      brakeIconColor: _colorFromJson(m['brakeIconColor'], defaults.brakeIconColor),
+      clutchIconColor: _colorFromJson(m['clutchIconColor'], defaults.clutchIconColor),
+      clutchButtonColor: _colorFromJson(m['clutchButtonColor'], defaults.clutchButtonColor),
+      handbrakeIconColor: _colorFromJson(m['handbrakeIconColor'], defaults.handbrakeIconColor),
+      handbrakeButtonColor: _colorFromJson(
+        m['handbrakeButtonColor'],
+        defaults.handbrakeButtonColor,
+      ),
+      steeringWheelColor: _colorFromJson(m['steeringWheelColor'], defaults.steeringWheelColor),
+      mod6HornColor: _colorFromJson(m['mod6HornColor'], defaults.mod6HornColor),
+      mod6HornMediaPath: m['mod6HornMediaPath'] as String?,
+      mod6ButtonsMediaPath: m['mod6ButtonsMediaPath'] as String?,
+      mod6AccelIconsMediaPath: m['mod6AccelIconsMediaPath'] as String?,
+      clutchBarMediaPath: m['clutchBarMediaPath'] as String?,
+      handbrakeBarMediaPath: m['handbrakeBarMediaPath'] as String?,
+      mod7BgColor: _colorFromJson(m['mod7BgColor'], defaults.mod7BgColor),
+      mod7BgMediaPath: m['mod7BgMediaPath'] as String?,
+      mod7TyreColdColor: _colorFromJson(m['mod7TyreColdColor'], defaults.mod7TyreColdColor),
+      mod7TyreOptColor: _colorFromJson(m['mod7TyreOptColor'], defaults.mod7TyreOptColor),
+      mod7TyreHotColor: _colorFromJson(m['mod7TyreHotColor'], defaults.mod7TyreHotColor),
+      mod7TyreCritColor: _colorFromJson(m['mod7TyreCritColor'], defaults.mod7TyreCritColor),
+      mod7RpmLowColor: _colorFromJson(m['mod7RpmLowColor'], defaults.mod7RpmLowColor),
+      mod7RpmMidColor: _colorFromJson(m['mod7RpmMidColor'], defaults.mod7RpmMidColor),
+      mod7RpmHighColor: _colorFromJson(m['mod7RpmHighColor'], defaults.mod7RpmHighColor),
+      mod7RpmLimColor: _colorFromJson(m['mod7RpmLimColor'], defaults.mod7RpmLimColor),
+      mod7GearColor: _colorFromJson(m['mod7GearColor'], defaults.mod7GearColor),
+      mod7SpeedColor: _colorFromJson(m['mod7SpeedColor'], defaults.mod7SpeedColor),
+      mod7DrsActiveColor: _colorFromJson(m['mod7DrsActiveColor'], defaults.mod7DrsActiveColor),
+      mod7ErsColor: _colorFromJson(m['mod7ErsColor'], defaults.mod7ErsColor),
+      mod7RpmBoxColor: _colorFromJson(m['mod7RpmBoxColor'], defaults.mod7RpmBoxColor),
+      mod7ButtonsColor: _colorFromJson(m['mod7ButtonsColor'], defaults.mod7ButtonsColor),
+      mod8BgColor: _colorFromJson(m['mod8BgColor'], defaults.mod8BgColor),
+      mod8BgMediaPath: m['mod8BgMediaPath'] as String?,
+      mod8SteerColor: _colorFromJson(m['mod8SteerColor'], defaults.mod8SteerColor),
+      mod8GasColor: _colorFromJson(m['mod8GasColor'], defaults.mod8GasColor),
+      mod8BrakeColor: _colorFromJson(m['mod8BrakeColor'], defaults.mod8BrakeColor),
+      mod8RadarColor: _colorFromJson(m['mod8RadarColor'], defaults.mod8RadarColor),
+      mod8CruiseColor: _colorFromJson(m['mod8CruiseColor'], defaults.mod8CruiseColor),
+      mod8HoldButtonsColor: _colorFromJson(
+        m['mod8HoldButtonsColor'],
+        defaults.mod8HoldButtonsColor,
+      ),
+      mod8GearBtnColor: _colorFromJson(m['mod8GearBtnColor'], defaults.mod8GearBtnColor),
+      mod8OverlayBgColor: _colorFromJson(m['mod8OverlayBgColor'], defaults.mod8OverlayBgColor),
+      mod8OverlayBorderColor: _colorFromJson(
+        m['mod8OverlayBorderColor'],
+        defaults.mod8OverlayBorderColor,
+      ),
+      mod8OverlaySteerColor: _colorFromJson(
+        m['mod8OverlaySteerColor'],
+        defaults.mod8OverlaySteerColor,
+      ),
+      mod8OverlayGasColor: _colorFromJson(m['mod8OverlayGasColor'], defaults.mod8OverlayGasColor),
+      mod8OverlayBrakeColor: _colorFromJson(
+        m['mod8OverlayBrakeColor'],
+        defaults.mod8OverlayBrakeColor,
+      ),
+      mod8OverlayGearBtnColor: _colorFromJson(
+        m['mod8OverlayGearBtnColor'],
+        defaults.mod8OverlayGearBtnColor,
+      ),
+      mod9BgColor: _colorFromJson(m['mod9BgColor'], defaults.mod9BgColor),
+      mod9BgMediaPath: m['mod9BgMediaPath'] as String?,
+      mod9ThrottleColor: _colorFromJson(m['mod9ThrottleColor'], defaults.mod9ThrottleColor),
+      mod9WepColor: _colorFromJson(m['mod9WepColor'], defaults.mod9WepColor),
+      mod9AvionicsColor: _colorFromJson(m['mod9AvionicsColor'], defaults.mod9AvionicsColor),
+      mod9RudderColor: _colorFromJson(m['mod9RudderColor'], defaults.mod9RudderColor),
+      mod9HudColor: _colorFromJson(m['mod9HudColor'], defaults.mod9HudColor),
+      mod9FireBtnColor: _colorFromJson(m['mod9FireBtnColor'], defaults.mod9FireBtnColor),
+      mod9WeaponBtnColor: _colorFromJson(m['mod9WeaponBtnColor'], defaults.mod9WeaponBtnColor),
+      mod9HatSwitchColor: _colorFromJson(m['mod9HatSwitchColor'], defaults.mod9HatSwitchColor),
+      zeroOrientation: _intFromJson(m['zeroOrientation'], defaults.zeroOrientation),
+      calibPitchOffset: _doubleFromJson(m['calibPitchOffset'], defaults.calibPitchOffset),
+      calibRollOffset: _doubleFromJson(m['calibRollOffset'], defaults.calibRollOffset),
+      useGyroscope: _boolFromJson(m['useGyroscope'], defaults.useGyroscope),
+      steeringAngle: _doubleFromJson(m['steeringAngle'], defaults.steeringAngle),
+      swipeSensitivity: _doubleFromJson(m['swipeSensitivity'], defaults.swipeSensitivity),
+      clickMaxDistance: _doubleFromJson(m['clickMaxDistance'], defaults.clickMaxDistance),
+      clickMaxDuration: _doubleFromJson(m['clickMaxDuration'], defaults.clickMaxDuration),
+      defaultDrivingMode: _intFromJson(m['defaultDrivingMode'], defaults.defaultDrivingMode),
+      isCumulativeSteering: _boolFromJson(
+        m['isCumulativeSteering'],
+        defaults.isCumulativeSteering,
+      ),
+      pedalIconAccelerationRate: _doubleFromJson(
+        m['pedalIconAccelerationRate'],
+        defaults.pedalIconAccelerationRate,
+      ),
+      mod6PedalStyle: _intFromJson(m['mod6PedalStyle'], defaults.mod6PedalStyle),
+      clutchIconAccelerationRate: _doubleFromJson(
+        m['clutchIconAccelerationRate'],
+        defaults.clutchIconAccelerationRate,
+      ),
+      clutchType: _intFromJson(m['clutchType'], defaults.clutchType),
+      clutchKey: _intFromJson(m['clutchKey'], defaults.clutchKey),
+      handbrakeType: _intFromJson(m['handbrakeType'], defaults.handbrakeType),
+      handbrakeKey: _intFromJson(m['handbrakeKey'], defaults.handbrakeKey),
+      isAddonMasterSwitchActive: _boolFromJson(
+        m['isAddonMasterSwitchActive'],
+        defaults.isAddonMasterSwitchActive,
+      ),
+      activeAddonIds: (m['activeAddonIds'] is List)
+          ? (m['activeAddonIds'] as List).map((e) => e.toString()).toList()
+          : defaults.activeAddonIds,
+      dlcHapticRpm: _boolFromJson(m['dlcHapticRpm'], defaults.dlcHapticRpm),
+      dlcHapticSlip: _boolFromJson(m['dlcHapticSlip'], defaults.dlcHapticSlip),
+      dlcHapticGear: _boolFromJson(m['dlcHapticGear'], defaults.dlcHapticGear),
+      dlcHapticCollision: _boolFromJson(m['dlcHapticCollision'], defaults.dlcHapticCollision),
+      mod6EnableClutch: _boolFromJson(m['mod6EnableClutch'], defaults.mod6EnableClutch),
+      mod6EnableHandbrake: _boolFromJson(m['mod6EnableHandbrake'], defaults.mod6EnableHandbrake),
+      mod6SteeringStyle: _intFromJson(m['mod6SteeringStyle'], defaults.mod6SteeringStyle),
+      steeringTurnRightColor: _colorFromJson(
+        m['steeringTurnRightColor'],
+        defaults.steeringTurnRightColor,
+      ),
+      steeringTurnLeftColor: _colorFromJson(
+        m['steeringTurnLeftColor'],
+        defaults.steeringTurnLeftColor,
+      ),
+      mod6HornKey: _intFromJson(m['mod6HornKey'], defaults.mod6HornKey),
+      mod6SlotLeft: _intFromJson(m['mod6SlotLeft'], defaults.mod6SlotLeft),
+      mod6SlotLeftInner: _intFromJson(m['mod6SlotLeftInner'], defaults.mod6SlotLeftInner),
+      mod6SlotRightInner: _intFromJson(m['mod6SlotRightInner'], defaults.mod6SlotRightInner),
+      mod6SlotRight: _intFromJson(m['mod6SlotRight'], defaults.mod6SlotRight),
+      simulatedHapticEnabled: _boolFromJson(
+        m['simulatedHapticEnabled'],
+        defaults.simulatedHapticEnabled,
+      ),
+      globalHapticType: _intFromJson(m['globalHapticType'], defaults.globalHapticType),
+      globalHapticTrigger: _intFromJson(m['globalHapticTrigger'], defaults.globalHapticTrigger),
+      customButtonHapticTypes: _intIntMapFromJson(m['customButtonHapticTypes']),
+      customButtonHapticTriggers: _intIntMapFromJson(m['customButtonHapticTriggers']),
+      customButtonHapticEnabled: _intBoolMapFromJson(m['customButtonHapticEnabled']),
+      customLayout5Json: m['customLayout5Json'] as String?,
+      layout5Profiles: (m['layout5Profiles'] is Map)
+          ? (m['layout5Profiles'] as Map).map(
+              (k, v) => MapEntry(k.toString(), v.toString()),
+            )
+          : defaults.layout5Profiles,
+      activeLayout5Profile: m['activeLayout5Profile'] as String?,
+      joystickSensitivity: _doubleFromJson(
+        m['joystickSensitivity'],
+        defaults.joystickSensitivity,
+      ),
+      gyroCenterMode: _intFromJson(m['gyroCenterMode'], defaults.gyroCenterMode),
+      gyroAutoCenterDuration: _doubleFromJson(
+        m['gyroAutoCenterDuration'],
+        defaults.gyroAutoCenterDuration,
+      ),
+      includePitchInDeadzone: _boolFromJson(
+        m['includePitchInDeadzone'],
+        defaults.includePitchInDeadzone,
+      ),
+      gyroLookEnabled: _boolFromJson(m['gyroLookEnabled'], defaults.gyroLookEnabled),
+      gyroLookStyle: _intFromJson(m['gyroLookStyle'], defaults.gyroLookStyle),
+      gyroLookMode: _intFromJson(m['gyroLookMode'], defaults.gyroLookMode),
+      gyroLookSensitivity: _doubleFromJson(
+        m['gyroLookSensitivity'],
+        defaults.gyroLookSensitivity,
+      ),
+      gyroLookDeadzone: _doubleFromJson(m['gyroLookDeadzone'], defaults.gyroLookDeadzone),
+      joystickMode: _intFromJson(m['joystickMode'], defaults.joystickMode),
+      globalButtonPressMode: _intFromJson(
+        m['globalButtonPressMode'],
+        defaults.globalButtonPressMode,
+      ),
+      globalButtonPressDurationMs: _intFromJson(
+        m['globalButtonPressDurationMs'],
+        defaults.globalButtonPressDurationMs,
+      ),
+      customButtonPressModes: _intIntMapFromJson(m['customButtonPressModes']),
+      customButtonPressDurationsMs: _intIntMapFromJson(m['customButtonPressDurationsMs']),
+      customMacros: _macrosMapFromJson(m['customMacros']),
+      volumeUpAction: _intFromJson(m['volumeUpAction'], defaults.volumeUpAction),
+      volumeDownAction: _intFromJson(m['volumeDownAction'], defaults.volumeDownAction),
+      m0TapLeft: _intFromJson(m['m0TapLeft'], defaults.m0TapLeft),
+      m0TapRight: _intFromJson(m['m0TapRight'], defaults.m0TapRight),
+      m1TapLeft: _intFromJson(m['m1TapLeft'], defaults.m1TapLeft),
+      m1TapRight: _intFromJson(m['m1TapRight'], defaults.m1TapRight),
+      m2Key1: _intFromJson(m['m2Key1'], defaults.m2Key1),
+      m2Key2: _intFromJson(m['m2Key2'], defaults.m2Key2),
+      m2Key3: _intFromJson(m['m2Key3'], defaults.m2Key3),
+      m2Key4: _intFromJson(m['m2Key4'], defaults.m2Key4),
+      m2TapLeft: _intFromJson(m['m2TapLeft'], defaults.m2TapLeft),
+      m2TapRight: _intFromJson(m['m2TapRight'], defaults.m2TapRight),
+      m3Key1: _intFromJson(m['m3Key1'], defaults.m3Key1),
+      m3Key2: _intFromJson(m['m3Key2'], defaults.m3Key2),
+      m3Key3: _intFromJson(m['m3Key3'], defaults.m3Key3),
+      m3Key4: _intFromJson(m['m3Key4'], defaults.m3Key4),
+      m3Key5: _intFromJson(m['m3Key5'], defaults.m3Key5),
+      m3TapLeft: _intFromJson(m['m3TapLeft'], defaults.m3TapLeft),
+      m3TapRight: _intFromJson(m['m3TapRight'], defaults.m3TapRight),
+      m4Key1: _intFromJson(m['m4Key1'], defaults.m4Key1),
+      m4Key2: _intFromJson(m['m4Key2'], defaults.m4Key2),
+      m4Key3: _intFromJson(m['m4Key3'], defaults.m4Key3),
+      m4Key4: _intFromJson(m['m4Key4'], defaults.m4Key4),
+      m4KeyBottom: _intFromJson(m['m4KeyBottom'], defaults.m4KeyBottom),
+      m4TapLeft: _intFromJson(m['m4TapLeft'], defaults.m4TapLeft),
+      m4TapRight: _intFromJson(m['m4TapRight'], defaults.m4TapRight),
+      gasSwipeUp: _intFromJson(m['gasSwipeUp'], defaults.gasSwipeUp),
+      gasSwipeDown: _intFromJson(m['gasSwipeDown'], defaults.gasSwipeDown),
+      gasSwipeLeft: _intFromJson(m['gasSwipeLeft'], defaults.gasSwipeLeft),
+      gasSwipeRight: _intFromJson(m['gasSwipeRight'], defaults.gasSwipeRight),
+      gasSwipeUpLeft: _intFromJson(m['gasSwipeUpLeft'], defaults.gasSwipeUpLeft),
+      gasSwipeUpRight: _intFromJson(m['gasSwipeUpRight'], defaults.gasSwipeUpRight),
+      gasSwipeDownLeft: _intFromJson(m['gasSwipeDownLeft'], defaults.gasSwipeDownLeft),
+      gasSwipeDownRight: _intFromJson(m['gasSwipeDownRight'], defaults.gasSwipeDownRight),
+      brakeSwipeUp: _intFromJson(m['brakeSwipeUp'], defaults.brakeSwipeUp),
+      brakeSwipeDown: _intFromJson(m['brakeSwipeDown'], defaults.brakeSwipeDown),
+      brakeSwipeLeft: _intFromJson(m['brakeSwipeLeft'], defaults.brakeSwipeLeft),
+      brakeSwipeRight: _intFromJson(m['brakeSwipeRight'], defaults.brakeSwipeRight),
+      brakeSwipeUpLeft: _intFromJson(m['brakeSwipeUpLeft'], defaults.brakeSwipeUpLeft),
+      brakeSwipeUpRight: _intFromJson(m['brakeSwipeUpRight'], defaults.brakeSwipeUpRight),
+      brakeSwipeDownLeft: _intFromJson(m['brakeSwipeDownLeft'], defaults.brakeSwipeDownLeft),
+      brakeSwipeDownRight: _intFromJson(m['brakeSwipeDownRight'], defaults.brakeSwipeDownRight),
+      gasTap: _intFromJson(m['gasTap'], defaults.gasTap),
+      brakeTap: _intFromJson(m['brakeTap'], defaults.brakeTap),
+      f1UseImperial: _boolFromJson(m['f1UseImperial'], defaults.f1UseImperial),
+      f1LowPassAlpha: _doubleFromJson(m['f1LowPassAlpha'], defaults.f1LowPassAlpha),
+      f1HapticRevLimiter: _boolFromJson(m['f1HapticRevLimiter'], defaults.f1HapticRevLimiter),
+      f1HapticWheelSlip: _boolFromJson(m['f1HapticWheelSlip'], defaults.f1HapticWheelSlip),
+      m7Key1: _intFromJson(m['m7Key1'], defaults.m7Key1),
+      m7Key2: _intFromJson(m['m7Key2'], defaults.m7Key2),
+      m7Key3: _intFromJson(m['m7Key3'], defaults.m7Key3),
+      m7Key4: _intFromJson(m['m7Key4'], defaults.m7Key4),
+      hudShowRpm: _boolFromJson(m['hudShowRpm'], defaults.hudShowRpm),
+      hudShowSpeed: _boolFromJson(m['hudShowSpeed'], defaults.hudShowSpeed),
+      hudShowGear: _boolFromJson(m['hudShowGear'], defaults.hudShowGear),
+      hudShowDrsErs: _boolFromJson(m['hudShowDrsErs'], defaults.hudShowDrsErs),
+      hudShowPedalBars: _boolFromJson(m['hudShowPedalBars'], defaults.hudShowPedalBars),
+      hudShowTyres: _boolFromJson(m['hudShowTyres'], defaults.hudShowTyres),
+      hudShowRpmBox: _boolFromJson(m['hudShowRpmBox'], defaults.hudShowRpmBox),
+      hudShowStatusFlags: _boolFromJson(m['hudShowStatusFlags'], defaults.hudShowStatusFlags),
+      chillOverlayEnabled: _boolFromJson(m['chillOverlayEnabled'], defaults.chillOverlayEnabled),
+      chillOverlayGearButtons: _boolFromJson(
+        m['chillOverlayGearButtons'],
+        defaults.chillOverlayGearButtons,
+      ),
+      chillOverlayStyle: _intFromJson(m['chillOverlayStyle'], defaults.chillOverlayStyle),
+      chillSteeringAxis: _intFromJson(m['chillSteeringAxis'], defaults.chillSteeringAxis),
+      chillSteeringSensitivity: _doubleFromJson(
+        m['chillSteeringSensitivity'],
+        defaults.chillSteeringSensitivity,
+      ),
+      chillGasBrakeSensitivity: _doubleFromJson(
+        m['chillGasBrakeSensitivity'],
+        defaults.chillGasBrakeSensitivity,
+      ),
+      flightPitchSensitivity: _doubleFromJson(
+        m['flightPitchSensitivity'],
+        defaults.flightPitchSensitivity,
+      ),
+      flightRollSensitivity: _doubleFromJson(
+        m['flightRollSensitivity'],
+        defaults.flightRollSensitivity,
+      ),
+      flightYawSensitivity: _doubleFromJson(
+        m['flightYawSensitivity'],
+        defaults.flightYawSensitivity,
+      ),
+      flightPitchDeadzone: _doubleFromJson(
+        m['flightPitchDeadzone'],
+        defaults.flightPitchDeadzone,
+      ),
+      flightRollDeadzone: _doubleFromJson(m['flightRollDeadzone'], defaults.flightRollDeadzone),
+      flightYawDeadzone: _doubleFromJson(m['flightYawDeadzone'], defaults.flightYawDeadzone),
+      flightInvertPitch: _boolFromJson(m['flightInvertPitch'], defaults.flightInvertPitch),
+      flightInvertRoll: _boolFromJson(m['flightInvertRoll'], defaults.flightInvertRoll),
+      flightInvertYaw: _boolFromJson(m['flightInvertYaw'], defaults.flightInvertYaw),
+      flightThrustDetents: _intFromJson(m['flightThrustDetents'], defaults.flightThrustDetents),
+      m9FireKey: _intFromJson(m['m9FireKey'], defaults.m9FireKey),
+      m9MissileKey: _intFromJson(m['m9MissileKey'], defaults.m9MissileKey),
+      m9LockKey: _intFromJson(m['m9LockKey'], defaults.m9LockKey),
+      m9FlareKey: _intFromJson(m['m9FlareKey'], defaults.m9FlareKey),
+      m9HeavyGunKey: _intFromJson(m['m9HeavyGunKey'], defaults.m9HeavyGunKey),
+      m9BombKey: _intFromJson(m['m9BombKey'], defaults.m9BombKey),
+      m9MapKey: _intFromJson(m['m9MapKey'], defaults.m9MapKey),
+      m9FlapDownKey: _intFromJson(m['m9FlapDownKey'], defaults.m9FlapDownKey),
+      m9FlapUpKey: _intFromJson(m['m9FlapUpKey'], defaults.m9FlapUpKey),
+      m9GearKey: _intFromJson(m['m9GearKey'], defaults.m9GearKey),
+      m9AirbrakeKey: _intFromJson(m['m9AirbrakeKey'], defaults.m9AirbrakeKey),
+      m9RudderLeftKey: _intFromJson(m['m9RudderLeftKey'], defaults.m9RudderLeftKey),
+      m9RudderRightKey: _intFromJson(m['m9RudderRightKey'], defaults.m9RudderRightKey),
+      mfdShowArtificialHorizon: _boolFromJson(
+        m['mfdShowArtificialHorizon'],
+        defaults.mfdShowArtificialHorizon,
+      ),
+      mfdShowSpeedTape: _boolFromJson(m['mfdShowSpeedTape'], defaults.mfdShowSpeedTape),
+      mfdShowAltitudeTape: _boolFromJson(
+        m['mfdShowAltitudeTape'],
+        defaults.mfdShowAltitudeTape,
+      ),
+      mfdShowEngineGauges: _boolFromJson(
+        m['mfdShowEngineGauges'],
+        defaults.mfdShowEngineGauges,
+      ),
+      mfdGyroFilterAlpha: _doubleFromJson(m['mfdGyroFilterAlpha'], defaults.mfdGyroFilterAlpha),
+    );
+  }
 }

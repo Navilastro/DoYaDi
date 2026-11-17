@@ -1,4 +1,5 @@
 import 'dart:ui';
+import '../config/app_config.dart';
 
 // ---- Enum Tanımları ----
 
@@ -64,6 +65,8 @@ class Layout5Item {
   Color bgColor;
   Color textColor;
   String? label; // null → varsayılan "{N} Buton"
+  String? mediaPath; // Buton/Bar/Taban için resim, GIF veya video
+  String? secondaryMediaPath; // Joystick yuvarlağı (thumb) için medya
   
   // Z-Index (Katman Sırası)
   int zIndex;
@@ -110,6 +113,8 @@ class Layout5Item {
     this.bgColor = const Color(0xFF1A1A3E),
     this.textColor = const Color(0xFFFFFFFF),
     this.label,
+    this.mediaPath,
+    this.secondaryMediaPath,
     this.zIndex = 1,
     this.mode = ButtonMode.key,
     this.keyIndex = 3,
@@ -142,6 +147,8 @@ class Layout5Item {
     'bgColor': bgColor.toARGB32(),
     'textColor': textColor.toARGB32(),
     'label': label,
+    if (mediaPath != null) 'mediaPath': mediaPath,
+    if (secondaryMediaPath != null) 'secondaryMediaPath': secondaryMediaPath,
     'zIndex': zIndex,
     'mode': mode.index,
     'keyIndex': keyIndex,
@@ -198,6 +205,8 @@ class Layout5Item {
       bgColor: Color(json['bgColor'] as int),
       textColor: Color(json['textColor'] as int),
       label: json['label'] as String?,
+      mediaPath: json['mediaPath'] as String?,
+      secondaryMediaPath: json['secondaryMediaPath'] as String?,
       zIndex: json['zIndex'] as int? ?? 1,
       mode: ButtonMode.values[json['mode'] as int],
       keyIndex: json['keyIndex'] as int,
@@ -236,6 +245,10 @@ class Layout5Item {
     Color? textColor,
     String? label,
     bool clearLabel = false,
+    String? mediaPath,
+    bool clearMediaPath = false,
+    String? secondaryMediaPath,
+    bool clearSecondaryMediaPath = false,
     int? zIndex,
     ButtonMode? mode,
     int? keyIndex,
@@ -269,6 +282,10 @@ class Layout5Item {
       bgColor: bgColor ?? this.bgColor,
       textColor: textColor ?? this.textColor,
       label: clearLabel ? null : (label ?? this.label),
+      mediaPath: clearMediaPath ? null : (mediaPath ?? this.mediaPath),
+      secondaryMediaPath: clearSecondaryMediaPath
+          ? null
+          : (secondaryMediaPath ?? this.secondaryMediaPath),
       zIndex: zIndex ?? this.zIndex,
       mode: mode ?? this.mode,
       keyIndex: keyIndex ?? this.keyIndex,
@@ -300,9 +317,86 @@ class Layout5Item {
   }
 }
 
+// ---- Kısıtlı Mod 5 (SanReVye) Öğe Filtresi ----
+
+/// SanReVye flavor'ında Mod 5 içinde izin verilen eleman tiplerini döndürür.
+/// Yalnızca klavye tuşları (kare/soft buton), touchpad ve makro desteklenir.
+bool isLayout5TypeAllowedForFlavor(Layout5ItemType type) {
+  if (!AppConfig.instance.hasRestrictedMod5) return true;
+  return type == Layout5ItemType.buttonSquare ||
+      type == Layout5ItemType.buttonSoft ||
+      type == Layout5ItemType.touchpad;
+}
+
 // ---- Varsayılan Layout ----
 
 List<Layout5Item> defaultLayout5() {
+  if (AppConfig.instance.hasRestrictedMod5) {
+    return [
+      Layout5Item(
+        id: 'buttonSoft_w',
+        type: Layout5ItemType.buttonSoft,
+        left: 0.14,
+        top: 0.25,
+        width: 0.10,
+        height: 0.16,
+        bgColor: const Color(0xFF1A1A3E),
+        textColor: const Color(0xFF40E0D0),
+        label: 'W',
+        mode: ButtonMode.key,
+        keyIndex: 119,
+      ),
+      Layout5Item(
+        id: 'buttonSoft_a',
+        type: Layout5ItemType.buttonSoft,
+        left: 0.03,
+        top: 0.46,
+        width: 0.10,
+        height: 0.16,
+        bgColor: const Color(0xFF1A1A3E),
+        textColor: const Color(0xFF40E0D0),
+        label: 'A',
+        mode: ButtonMode.key,
+        keyIndex: 97,
+      ),
+      Layout5Item(
+        id: 'buttonSoft_s',
+        type: Layout5ItemType.buttonSoft,
+        left: 0.14,
+        top: 0.46,
+        width: 0.10,
+        height: 0.16,
+        bgColor: const Color(0xFF1A1A3E),
+        textColor: const Color(0xFF40E0D0),
+        label: 'S',
+        mode: ButtonMode.key,
+        keyIndex: 115,
+      ),
+      Layout5Item(
+        id: 'buttonSoft_d',
+        type: Layout5ItemType.buttonSoft,
+        left: 0.25,
+        top: 0.46,
+        width: 0.10,
+        height: 0.16,
+        bgColor: const Color(0xFF1A1A3E),
+        textColor: const Color(0xFF40E0D0),
+        label: 'D',
+        mode: ButtonMode.key,
+        keyIndex: 100,
+      ),
+      Layout5Item(
+        id: 'touchpad_0',
+        type: Layout5ItemType.touchpad,
+        left: 0.54,
+        top: 0.22,
+        width: 0.42,
+        height: 0.65,
+        bgColor: const Color(0xFF12122A),
+        textColor: const Color(0xFF40E0D0),
+      ),
+    ];
+  }
   return [
     Layout5Item(
       id: 'brake_bar',

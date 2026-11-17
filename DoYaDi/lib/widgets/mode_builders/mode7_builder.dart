@@ -104,6 +104,9 @@ extension _Mode7BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
   }
 
   Widget _buildM7StylizedButton(AppSettings s, int key, String defaultLabel) {
+    final btnColor = s.mod7ButtonsColor;
+    final isPressed = pressedKeys.contains(key);
+    final hasBgMedia = AppMediaHelper.hasMedia(s.modeBackgroundMedia(7));
     return Listener(
       behavior: HitTestBehavior.opaque,
       onPointerDown: (_) => handleButtonDown(key),
@@ -114,21 +117,28 @@ extension _Mode7BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         height: 50,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: const Color(0xFF101018),
-          border: Border.all(color: s.detailColor.withValues(alpha: 0.6), width: 1.5),
+          color: isPressed
+              ? btnColor.withValues(alpha: 0.32)
+              : (hasBgMedia
+                  ? Colors.black.withValues(alpha: 0.45)
+                  : const Color(0xFF101018)),
+          border: Border.all(
+            color: btnColor.withValues(alpha: isPressed ? 1.0 : 0.65),
+            width: isPressed ? 2.0 : 1.5,
+          ),
           boxShadow: [
             BoxShadow(
-              color: s.detailColor.withValues(alpha: 0.2),
+              color: btnColor.withValues(alpha: isPressed ? 0.45 : 0.2),
               blurRadius: 8,
               spreadRadius: 1,
-            )
-          ]
+            ),
+          ],
         ),
         alignment: Alignment.center,
         child: Text(
           defaultLabel,
           style: TextStyle(
-            color: s.detailColor,
+            color: btnColor,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -197,8 +207,14 @@ class _F1HudContentState extends State<_F1HudContent>
         final bool isRevLimiter =
             isTelemetryActive ? data.isRevLimiter : (widget.gasPercentage > 0.96);
 
+        final hasBgMedia = AppMediaHelper.hasMedia(s.modeBackgroundMedia(7));
+        final bgLum = s.modeBackgroundColor(7).computeLuminance();
+        final mutedCol = hasBgMedia
+            ? Colors.white70
+            : (bgLum > 0.5 ? Colors.black54 : const Color(0xFF8888AA));
+
         return Container(
-          color: s.backgroundColor,
+          color: Colors.transparent,
           child: SafeArea(
             child: Column(
               children: [
@@ -219,6 +235,10 @@ class _F1HudContentState extends State<_F1HudContent>
                                 blinkPhase: isRevLimiter
                                     ? _blinkController.value
                                     : 1.0,
+                                lowColor: s.mod7RpmLowColor,
+                                midColor: s.mod7RpmMidColor,
+                                highColor: s.mod7RpmHighColor,
+                                limColor: s.mod7RpmLimColor,
                               ),
                               child: const SizedBox.expand(),
                             );
@@ -232,64 +252,72 @@ class _F1HudContentState extends State<_F1HudContent>
                 if (s.hudShowSpeed || s.hudShowGear || s.hudShowDrsErs)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // DRS Göstergesi
-                        if (s.hudShowDrsErs) ...[
-                          _buildDrsIndicator(data.drsStatus, s),
-                          const SizedBox(width: 12),
-                        ],
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // DRS Göstergesi
+                          if (s.hudShowDrsErs) ...[
+                            _buildDrsIndicator(data.drsStatus, s),
+                            const SizedBox(width: 12),
+                          ],
 
-                        // Hız
-                        if (s.hudShowSpeed) ...[
-                          Column(
-                            children: [
-                              Text(
-                                s.f1UseImperial
-                                    ? data.speedMph.toStringAsFixed(0)
-                                    : data.speedKmh.toStringAsFixed(0),
-                                style: TextStyle(
-                                  color: s.detailColor,
-                                  fontSize: 42,
-                                  fontWeight: FontWeight.w300,
-                                  fontFamily: 'monospace',
-                                ),
+                          // Hız
+                          if (s.hudShowSpeed) ...[
+                            BlurredTextChip(
+                              enabled: hasBgMedia,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    s.f1UseImperial
+                                        ? data.speedMph.toStringAsFixed(0)
+                                        : data.speedKmh.toStringAsFixed(0),
+                                    style: TextStyle(
+                                      color: s.mod7SpeedColor,
+                                      fontSize: 42,
+                                      fontWeight: FontWeight.w300,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                  Text(
+                                    s.f1UseImperial ? 'MPH' : 'KM/H',
+                                    style: TextStyle(
+                                      color: mutedCol,
+                                      fontSize: 10,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                s.f1UseImperial ? 'MPH' : 'KM/H',
-                                style: const TextStyle(
-                                  color: Color(0xFF666688),
-                                  fontSize: 10,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (s.hudShowGear) const SizedBox(width: 16),
-                        ],
+                            ),
+                            if (s.hudShowGear) const SizedBox(width: 16),
+                          ],
 
-                        // 7-Segment Vites
-                        if (s.hudShowGear) ...[
-                          RepaintBoundary(
-                            child: SizedBox(
-                              width: 48,
-                              height: 72,
-                              child: CustomPaint(
-                                painter: SevenSegmentPainter(
-                                  gear: data.gear,
-                                  activeColor: _gearColor(data.gear),
+                          // 7-Segment Vites
+                          if (s.hudShowGear) ...[
+                            RepaintBoundary(
+                              child: SizedBox(
+                                width: 48,
+                                height: 72,
+                                child: CustomPaint(
+                                  painter: SevenSegmentPainter(
+                                    gear: data.gear,
+                                    activeColor: _gearColor(data.gear, s),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          if (s.hudShowDrsErs) const SizedBox(width: 12),
-                        ],
+                            if (s.hudShowDrsErs) const SizedBox(width: 12),
+                          ],
 
-                        // ERS Göstergesi
-                        if (s.hudShowDrsErs)
-                          _buildErsBar(data.ersFraction, s),
-                      ],
+                          // ERS Göstergesi
+                          if (s.hudShowDrsErs)
+                            _buildErsBar(data.ersFraction, s),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -304,6 +332,8 @@ class _F1HudContentState extends State<_F1HudContent>
                             widget.isGasLeft ? 'GAZ' : 'FREN',
                             widget.isGasLeft ? widget.gasPercentage : widget.brakePercentage,
                             widget.isGasLeft ? s.gasColor : s.brakeColor,
+                            mutedCol,
+                            s.pedalBgColor,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -312,6 +342,8 @@ class _F1HudContentState extends State<_F1HudContent>
                             widget.isGasLeft ? 'FREN' : 'GAZ',
                             widget.isGasLeft ? widget.brakePercentage : widget.gasPercentage,
                             widget.isGasLeft ? s.brakeColor : s.gasColor,
+                            mutedCol,
+                            s.pedalBgColor,
                           ),
                         ),
                       ],
@@ -333,6 +365,10 @@ class _F1HudContentState extends State<_F1HudContent>
                               child: TyreTempWidget(
                                 tyreTemps: data.tyreTemps,
                                 tyreWears: data.tyreWears,
+                                coldColor: s.mod7TyreColdColor,
+                                optColor: s.mod7TyreOptColor,
+                                hotColor: s.mod7TyreHotColor,
+                                critColor: s.mod7TyreCritColor,
                               ),
                             )
                           else
@@ -341,42 +377,56 @@ class _F1HudContentState extends State<_F1HudContent>
                           // Delta + Durum
                           if (s.hudShowRpmBox || s.hudShowStatusFlags)
                             Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  // RPM Kutusu (kırmızı çerçeveli telemetri kutusu)
-                                  if (s.hudShowRpmBox)
-                                    _buildRpmBox(data, isTelemetryActive, isRevLimiter),
-                                  // Delta Zamanı (yalnızca oyun delta verisi gönderirse)
-                                  if (data.deltaTimeMs != 0) ...[
-                                    const SizedBox(height: 6),
-                                    _buildDeltaTime(data.deltaTimeSec),
-                                  ],
-                                  if (s.hudShowStatusFlags) ...[
-                                    const SizedBox(height: 8),
-                                    // Durum Bayrakları
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        if (data.isAbsActive)
-                                          _buildStatusChip('ABS', const Color(0xFFFF9800)),
-                                        if (data.isTractionControlActive)
-                                          _buildStatusChip('TC', const Color(0xFFFFEB3B)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    // Tekerlek Kayma Göstergesi
-                                    if (data.hasWheelSlip)
-                                      Text(
-                                        '⚠ SLIP',
-                                        style: TextStyle(
-                                          color: const Color(0xFFFF1744).withValues(alpha: 0.9),
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                              child: LayoutBuilder(
+                                builder: (context, colConstraints) {
+                                  return FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxWidth: colConstraints.maxWidth,
                                       ),
-                                  ],
-                                ],
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // RPM Kutusu
+                                          if (s.hudShowRpmBox)
+                                            _buildRpmBox(data, isTelemetryActive, isRevLimiter, s),
+                                          // Delta Zamanı (yalnızca oyun delta verisi gönderirse)
+                                          if (data.deltaTimeMs != 0) ...[
+                                            const SizedBox(height: 6),
+                                            _buildDeltaTime(data.deltaTimeSec),
+                                          ],
+                                          if (s.hudShowStatusFlags) ...[
+                                            const SizedBox(height: 8),
+                                            // Durum Bayrakları
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                if (data.isAbsActive)
+                                                  _buildStatusChip('ABS', const Color(0xFFFF9800)),
+                                                if (data.isTractionControlActive)
+                                                  _buildStatusChip('TC', const Color(0xFFFFEB3B)),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            // Tekerlek Kayma Göstergesi
+                                            if (data.hasWheelSlip)
+                                              Text(
+                                                '⚠ SLIP',
+                                                style: TextStyle(
+                                                  color: const Color(0xFFFF1744).withValues(alpha: 0.9),
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             )
                           else
@@ -399,25 +449,22 @@ class _F1HudContentState extends State<_F1HudContent>
 
   Widget _buildDrsIndicator(int status, AppSettings s) {
     Color color;
-    String label;
+    const String label = 'DRS';
     switch (status) {
       case 1:
-        color = const Color(0xFF66BB6A);
-        label = 'DRS';
+        color = s.mod7DrsActiveColor.withValues(alpha: 0.65);
         break;
       case 2:
-        color = const Color(0xFF00E676);
-        label = 'DRS';
+        color = s.mod7DrsActiveColor;
         break;
       default:
-        color = const Color(0xFF333344);
-        label = 'DRS';
+        color = const Color(0xFF4A4A60);
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: status == 2 ? color.withValues(alpha: 0.2) : Colors.transparent,
+        color: status == 2 ? color.withValues(alpha: 0.22) : Colors.black26,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color, width: status == 2 ? 2 : 1),
       ),
@@ -441,20 +488,26 @@ class _F1HudContentState extends State<_F1HudContent>
         child: LinearProgressIndicator(
           value: fraction,
           backgroundColor: const Color(0xFF1A1A2E),
-          valueColor: const AlwaysStoppedAnimation(Color(0xFFFFEB3B)),
+          valueColor: AlwaysStoppedAnimation(s.mod7ErsColor),
           borderRadius: BorderRadius.circular(6),
         ),
       ),
     );
   }
 
-  Widget _buildPedalBar(String label, double fraction, Color color) {
+  Widget _buildPedalBar(
+    String label,
+    double fraction,
+    Color color,
+    Color labelColor,
+    Color bgColor,
+  ) {
     return Column(
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF666688),
+          style: TextStyle(
+            color: labelColor,
             fontSize: 9,
             letterSpacing: 1.5,
           ),
@@ -465,14 +518,14 @@ class _F1HudContentState extends State<_F1HudContent>
           child: LinearProgressIndicator(
             value: fraction,
             minHeight: 10,
-            backgroundColor: const Color(0xFF1A1A2E),
+            backgroundColor: bgColor,
             valueColor: AlwaysStoppedAnimation(color),
           ),
         ),
         Text(
           '${(fraction * 100).toStringAsFixed(0)}%',
           style: TextStyle(
-            color: color.withValues(alpha: 0.7),
+            color: color.withValues(alpha: 0.8),
             fontSize: 10,
             fontFamily: 'monospace',
           ),
@@ -481,16 +534,14 @@ class _F1HudContentState extends State<_F1HudContent>
     );
   }
 
-  /// Kırmızı çerçeveli RPM telemetri kutusu.
-  /// - Yeni DLL (flags bit3): gerçek motor devri (ör. 7450)
-  /// - Eski DLL: yalnızca oran bilindiği için yüzde (ör. %82)
-  /// - Telemetri yok: '----'
+  /// Özelleştirilebilir RPM telemetri kutusu.
   Widget _buildRpmBox(
     ExtendedTelemetryData data,
     bool isTelemetryActive,
     bool isRevLimiter,
+    AppSettings s,
   ) {
-    const color = Color(0xFFFF1744);
+    final color = s.mod7RpmBoxColor;
     final String valueText;
     if (!isTelemetryActive) {
       valueText = '----';
@@ -503,10 +554,10 @@ class _F1HudContentState extends State<_F1HudContent>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: isRevLimiter ? 0.35 : 0.1),
+        color: color.withValues(alpha: isRevLimiter ? 0.35 : 0.14),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withValues(alpha: isRevLimiter ? 0.9 : 0.3),
+          color: color.withValues(alpha: isRevLimiter ? 0.9 : 0.4),
           width: isRevLimiter ? 2 : 1,
         ),
       ),
@@ -515,7 +566,7 @@ class _F1HudContentState extends State<_F1HudContent>
         children: [
           Text(
             valueText,
-            style: const TextStyle(
+            style: TextStyle(
               color: color,
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -525,7 +576,7 @@ class _F1HudContentState extends State<_F1HudContent>
           Text(
             'RPM',
             style: TextStyle(
-              color: color.withValues(alpha: 0.7),
+              color: color.withValues(alpha: 0.75),
               fontSize: 9,
               letterSpacing: 2,
             ),
@@ -543,9 +594,9 @@ class _F1HudContentState extends State<_F1HudContent>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(
         '$sign${deltaSec.toStringAsFixed(3)}',
@@ -579,9 +630,8 @@ class _F1HudContentState extends State<_F1HudContent>
     );
   }
 
-  Color _gearColor(int gear) {
-    if (gear == 0) return const Color(0xFF40E0D0);
+  Color _gearColor(int gear, AppSettings s) {
     if (gear == 255) return const Color(0xFFFF9800);
-    return const Color(0xFFFF1744);
+    return s.mod7GearColor;
   }
 }

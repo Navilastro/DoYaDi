@@ -7,6 +7,7 @@ import '../providers/connection_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/app_settings.dart';
 import '../core/utils/app_translations.dart';
+import '../widgets/looping_media_widget.dart';
 
 /// Ayarlar ekranındaki "Ek İçerik" (DLC/Addon) sekmesi.
 class AddonManagerTab extends StatefulWidget {
@@ -264,6 +265,12 @@ class _AddonManagerTabState extends State<AddonManagerTab>
   Widget build(BuildContext context) {
     super.build(context);
     final connProvider = Provider.of<ConnectionProvider>(context);
+    final s = Provider.of<SettingsProvider>(context).settings;
+    final hasBgMedia = AppMediaHelper.hasMedia(s.bgMediaPath);
+    final txt = hasBgMedia ? Colors.white : s.textColor;
+    final sub = hasBgMedia ? Colors.white70 : s.textDisabledColor;
+    final div = hasBgMedia ? Colors.white24 : s.dividerColor;
+    final ac = s.detailColor;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -271,24 +278,21 @@ class _AddonManagerTabState extends State<AddonManagerTab>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── EKLENTİ PANELİ ANAHTARI (MASTER SWITCH) ──
-          Container(
+          GlassContainer(
+            isGlassActive: hasBgMedia,
+            solidBackgroundColor: s.surfaceColor,
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E38),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _isMasterSwitchActive
-                    ? Colors.cyanAccent.withValues(alpha: 0.5)
-                    : Colors.white12,
-              ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isMasterSwitchActive
+                  ? ac.withValues(alpha: 0.5)
+                  : div,
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.extension,
-                  color: _isMasterSwitchActive
-                      ? Colors.cyanAccent
-                      : Colors.white38,
+                  color: _isMasterSwitchActive ? ac : sub,
                   size: 26,
                 ),
                 const SizedBox(width: 12),
@@ -298,8 +302,8 @@ class _AddonManagerTabState extends State<AddonManagerTab>
                     children: [
                       Text(
                         AppTranslations.getText('master_addon_switch'),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: txt,
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -307,8 +311,8 @@ class _AddonManagerTabState extends State<AddonManagerTab>
                       const SizedBox(height: 2),
                       Text(
                         AppTranslations.getText('master_addon_switch_desc'),
-                        style: const TextStyle(
-                          color: Colors.white38,
+                        style: TextStyle(
+                          color: sub,
                           fontSize: 11,
                         ),
                       ),
@@ -318,7 +322,7 @@ class _AddonManagerTabState extends State<AddonManagerTab>
                 Switch(
                   value: _isMasterSwitchActive,
                   onChanged: _onMasterSwitchChanged,
-                  activeThumbColor: Colors.cyanAccent,
+                  activeThumbColor: ac,
                 ),
               ],
             ),
@@ -327,17 +331,11 @@ class _AddonManagerTabState extends State<AddonManagerTab>
           const SizedBox(height: 16),
 
           // ── TELEMETRİ İÇERİK YAPILANDIRMA KARTI ──
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.cyanAccent.withValues(alpha: 0.12),
-                  Colors.deepPurpleAccent.withValues(alpha: 0.12),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.25)),
-            ),
+          GlassContainer(
+            isGlassActive: hasBgMedia,
+            solidBackgroundColor: ac.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: ac.withValues(alpha: 0.25)),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -350,10 +348,10 @@ class _AddonManagerTabState extends State<AddonManagerTab>
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.cyanAccent.withValues(alpha: 0.15),
+                          color: ac.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.tune, color: Colors.cyanAccent, size: 22),
+                        child: Icon(Icons.tune, color: ac, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -362,8 +360,8 @@ class _AddonManagerTabState extends State<AddonManagerTab>
                           children: [
                             Text(
                               AppTranslations.getText('configure_telemetry_contents'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: txt,
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -371,15 +369,15 @@ class _AddonManagerTabState extends State<AddonManagerTab>
                             const SizedBox(height: 2),
                             Text(
                               AppTranslations.getText('configure_telemetry_contents_desc'),
-                              style: const TextStyle(
-                                color: Colors.white54,
+                              style: TextStyle(
+                                color: sub,
                                 fontSize: 11,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 14),
+                      Icon(Icons.arrow_forward_ios, color: sub, size: 14),
                     ],
                   ),
                 ),
@@ -391,23 +389,21 @@ class _AddonManagerTabState extends State<AddonManagerTab>
 
           // Panelin Durumuna Göre İçerik
           if (!_isMasterSwitchActive) ...[
-            Container(
-              width: double.infinity,
+            GlassContainer(
+              isGlassActive: hasBgMedia,
+              solidBackgroundColor: txt.withValues(alpha: 0.03),
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.02),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
-              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: div),
               child: Column(
                 children: [
-                  const Icon(Icons.power_settings_new,
-                      color: Colors.white24, size: 40),
+                  Icon(Icons.power_settings_new,
+                      color: sub.withValues(alpha: 0.6), size: 40),
                   const SizedBox(height: 12),
                   Text(
                     AppTranslations.getText('addon_desc'),
-                    style: const TextStyle(
-                      color: Colors.white54,
+                    style: TextStyle(
+                      color: sub,
                       fontSize: 12,
                       height: 1.5,
                     ),
@@ -550,10 +546,11 @@ class _AddonManagerTabState extends State<AddonManagerTab>
   }
 
   void _showTelemetryConfigModal(BuildContext context, {String? initialCategory}) {
+    final s = Provider.of<SettingsProvider>(context, listen: false).settings;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF141426),
+      backgroundColor: s.surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -562,19 +559,23 @@ class _AddonManagerTabState extends State<AddonManagerTab>
   }
 
   Widget _buildAddonTile(AddonInfo addon) {
+    final s = Provider.of<SettingsProvider>(context, listen: false).settings;
+    final hasBgMedia = AppMediaHelper.hasMedia(s.bgMediaPath);
+    final txt = hasBgMedia ? Colors.white : s.textColor;
+    final sub = hasBgMedia ? Colors.white70 : s.textDisabledColor;
+    final div = hasBgMedia ? Colors.white24 : s.dividerColor;
     final catColor = _categoryColor(addon.category);
     final catIcon = _categoryIcon(addon.category);
 
-    return Container(
+    return GlassContainer(
+      isGlassActive: hasBgMedia,
+      solidBackgroundColor: txt.withValues(alpha: 0.04),
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: addon.value
-              ? catColor.withValues(alpha: 0.4)
-              : Colors.white12,
-        ),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: addon.value
+            ? catColor.withValues(alpha: 0.4)
+            : div,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -598,8 +599,8 @@ class _AddonManagerTabState extends State<AddonManagerTab>
                       Flexible(
                         child: Text(
                           addon.name,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: txt,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -628,13 +629,13 @@ class _AddonManagerTabState extends State<AddonManagerTab>
                   const SizedBox(height: 2),
                   Text(
                     addon.id,
-                    style: const TextStyle(color: Colors.white38, fontSize: 11),
+                    style: TextStyle(color: sub, fontSize: 11),
                   ),
                 ],
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.tune, color: Colors.white70, size: 20),
+              icon: Icon(Icons.tune, color: txt.withValues(alpha: 0.75), size: 20),
               tooltip: AppTranslations.getText('configure_telemetry'),
               onPressed: () => _showTelemetryConfigModal(context, initialCategory: addon.category),
             ),
@@ -702,7 +703,7 @@ class _TelemetryConfigBottomSheetState extends State<_TelemetryConfigBottomSheet
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: s.textDisabledColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -714,20 +715,20 @@ class _TelemetryConfigBottomSheetState extends State<_TelemetryConfigBottomSheet
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                const Icon(Icons.tune, color: Colors.cyanAccent, size: 22),
+                Icon(Icons.tune, color: s.detailColor, size: 22),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     AppTranslations.getText('telemetry_config_title'),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: s.textColor,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                  icon: Icon(Icons.close, color: s.textDisabledColor, size: 20),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
@@ -737,9 +738,9 @@ class _TelemetryConfigBottomSheetState extends State<_TelemetryConfigBottomSheet
           // Tab Bar
           TabBar(
             controller: _tabController,
-            indicatorColor: Colors.cyanAccent,
-            labelColor: Colors.cyanAccent,
-            unselectedLabelColor: Colors.white38,
+            indicatorColor: s.detailColor,
+            labelColor: s.detailColor,
+            unselectedLabelColor: s.textDisabledColor,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
@@ -758,7 +759,7 @@ class _TelemetryConfigBottomSheetState extends State<_TelemetryConfigBottomSheet
             ],
           ),
 
-          const Divider(color: Colors.white10, height: 1),
+          Divider(color: s.dividerColor, height: 1),
 
           // Tab Views
           Expanded(
@@ -1015,13 +1016,14 @@ class _TelemetryConfigBottomSheetState extends State<_TelemetryConfigBottomSheet
     required IconData icon,
     required ValueChanged<bool> onChanged,
   }) {
+    final s = Provider.of<SettingsProvider>(context, listen: false).settings;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: s.textColor.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: value ? color.withValues(alpha: 0.35) : Colors.white10,
+          color: value ? color.withValues(alpha: 0.35) : s.dividerColor,
         ),
       ),
       child: SwitchListTile(
@@ -1039,30 +1041,31 @@ class _TelemetryConfigBottomSheetState extends State<_TelemetryConfigBottomSheet
         ),
         title: Text(
           title,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: s.textColor,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(color: Colors.white38, fontSize: 11),
+          style: TextStyle(color: s.textDisabledColor, fontSize: 11),
         ),
       ),
     );
   }
 
   Widget _buildResetButton(VoidCallback onReset) {
+    final s = Provider.of<SettingsProvider>(context, listen: false).settings;
     return OutlinedButton.icon(
       onPressed: onReset,
-      icon: const Icon(Icons.refresh, size: 16, color: Colors.white54),
+      icon: Icon(Icons.refresh, size: 16, color: s.textDisabledColor),
       label: Text(
         AppTranslations.getText('reset_to_defaults'),
-        style: const TextStyle(color: Colors.white54, fontSize: 12),
+        style: TextStyle(color: s.textDisabledColor, fontSize: 12),
       ),
       style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Colors.white12),
+        side: BorderSide(color: s.dividerColor),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );

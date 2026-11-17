@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../config/app_config.dart';
 import '../core/network/network_manager.dart';
 import '../core/utils/app_translations.dart';
 import '../core/sensor_manager.dart';
@@ -13,6 +14,7 @@ import '../providers/connection_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/driving_painters.dart';
 import '../widgets/driving_mode_builders.dart';
+import '../widgets/looping_media_widget.dart';
 import 'driving_screen_state.dart';
 
 // Ana ekran
@@ -59,14 +61,23 @@ class _DrivingScreenState extends State<DrivingScreen>
       'baseRoll': _sensorManager.chillBaseRoll,
       'cruiseLocked': chillCruiseControlLocked,
       'cruiseGasValue': chillCruiseControlGasValue,
+      'overlayBgColor': settings.mod8OverlayBgColor.toARGB32(),
+      'overlayBorderColor': settings.mod8OverlayBorderColor.toARGB32(),
+      'overlaySteerColor': settings.mod8OverlaySteerColor.toARGB32(),
+      'overlayGasColor': settings.mod8OverlayGasColor.toARGB32(),
+      'overlayBrakeColor': settings.mod8OverlayBrakeColor.toARGB32(),
+      'overlayGearBtnColor': settings.mod8OverlayGearBtnColor.toARGB32(),
     };
   }
 
   String? _lastMod8BgArgsSignature;
 
   void _syncMod8BackgroundService(AppSettings settings) {
+    final int activeMode = AppConfig.instance.sanitizeMode(
+      settings.defaultDrivingMode,
+    );
     final bool shouldRunBg =
-        mounted && settings.defaultDrivingMode == 8 && settings.chillOverlayEnabled;
+        mounted && activeMode == 8 && settings.chillOverlayEnabled;
     if (shouldRunBg && !_mod8NativeBgActive) {
       _mod8NativeBgActive = true;
       final args = _buildMod8BgArgs(settings);
@@ -156,8 +167,11 @@ class _DrivingScreenState extends State<DrivingScreen>
       _initSensors();
       _ensureNetworkConnected();
       final settings = Provider.of<SettingsProvider>(context, listen: false).settings;
+      final int activeMode = AppConfig.instance.sanitizeMode(
+        settings.defaultDrivingMode,
+      );
       _syncMod8BackgroundService(settings);
-      if (settings.defaultDrivingMode == 8) {
+      if (activeMode == 8) {
         SystemChrome.setPreferredOrientations([
           DeviceOrientation.portraitUp,
           DeviceOrientation.portraitDown,
@@ -259,7 +273,9 @@ class _DrivingScreenState extends State<DrivingScreen>
       context,
       listen: false,
     ).settings;
-    final int currentMode = settings.defaultDrivingMode;
+    final int currentMode = AppConfig.instance.sanitizeMode(
+      settings.defaultDrivingMode,
+    );
     final bool isMod5 = currentMode == 5;
     final bool isMod6 = currentMode == 6;
     final bool isMod8 = currentMode == 8;
@@ -585,8 +601,11 @@ class _DrivingScreenState extends State<DrivingScreen>
     super.didChangeAppLifecycleState(state);
     if (!mounted) return;
     final settings = Provider.of<SettingsProvider>(context, listen: false).settings;
+    final int activeMode = AppConfig.instance.sanitizeMode(
+      settings.defaultDrivingMode,
+    );
     final bool allowMod8Background =
-        settings.defaultDrivingMode == 8 && settings.chillOverlayEnabled;
+        activeMode == 8 && settings.chillOverlayEnabled;
 
     if (state == AppLifecycleState.inactive && allowMod8Background) {
       // Mod 8: 'inactive' (bildirim paneli, uygulama değiştirici geçişi) henüz arka plan
@@ -658,6 +677,9 @@ class _DrivingScreenState extends State<DrivingScreen>
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context).settings;
+    final int activeMode = AppConfig.instance.sanitizeMode(
+      settings.defaultDrivingMode,
+    );
     _syncMod8BackgroundService(settings);
     final size = MediaQuery.of(context).size;
 
@@ -687,32 +709,38 @@ class _DrivingScreenState extends State<DrivingScreen>
         }
       },
       child: Scaffold(
-        backgroundColor: settings.backgroundColor,
+        backgroundColor: settings.modeBackgroundColor(activeMode),
         body: AbsorbPointer(
           absorbing: _isExiting,
           child: Stack(
             children: [
+              // Arka plan medya katmanı (Mod bazlı veya genel GIF / Döngülü Video / Görsel)
+              if (settings.modeBackgroundMedia(activeMode) != null &&
+                  settings.modeBackgroundMedia(activeMode)!.isNotEmpty)
+                Positioned.fill(
+                  child: LoopingMediaWidget(
+                    mediaPath: settings.modeBackgroundMedia(activeMode),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+
               // Ana layout
               Positioned.fill(child: buildLayout(settings, size)),
 
               // Direksiyon göstergesi alt-orta, yüksekliğin %10'u (Mod 0-4 ve Mod 7 için)
-              if (settings.defaultDrivingMode < 5 ||
-                  settings.defaultDrivingMode == 7)
+              if (activeMode < 5 || activeMode == 7)
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
                   height: size.height * 0.10,
                   child: IgnorePointer(
-                    child: RepaintBoundary(
-                      child: CustomPaint(
-                        painter: SteeringPainter(
-                          angle: steeringAngle,
-                          pitch: pitchDeg,
-                          indicatorColor: settings.steeringIndicatorColor,
-                          bgColor: settings.steeringBgColor,
-                        ),
-                      ),
+                    child: CustomizableSteeringBar(
+                      angle: steeringAngle,
+                      pitch: pitchDeg,
+                      indicatorColor: settings.steeringIndicatorColor,
+                      bgColor: settings.steeringBgColor,
+                      mediaPath: settings.steeringBarMediaPath,
                     ),
                   ),
                 ),

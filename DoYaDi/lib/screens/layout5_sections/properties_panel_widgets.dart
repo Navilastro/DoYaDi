@@ -48,7 +48,91 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
     );
   }
 
+  Widget _mediaPickerRow(
+    String label,
+    String? currentPath,
+    void Function(String?) onChanged,
+  ) {
+    final bool hasMedia = currentPath != null && currentPath.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label),
+        Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () async {
+                  final res = await showAppMediaPickerDialog(
+                    context,
+                    title: label,
+                    currentPath: currentPath,
+                  );
+                  if (res != null) {
+                    onChanged(res.trim().isEmpty ? null : res.trim());
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: hasMedia
+                        ? const Color(0xFF40E0D0).withValues(alpha: 0.16)
+                        : const Color(0xFF1A1A3E),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: hasMedia ? const Color(0xFF40E0D0) : Colors.white24,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        hasMedia ? Icons.perm_media : Icons.add_photo_alternate_outlined,
+                        size: 16,
+                        color: hasMedia ? const Color(0xFF40E0D0) : Colors.white54,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          hasMedia
+                              ? currentPath.split('/').last.split('\\').last
+                              : AppTranslations.getText('select_media'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: hasMedia ? Colors.white : Colors.white54,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (hasMedia) ...[
+              const SizedBox(width: 4),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                tooltip: AppTranslations.getText('clear_media'),
+                icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
+                onPressed: () => onChanged(null),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _modeSelector(Layout5Item item) {
+    final bool restricted = AppConfig.instance.hasRestrictedMod5;
+    final ButtonMode safeMode = (restricted &&
+            item.mode != ButtonMode.key &&
+            item.mode != ButtonMode.macro)
+        ? ButtonMode.key
+        : item.mode;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -61,7 +145,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
             ),
             const SizedBox(width: 8),
             DropdownButton<ButtonMode>(
-              value: item.mode,
+              value: safeMode,
               dropdownColor: const Color(0xFF1A1A3E),
               style: const TextStyle(color: Colors.white, fontSize: 12),
               items: [
@@ -69,26 +153,30 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
                   value: ButtonMode.key,
                   child: Text(AppTranslations.getText('mode_single_key')),
                 ),
-                DropdownMenuItem(
-                  value: ButtonMode.gasPct,
-                  child: Text(AppTranslations.getText('mode_fixed_gas')),
-                ),
-                DropdownMenuItem(
-                  value: ButtonMode.brakePct,
-                  child: Text(AppTranslations.getText('mode_fixed_brake')),
-                ),
+                if (!restricted) ...[
+                  DropdownMenuItem(
+                    value: ButtonMode.gasPct,
+                    child: Text(AppTranslations.getText('mode_fixed_gas')),
+                  ),
+                  DropdownMenuItem(
+                    value: ButtonMode.brakePct,
+                    child: Text(AppTranslations.getText('mode_fixed_brake')),
+                  ),
+                ],
                 DropdownMenuItem(
                   value: ButtonMode.macro,
                   child: Text(AppTranslations.getText('mode_macro')),
                 ),
-                DropdownMenuItem(
-                  value: ButtonMode.handbrakePct,
-                  child: Text(AppTranslations.getText('mode_handbrake_pct')),
-                ),
-                DropdownMenuItem(
-                  value: ButtonMode.clutchPct,
-                  child: Text(AppTranslations.getText('mode_clutch_pct')),
-                ),
+                if (!restricted) ...[
+                  DropdownMenuItem(
+                    value: ButtonMode.handbrakePct,
+                    child: Text(AppTranslations.getText('mode_handbrake_pct')),
+                  ),
+                  DropdownMenuItem(
+                    value: ButtonMode.clutchPct,
+                    child: Text(AppTranslations.getText('mode_clutch_pct')),
+                  ),
+                ],
               ],
               onChanged: (v) {
                 if (v != null) _update(item.copyWith(mode: v));
@@ -98,7 +186,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
         ),
         const SizedBox(height: 8),
 
-        if (item.mode == ButtonMode.key)
+        if (safeMode == ButtonMode.key)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -220,7 +308,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
             ],
           ),
 
-        if (item.mode == ButtonMode.gasPct)
+        if (safeMode == ButtonMode.gasPct)
           Row(
             children: [
               Text(
@@ -244,7 +332,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
             ],
           ),
 
-        if (item.mode == ButtonMode.brakePct)
+        if (safeMode == ButtonMode.brakePct)
           Row(
             children: [
               Text(
@@ -268,7 +356,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
             ],
           ),
 
-        if (item.mode == ButtonMode.handbrakePct)
+        if (safeMode == ButtonMode.handbrakePct)
           Row(
             children: [
               Text(
@@ -292,7 +380,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
             ],
           ),
 
-        if (item.mode == ButtonMode.clutchPct)
+        if (safeMode == ButtonMode.clutchPct)
           Row(
             children: [
               Text(
@@ -316,7 +404,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
             ],
           ),
 
-        if (item.mode == ButtonMode.macro)
+        if (safeMode == ButtonMode.macro)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

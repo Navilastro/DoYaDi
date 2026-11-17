@@ -1,6 +1,16 @@
 part of '../custom_layout5_editor_screen.dart';
 extension _EditorItemsExt on _CustomLayout5EditorScreenState {
-  void _addItem(Layout5ItemType type) {
+  void _addItem(
+    Layout5ItemType type, {
+    ButtonMode initialMode = ButtonMode.key,
+    String? initialLabel,
+  }) {
+    if (!isLayout5TypeAllowedForFlavor(type)) {
+      _showConstraintWarning(
+        '${AppConfig.instance.appName} sürümünde bu öğe kullanılamaz.',
+      );
+      return;
+    }
     // ── KATI YERLEŞİM KISITLAMALARI (VALIDATION RULES) ──
     if (type == Layout5ItemType.leftJoystick && _hasLeftJoystick) {
       _showConstraintWarning('Ekranda en fazla 1 adet Sol Joystick bulunabilir!');
@@ -57,10 +67,11 @@ extension _EditorItemsExt on _CustomLayout5EditorScreenState {
     }
 
     final id = '${type.name}_${DateTime.now().millisecondsSinceEpoch}';
-    String? label;
-    if (type == Layout5ItemType.buttonSquare ||
-        type == Layout5ItemType.buttonSoft ||
-        type == Layout5ItemType.buttonCircle) {
+    String? label = initialLabel;
+    if (label == null &&
+        (type == Layout5ItemType.buttonSquare ||
+            type == Layout5ItemType.buttonSoft ||
+            type == Layout5ItemType.buttonCircle)) {
       label = null; // default: "$N Buton"
     }
     setState(() {
@@ -89,6 +100,7 @@ extension _EditorItemsExt on _CustomLayout5EditorScreenState {
               ? 0.25
               : 0.22,
           label: label,
+          mode: initialMode,
         ),
       );
       _selectedId = id;

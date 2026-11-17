@@ -1,36 +1,7 @@
 part of '../custom_layout5_editor_screen.dart';
 extension _EditorDialogsExt on _CustomLayout5EditorScreenState {
   void _showInfoDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF12122A),
-        title: Text(
-          AppTranslations.getText('key_mappings'),
-          style: const TextStyle(color: Colors.white),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppTranslations.getText('key_mapping_desc'),
-                style: const TextStyle(color: Colors.white70, height: 1.5),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              AppTranslations.getText('ok'),
-              style: const TextStyle(color: Color(0xFF40E0D0)),
-            ),
-          ),
-        ],
-      ),
-    );
+    showKeyMappingsInfoDialog(context);
   }
 
   void _manageProfiles() {
@@ -77,13 +48,21 @@ extension _EditorDialogsExt on _CustomLayout5EditorScreenState {
                           setState(() {
                             final list =
                                 jsonDecode(s.customLayout5Json!) as List;
-                            _items = list
+                            var loaded = list
                                 .map(
                                   (e) => Layout5Item.fromJson(
                                     e as Map<String, dynamic>,
                                   ),
                                 )
                                 .toList();
+                            if (AppConfig.instance.hasRestrictedMod5) {
+                              loaded = loaded
+                                  .where(
+                                    (e) => isLayout5TypeAllowedForFlavor(e.type),
+                                  )
+                                  .toList();
+                            }
+                            _items = loaded;
                             _selectedId = null;
                           });
                           Navigator.pop(ctx);
@@ -193,30 +172,39 @@ extension _EditorDialogsExt on _CustomLayout5EditorScreenState {
     try {
       final list = jsonDecode(json) as List;
       setState(() {
-        _items = list
+        var loaded = list
             .map((e) => Layout5Item.fromJson(e as Map<String, dynamic>))
             .toList();
+        if (AppConfig.instance.hasRestrictedMod5) {
+          loaded = loaded
+              .where((e) => isLayout5TypeAllowedForFlavor(e.type))
+              .toList();
+        }
+        _items = loaded;
         _selectedId = null;
       });
     } catch (_) {}
   }
 
   void _showTemplateDialog() {
+    final bool restricted = AppConfig.instance.hasRestrictedMod5;
     final templates = <Map<String, dynamic>>[
-      {
-        'name': AppTranslations.getText('tmpl_game'),
-        'desc': AppTranslations.getText('tmpl_game_desc'),
-        'icon': Icons.sports_esports,
-        'color': const Color(0xFF00C853),
-        'json': getGameTemplate1(),
-      },
-      {
-        'name': AppTranslations.getText('tmpl_dual_joy'),
-        'desc': AppTranslations.getText('tmpl_dual_joy_desc'),
-        'icon': Icons.gamepad,
-        'color': const Color(0xFF40E0D0),
-        'json': getControllerTemplate2(),
-      },
+      if (!restricted) ...[
+        {
+          'name': AppTranslations.getText('tmpl_game'),
+          'desc': AppTranslations.getText('tmpl_game_desc'),
+          'icon': Icons.sports_esports,
+          'color': const Color(0xFF00C853),
+          'json': getGameTemplate1(),
+        },
+        {
+          'name': AppTranslations.getText('tmpl_dual_joy'),
+          'desc': AppTranslations.getText('tmpl_dual_joy_desc'),
+          'icon': Icons.gamepad,
+          'color': const Color(0xFF40E0D0),
+          'json': getControllerTemplate2(),
+        },
+      ],
       {
         'name': AppTranslations.getText('tmpl_kb_mouse'),
         'desc': AppTranslations.getText('tmpl_kb_mouse_desc'),
@@ -224,13 +212,14 @@ extension _EditorDialogsExt on _CustomLayout5EditorScreenState {
         'color': Colors.amber,
         'json': getKeyboardMouseTemplate(),
       },
-      {
-        'name': AppTranslations.getText('tmpl_full_pad'),
-        'desc': AppTranslations.getText('tmpl_full_pad_desc'),
-        'icon': Icons.videogame_asset,
-        'color': Colors.deepPurpleAccent,
-        'json': getFullControllerTemplate(),
-      },
+      if (!restricted)
+        {
+          'name': AppTranslations.getText('tmpl_full_pad'),
+          'desc': AppTranslations.getText('tmpl_full_pad_desc'),
+          'icon': Icons.videogame_asset,
+          'color': Colors.deepPurpleAccent,
+          'json': getFullControllerTemplate(),
+        },
       {
         'name': AppTranslations.getText('tmpl_gamer_kb'),
         'desc': AppTranslations.getText('tmpl_gamer_kb_desc'),

@@ -144,6 +144,7 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
   }
 
   Widget _buildItemContent(Layout5Item item, double w, double h) {
+    final s = Provider.of<SettingsProvider>(context, listen: false).settings;
     switch (item.type) {
       case Layout5ItemType.leftJoystick:
       case Layout5ItemType.rightJoystick:
@@ -151,58 +152,60 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
           radius: min(w, h) / 2,
           baseColor: item.bgColor,
           thumbColor: item.textColor,
+          baseMediaPath: item.mediaPath ?? s.mod5JoystickBaseMediaPath,
+          thumbMediaPath: item.secondaryMediaPath ?? s.mod5JoystickMediaPath,
           onChanged: (_, _) {},
         );
       case Layout5ItemType.gasBar:
-        return CustomPaint(
-          painter: PedalPainter(
-            fillPercentage: 0.4,
-            baseColor: const Color(0xFF00C853),
-            bgColor: item.bgColor,
-            yetsoreColor: const Color(0xFFFFD600),
-          ),
+        return CustomizablePedalBar(
+          fillPercentage: 0.4,
+          baseColor: s.gasColor,
+          bgColor: item.bgColor,
+          yetsoreColor: s.yetsoreColor,
+          fillMediaPath: item.mediaPath ?? s.gasBarMediaPath,
+          yetsoreMediaPath: s.yetsoreMediaPath,
         );
       case Layout5ItemType.brakeBar:
-        return CustomPaint(
-          painter: PedalPainter(
-            fillPercentage: 0.4,
-            baseColor: const Color(0xFFD50000),
-            bgColor: item.bgColor,
-            yetsoreColor: const Color(0xFFFFD600),
-          ),
+        return CustomizablePedalBar(
+          fillPercentage: 0.4,
+          baseColor: s.brakeColor,
+          bgColor: item.bgColor,
+          yetsoreColor: s.yetsoreColor,
+          fillMediaPath: item.mediaPath ?? s.brakeBarMediaPath,
+          yetsoreMediaPath: s.yetsoreMediaPath,
         );
       case Layout5ItemType.gasPedalIcon:
-        return CustomPaint(
-          painter: PedalIconPainter(
-            fillPercentage: 0.4,
-            baseColor: const Color(0xFF00C853),
-            isGas: true,
-          ),
+        return CustomizablePedalIcon(
+          fillPercentage: 0.4,
+          baseColor: s.gasColor,
+          isGas: true,
+          mediaPath: item.mediaPath,
+          label: 'GAZ',
         );
       case Layout5ItemType.brakePedalIcon:
-        return CustomPaint(
-          painter: PedalIconPainter(
-            fillPercentage: 0.4,
-            baseColor: const Color(0xFFD50000),
-            isGas: false,
-          ),
+        return CustomizablePedalIcon(
+          fillPercentage: 0.4,
+          baseColor: s.brakeColor,
+          isGas: false,
+          mediaPath: item.mediaPath,
+          label: 'FREN',
         );
       case Layout5ItemType.clutchBar:
-        return CustomPaint(
-          painter: PedalPainter(
-            fillPercentage: 0.4,
-            baseColor: Colors.blueAccent,
-            bgColor: item.bgColor,
-            yetsoreColor: const Color(0xFFFFD600),
-          ),
+        return CustomizablePedalBar(
+          fillPercentage: 0.4,
+          baseColor: s.clutchColor,
+          bgColor: item.bgColor,
+          yetsoreColor: s.clutchYetsoreColor,
+          fillMediaPath: item.mediaPath ?? s.clutchBarMediaPath,
+          yetsoreMediaPath: s.yetsoreMediaPath,
         );
       case Layout5ItemType.clutchIcon:
-        return CustomPaint(
-          painter: PedalIconPainter(
-            fillPercentage: 0.4,
-            baseColor: Colors.blueAccent,
-            isGas: false,
-          ),
+        return CustomizablePedalIcon(
+          fillPercentage: 0.4,
+          baseColor: s.clutchColor,
+          isGas: false,
+          mediaPath: item.mediaPath,
+          label: 'DEB',
         );
       case Layout5ItemType.steeringWheelIcon:
         final s = Provider.of<SettingsProvider>(context, listen: false).settings;
@@ -255,29 +258,40 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
           ),
         );
       case Layout5ItemType.steeringBar:
-        return RepaintBoundary(
-          child: CustomPaint(
-            painter: SteeringPainter(
-              angle: 0.0,
-              pitch: 90.0,
-              indicatorColor: item.textColor,
-              bgColor: item.bgColor,
-            ),
-          ),
+        return CustomizableSteeringBar(
+          angle: 0.0,
+          pitch: 90.0,
+          indicatorColor: item.textColor,
+          bgColor: item.bgColor,
+          mediaPath: item.mediaPath ?? s.steeringBarMediaPath,
         );
       case Layout5ItemType.touchpad:
+        final hasTpMedia = AppMediaHelper.hasMedia(item.mediaPath);
         return Container(
           decoration: BoxDecoration(
             color: item.bgColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: item.textColor.withValues(alpha: 0.3)),
           ),
-          child: Center(
-            child: Icon(
-              Icons.mouse,
-              color: item.textColor.withValues(alpha: 0.4),
-              size: min(w, h) * 0.35,
-            ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (hasTpMedia)
+                LoopingMediaWidget(mediaPath: item.mediaPath, fit: BoxFit.cover),
+              Center(
+                child: BlurredTextChip(
+                  enabled: hasTpMedia,
+                  child: Icon(
+                    Icons.mouse,
+                    color: hasTpMedia
+                        ? Colors.white
+                        : item.textColor.withValues(alpha: 0.4),
+                    size: min(w, h) * 0.35,
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       default:
@@ -286,6 +300,7 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
   }
 
   Widget _buildButtonContent(Layout5Item item, double w, double h) {
+    final s = Provider.of<SettingsProvider>(context, listen: false).settings;
     final label =
         item.label ??
         '${_items.indexOf(item) + 1} ${AppTranslations.getText('btn_label_default')}';
@@ -300,27 +315,111 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
       default:
         radius = BorderRadius.circular(4);
     }
+    final btnMedia = AppMediaHelper.hasMedia(item.mediaPath)
+        ? item.mediaPath
+        : s.mod5ButtonMediaPath;
+    final hasMedia = AppMediaHelper.hasMedia(btnMedia);
+
     return Container(
       decoration: BoxDecoration(
         color: item.bgColor,
         borderRadius: radius,
         border: Border.all(color: item.textColor.withValues(alpha: 0.3)),
       ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: item.textColor,
-            fontSize: min(w, h) * 0.18,
-            fontWeight: FontWeight.w600,
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (hasMedia)
+            LoopingMediaWidget(mediaPath: btnMedia, fit: BoxFit.cover),
+          Center(
+            child: BlurredTextChip(
+              enabled: hasMedia || AppMediaHelper.hasMedia(s.mod5BgMediaPath),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: hasMedia ? Colors.white : item.textColor,
+                  fontSize: min(w, h) * 0.18,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
-          textAlign: TextAlign.center,
-        ),
+        ],
       ),
     );
   }
 
   Widget _addMenuButton() {
+    final Widget triggerChip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF40E0D0).withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF40E0D0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.add, color: Color(0xFF40E0D0), size: 18),
+          const SizedBox(width: 4),
+          Text(
+            AppTranslations.getText('add'),
+            style: const TextStyle(color: Color(0xFF40E0D0), fontSize: 13),
+          ),
+        ],
+      ),
+    );
+
+    if (AppConfig.instance.hasRestrictedMod5) {
+      // SanReVye flavor'ında yalnızca Klavye Tuşu, Touchpad ve Makro eklenebilir.
+      return PopupMenuButton<String>(
+        color: const Color(0xFF1A1A3E),
+        itemBuilder: (_) => [
+          PopupMenuItem(
+            value: 'keyboard_key',
+            child: Text(
+              AppTranslations.getText('mode_single_key'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          PopupMenuItem(
+            value: 'touchpad',
+            child: Text(
+              AppTranslations.getText('add_touchpad'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          PopupMenuItem(
+            value: 'macro',
+            child: Text(
+              AppTranslations.getText('mode_macro'),
+              style: const TextStyle(color: Color(0xFF40E0D0)),
+            ),
+          ),
+        ],
+        onSelected: (choice) {
+          switch (choice) {
+            case 'keyboard_key':
+              _addItem(Layout5ItemType.buttonSoft, initialMode: ButtonMode.key);
+              break;
+            case 'touchpad':
+              _addItem(Layout5ItemType.touchpad);
+              break;
+            case 'macro':
+              _addItem(
+                Layout5ItemType.buttonSquare,
+                initialMode: ButtonMode.macro,
+                initialLabel: AppTranslations.getText('mode_macro'),
+              );
+              break;
+          }
+        },
+        child: triggerChip,
+      );
+    }
+
     return PopupMenuButton<Layout5ItemType>(
       color: const Color(0xFF1A1A3E),
       itemBuilder: (_) => [
@@ -456,25 +555,7 @@ extension _EditorCanvasExt on _CustomLayout5EditorScreenState {
         ),
       ],
       onSelected: _addItem,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFF40E0D0).withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF40E0D0)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.add, color: Color(0xFF40E0D0), size: 18),
-            const SizedBox(width: 4),
-            Text(
-              AppTranslations.getText('add'),
-              style: const TextStyle(color: Color(0xFF40E0D0), fontSize: 13),
-            ),
-          ],
-        ),
-      ),
+      child: triggerChip,
     );
   }
 

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'looping_media_widget.dart';
 
 // ─────────────────────────────────────────────
 // PedalPainter — Gaz / Fren bar göstergesi
@@ -408,4 +409,298 @@ class PedalIconPainter extends CustomPainter {
       old.fillPercentage != fillPercentage ||
       old.baseColor != baseColor ||
       old.isGas != isGas;
+}
+
+/// Renk veya Görsel/GIF/Video destekleyen özelleştirilebilir dikey pedal barı.
+/// Arka plan, doluluk ve %70 üstü bildirim bölgesi ayrı ayrı renk veya medya alabilir.
+class CustomizablePedalBar extends StatelessWidget {
+  final double fillPercentage;
+  final Color baseColor;
+  final Color bgColor;
+  final Color yetsoreColor;
+  final String? fillMediaPath;
+  final String? bgMediaPath;
+  final String? yetsoreMediaPath;
+  final BorderRadius? borderRadius;
+
+  const CustomizablePedalBar({
+    super.key,
+    required this.fillPercentage,
+    required this.baseColor,
+    required this.bgColor,
+    required this.yetsoreColor,
+    this.fillMediaPath,
+    this.bgMediaPath,
+    this.yetsoreMediaPath,
+    this.borderRadius,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = fillPercentage.clamp(0.0, 1.0);
+    final hasBgMedia = AppMediaHelper.hasMedia(bgMediaPath);
+    final hasFillMedia = AppMediaHelper.hasMedia(fillMediaPath);
+    final hasYetsoreMedia = AppMediaHelper.hasMedia(yetsoreMediaPath);
+
+    // Eğer hiç medya yoksa yüksek performanslı saf CustomPaint kullan
+    if (!hasBgMedia && !hasFillMedia && !hasYetsoreMedia) {
+      final painterWidget = RepaintBoundary(
+        child: CustomPaint(
+          painter: PedalPainter(
+            fillPercentage: pct,
+            baseColor: baseColor,
+            bgColor: bgColor,
+            yetsoreColor: yetsoreColor,
+          ),
+          child: const SizedBox.expand(),
+        ),
+      );
+      if (borderRadius != null) {
+        return ClipRRect(borderRadius: borderRadius!, child: painterWidget);
+      }
+      return painterWidget;
+    }
+
+    final double yetsoreFraction =
+        pct >= 0.7 ? ((pct - 0.7) / 0.3).clamp(0.0, 1.0) * 0.20 : 0.0;
+
+    final content = LayoutBuilder(
+      builder: (ctx, constraints) {
+        final h = constraints.maxHeight;
+        final w = constraints.maxWidth;
+        final fillH = h * pct;
+        final yetsoreH = h * yetsoreFraction;
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1) Bar arka planı
+            if (hasBgMedia)
+              LoopingMediaWidget(
+                mediaPath: bgMediaPath,
+                fit: BoxFit.cover,
+                width: w,
+                height: h,
+              )
+            else
+              Container(color: bgColor),
+
+            // 2) Doluluk bölgesi (alttan yukarıya)
+            if (fillH > 0)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: fillH,
+                child: ClipRect(
+                  child: hasFillMedia
+                      ? OverflowBox(
+                          alignment: Alignment.bottomCenter,
+                          minHeight: h,
+                          maxHeight: h,
+                          minWidth: w,
+                          maxWidth: w,
+                          child: LoopingMediaWidget(
+                            mediaPath: fillMediaPath,
+                            fit: BoxFit.cover,
+                            width: w,
+                            height: h,
+                          ),
+                        )
+                      : Container(color: baseColor),
+                ),
+              ),
+
+            // 3) %70 üstü bildirim kısmı (en altta %20'ye kadar)
+            if (yetsoreH > 0)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: yetsoreH,
+                child: ClipRect(
+                  child: hasYetsoreMedia
+                      ? OverflowBox(
+                          alignment: Alignment.bottomCenter,
+                          minHeight: h,
+                          maxHeight: h,
+                          minWidth: w,
+                          maxWidth: w,
+                          child: LoopingMediaWidget(
+                            mediaPath: yetsoreMediaPath,
+                            fit: BoxFit.cover,
+                            width: w,
+                            height: h,
+                          ),
+                        )
+                      : Container(color: yetsoreColor),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+
+    if (borderRadius != null) {
+      return ClipRRect(borderRadius: borderRadius!, child: content);
+    }
+    return content;
+  }
+}
+
+/// Renk veya Görsel/GIF/Video destekleyen özelleştirilebilir direksiyon barı göstergesi.
+class CustomizableSteeringBar extends StatelessWidget {
+  final double angle; // -1.0 .. 1.0
+  final double pitch;
+  final Color indicatorColor;
+  final Color bgColor;
+  final String? mediaPath;
+
+  const CustomizableSteeringBar({
+    super.key,
+    required this.angle,
+    required this.pitch,
+    required this.indicatorColor,
+    required this.bgColor,
+    this.mediaPath,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMedia = AppMediaHelper.hasMedia(mediaPath);
+    if (!hasMedia) {
+      return RepaintBoundary(
+        child: CustomPaint(
+          painter: SteeringPainter(
+            angle: angle,
+            pitch: pitch,
+            indicatorColor: indicatorColor,
+            bgColor: bgColor,
+          ),
+          child: const SizedBox.expand(),
+        ),
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRect(
+          child: Opacity(
+            opacity: 0.55,
+            child: LoopingMediaWidget(
+              mediaPath: mediaPath,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        RepaintBoundary(
+          child: CustomPaint(
+            painter: SteeringPainter(
+              angle: angle,
+              pitch: pitch,
+              indicatorColor: indicatorColor,
+              bgColor: bgColor,
+            ),
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// İvmeli pedal ikonu (Mod 6) için renk ve görsel/GIF/video destekli sarmalayıcı.
+class CustomizablePedalIcon extends StatelessWidget {
+  final double fillPercentage;
+  final Color baseColor;
+  final bool isGas;
+  final String? mediaPath;
+  final String? label;
+
+  const CustomizablePedalIcon({
+    super.key,
+    required this.fillPercentage,
+    required this.baseColor,
+    required this.isGas,
+    this.mediaPath,
+    this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMedia = AppMediaHelper.hasMedia(mediaPath);
+    if (!hasMedia) {
+      return RepaintBoundary(
+        child: CustomPaint(
+          painter: PedalIconPainter(
+            fillPercentage: fillPercentage,
+            baseColor: baseColor,
+            isGas: isGas,
+          ),
+          child: const SizedBox.expand(),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        final w = c.maxWidth;
+        final radius = BorderRadius.circular(w * 0.15);
+        return Container(
+          margin: EdgeInsets.all(w * 0.1),
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(
+              color: baseColor.withValues(alpha: 0.65),
+              width: 2,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              LoopingMediaWidget(mediaPath: mediaPath, fit: BoxFit.cover),
+              // Doluluk oranı kadar alt katmandan vurgu
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: FractionallySizedBox(
+                  heightFactor: fillPercentage.clamp(0.0, 1.0),
+                  widthFactor: 1.0,
+                  child: Container(color: baseColor.withValues(alpha: 0.45)),
+                ),
+              ),
+              Center(
+                child: BlurredTextChip(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (label != null)
+                        Text(
+                          label!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      Text(
+                        '${(fillPercentage * 100).round()}%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

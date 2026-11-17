@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
+import '../config/app_config.dart';
 import '../models/app_settings.dart';
 import '../models/layout5_item.dart';
 import '../providers/settings_provider.dart';
@@ -111,7 +112,10 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
     // Style 2: Sıfır noktası modu (Pitch & Yaw) — Direksiyon sıfıra yakın olmalı (%8 eşik)
     if (s.gyroLookStyle == 2) {
       // Mod 5'te sol joystick varsa direksiyon kuralı geçersiz
-      if (s.defaultDrivingMode == 5 && leftJoystickPresent) return true;
+      if (AppConfig.instance.sanitizeMode(s.defaultDrivingMode) == 5 &&
+          leftJoystickPresent) {
+        return true;
+      }
       // Yoksa direksiyon sıfıra yakın olmalı (%8 eşik)
       return steeringAngle.abs() < 0.08;
     }
@@ -185,11 +189,13 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
     int? tapKey,
     Map<int, int>? customSwipeKeys,
   }) {
-    if (Provider.of<SettingsProvider>(
-          context,
-          listen: false,
-        ).settings.defaultDrivingMode ==
-        0) {
+    final int activeMode = AppConfig.instance.sanitizeMode(
+      Provider.of<SettingsProvider>(
+        context,
+        listen: false,
+      ).settings.defaultDrivingMode,
+    );
+    if (activeMode == 0) {
       if (mod0ActivePointer != null) return;
       mod0ActivePointer = e.pointer;
       mod0IsGas = isGas;

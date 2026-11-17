@@ -14,11 +14,21 @@ class TyreTempWidget extends StatelessWidget {
   /// Compact mod (daha küçük boyut)
   final bool compact;
 
+  /// Özelleştirilebilir sıcaklık gradyan renkleri
+  final Color coldColor;
+  final Color optColor;
+  final Color hotColor;
+  final Color critColor;
+
   const TyreTempWidget({
     super.key,
     required this.tyreTemps,
     required this.tyreWears,
     this.compact = false,
+    this.coldColor = const Color(0xFF42A5F5),
+    this.optColor = const Color(0xFF66BB6A),
+    this.hotColor = const Color(0xFFFFC107),
+    this.critColor = const Color(0xFFFF1744),
   });
 
   @override
@@ -58,6 +68,12 @@ class TyreTempWidget extends StatelessWidget {
     final temp = tyreTemps[index];
     final wear = tyreWears[index].clamp(0, 100);
     final tempColor = _tempToColor(temp);
+    final grad = _tempToGradient(temp, tempColor);
+    final textCol = temp <= 0
+        ? Colors.white54
+        : (tempColor.computeLuminance() > 0.45
+            ? const Color(0xFF101018)
+            : Colors.white);
     // Assetto Corsa ve simülasyonlarda tyreWear kalan lastik sağlığıdır (%100 yeni, %0 bitmiş)
     // Henüz telemetri verisi yoksa varsayılan 100 kabul edilir
     final health = (wear == 0 && temp == 0) ? 100 : wear;
@@ -66,18 +82,18 @@ class TyreTempWidget extends StatelessWidget {
     // Aşınma rengi: yeşil → sarı → kırmızı
     Color wearColor;
     if (health > 60) {
-      wearColor = const Color(0xFF00E676); // Sağlıklı (Yeşil)
+      wearColor = optColor; // Sağlıklı
     } else if (health > 30) {
-      wearColor = const Color(0xFFFFC107); // Orta (Sarı)
+      wearColor = hotColor; // Orta
     } else {
-      wearColor = const Color(0xFFFF1744); // Kritik (Kırmızı)
+      wearColor = critColor; // Kritik
     }
 
     return Container(
       width: size,
       height: size + wearBarH + 4,
       decoration: BoxDecoration(
-        color: tempColor, // Arka plan tamamen sıcaklık rengi
+        gradient: grad,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: tempColor, width: 1),
       ),
@@ -87,7 +103,7 @@ class TyreTempWidget extends StatelessWidget {
           Text(
             temp <= 0 ? '--' : '$temp°',
             style: TextStyle(
-              color: temp <= 0 ? Colors.white38 : const Color(0xFF101018),
+              color: textCol,
               fontSize: fontSize,
               fontWeight: FontWeight.bold,
               fontFamily: 'monospace',
@@ -118,12 +134,47 @@ class TyreTempWidget extends StatelessWidget {
     );
   }
 
-  /// Sıcaklık değerine göre renk (soğuk:mavi → optimal:yeşil → sıcak:sarı → aşırı:kırmızı)
+  /// Sıcaklık değerine göre kesintisiz geçişli renk
   Color _tempToColor(int celsius) {
     if (celsius <= 0) return const Color(0xFF1E1E2E); // Veri yok / boş
-    if (celsius < 65) return const Color(0xFF42A5F5); // Soğuk — Mavi (<65°C)
-    if (celsius <= 100) return const Color(0xFF66BB6A); // Optimal — Yeşil (65-100°C)
-    if (celsius <= 118) return const Color(0xFFFFC107); // Sıcak / Uyarı — Sarı (100-118°C)
-    return const Color(0xFFFF1744); // Aşırı Sıcak — Kırmızı (>118°C)
+    if (celsius < 65) {
+      final t = ((celsius - 25) / 40.0).clamp(0.0, 1.0);
+      return Color.lerp(coldColor, optColor, t * 0.45)!;
+    }
+    if (celsius <= 100) {
+      final t = ((celsius - 65) / 35.0).clamp(0.0, 1.0);
+      return Color.lerp(optColor, hotColor, t * 0.45)!;
+    }
+    if (celsius <= 118) {
+      final t = ((celsius - 100) / 18.0).clamp(0.0, 1.0);
+      return Color.lerp(hotColor, critColor, t)!;
+    }
+    return critColor;
+  }
+
+  LinearGradient _tempToGradient(int celsius, Color base) {
+    if (celsius <= 0) {
+      return LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          coldColor.withValues(alpha: 0.22),
+          optColor.withValues(alpha: 0.12),
+        ],
+      );
+    }
+    Color nextStop;
+    if (celsius < 65) {
+      nextStop = Color.lerp(base, optColor, 0.35)!;
+    } else if (celsius <= 100) {
+      nextStop = Color.lerp(base, hotColor, 0.3)!;
+    } else {
+      nextStop = Color.lerp(base, critColor, 0.4)!;
+    }
+    return LinearGradient(
+      begin: Alignment.bottomLeft,
+      end: Alignment.topRight,
+      colors: [base, nextStop],
+    );
   }
 }

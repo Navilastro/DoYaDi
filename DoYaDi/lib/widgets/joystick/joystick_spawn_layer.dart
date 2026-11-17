@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'joystick_controller.dart';
 import 'joystick_painter.dart';
+import '../looping_media_widget.dart';
 
 /// Joystick spawn bilgisi — orijinal merkez ve görsel bilgileri tutar.
 class JoystickSpawnInfo {
@@ -15,6 +16,8 @@ class JoystickSpawnInfo {
 
   final Color baseColor;
   final Color thumbColor;
+  final String? baseMediaPath;
+  final String? thumbMediaPath;
 
   const JoystickSpawnInfo({
     required this.originCenter,
@@ -22,6 +25,8 @@ class JoystickSpawnInfo {
     required this.isLeft,
     required this.baseColor,
     required this.thumbColor,
+    this.baseMediaPath,
+    this.thumbMediaPath,
   });
 }
 
@@ -206,23 +211,87 @@ class _JoystickSpawnLayerState extends State<JoystickSpawnLayer> {
             left: spawn.visualCenter.dx - spawn.info.radius,
             top: spawn.visualCenter.dy - spawn.info.radius,
             child: IgnorePointer(
-              child: SizedBox(
-                width: spawn.info.radius * 2,
-                height: spawn.info.radius * 2,
-                child: CustomPaint(
-                  painter: JoystickPainter(
-                    thumbPos: spawn.thumbPos,
-                    radius: spawn.info.radius,
-                    baseColor: spawn.info.baseColor,
-                    thumbColor: spawn.info.thumbColor,
-                    thumbRadius: spawn.info.radius * 0.35,
-                    ghostOpacity: 1.0,
-                  ),
-                ),
-              ),
+              child: _buildSpawnVisual(spawn),
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildSpawnVisual(_ActiveSpawnState spawn) {
+    final radius = spawn.info.radius;
+    final diameter = radius * 2;
+    final thumbRadius = radius * 0.35;
+    final hasBaseMedia = AppMediaHelper.hasMedia(spawn.info.baseMediaPath);
+    final hasThumbMedia = AppMediaHelper.hasMedia(spawn.info.thumbMediaPath);
+
+    if (!hasBaseMedia && !hasThumbMedia) {
+      return SizedBox(
+        width: diameter,
+        height: diameter,
+        child: CustomPaint(
+          painter: JoystickPainter(
+            thumbPos: spawn.thumbPos,
+            radius: radius,
+            baseColor: spawn.info.baseColor,
+            thumbColor: spawn.info.thumbColor,
+            thumbRadius: thumbRadius,
+            ghostOpacity: 1.0,
+          ),
+        ),
+      );
+    }
+
+    final thumbCenter = Offset(radius, radius) + spawn.thumbPos;
+    return SizedBox(
+      width: diameter,
+      height: diameter,
+      child: Stack(
+        children: [
+          if (hasBaseMedia)
+            ClipOval(
+              child: SizedBox(
+                width: diameter,
+                height: diameter,
+                child: LoopingMediaWidget(
+                  mediaPath: spawn.info.baseMediaPath,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            )
+          else
+            CustomPaint(
+              size: Size(diameter, diameter),
+              painter: JoystickPainter(
+                thumbPos: Offset.zero,
+                radius: radius,
+                baseColor: spawn.info.baseColor,
+                thumbColor: Colors.transparent,
+                thumbRadius: 0,
+                ghostOpacity: 1.0,
+              ),
+            ),
+          Positioned(
+            left: thumbCenter.dx - thumbRadius,
+            top: thumbCenter.dy - thumbRadius,
+            width: thumbRadius * 2,
+            height: thumbRadius * 2,
+            child: hasThumbMedia
+                ? ClipOval(
+                    child: LoopingMediaWidget(
+                      mediaPath: spawn.info.thumbMediaPath,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: spawn.info.thumbColor,
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

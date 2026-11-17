@@ -18,6 +18,8 @@ class JoystickWidget extends StatelessWidget {
   final Color thumbColor;
   final double deadzone;
   final JoystickMode mode;
+  final String? baseMediaPath;
+  final String? thumbMediaPath;
 
   /// Spawn modda ghost opaklığı (0.0 = görünmez, 1.0 = tam görünür).
   /// Spawn layer aktifken 0, değilken ~0.2 olarak kullanılır.
@@ -32,6 +34,8 @@ class JoystickWidget extends StatelessWidget {
     this.deadzone = 0.08,
     this.mode = JoystickMode.fixed,
     this.ghostOpacity = 1.0,
+    this.baseMediaPath,
+    this.thumbMediaPath,
   });
 
   @override
@@ -66,6 +70,8 @@ class JoystickWidget extends StatelessWidget {
       deadzone: deadzone,
       ghostOpacity: ghostOpacity,
       floating: mode.isFloating,
+      baseMediaPath: baseMediaPath,
+      thumbMediaPath: thumbMediaPath,
     );
   }
 }

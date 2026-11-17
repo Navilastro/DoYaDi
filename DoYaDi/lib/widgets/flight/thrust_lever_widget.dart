@@ -242,5 +242,8 @@ class _ThrustLeverPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ThrustLeverPainter old) =>
-      old.value != value || old.isDragging != isDragging;
+      old.value != value ||
+      old.isDragging != isDragging ||
+      old.color != color ||
+      old.detentPositions.length != detentPositions.length;
 }

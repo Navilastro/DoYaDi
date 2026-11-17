@@ -12,51 +12,37 @@ class RpmLedBarPainter extends CustomPainter {
   /// Animasyon değeri (yanıp sönme için, 0.0-1.0 sinüs dalgası)
   final double blinkPhase;
 
+  /// Özelleştirilebilir gradyan durak renkleri
+  final Color lowColor;
+  final Color midColor;
+  final Color highColor;
+  final Color limColor;
+
   static const int _segmentCount = 15;
   static const double _segmentGap = 3.0;
   static const double _cornerRadius = 3.0;
 
-  // Segment renkleri
-  static const List<Color> _segmentColors = [
-    Color(0xFF00E676), // 0 - Yeşil
-    Color(0xFF00E676), // 1
-    Color(0xFF00E676), // 2
-    Color(0xFF66BB6A), // 3
-    Color(0xFF66BB6A), // 4
-    Color(0xFF66BB6A), // 5
-    Color(0xFFFFEB3B), // 6 - Sarı
-    Color(0xFFFFEB3B), // 7
-    Color(0xFFFFC107), // 8
-    Color(0xFFFFC107), // 9
-    Color(0xFFFF9800), // 10
-    Color(0xFFFF1744), // 11 - Kırmızı
-    Color(0xFFFF1744), // 12
-    Color(0xFFD50000), // 13
-    Color(0xFF448AFF), // 14 - Mavi (yanıp sönen)
-  ];
-
-  static const List<Color> _dimColors = [
-    Color(0xFF1B3A1B),
-    Color(0xFF1B3A1B),
-    Color(0xFF1B3A1B),
-    Color(0xFF1B3A1B),
-    Color(0xFF1B3A1B),
-    Color(0xFF1B3A1B),
-    Color(0xFF3A3A1B),
-    Color(0xFF3A3A1B),
-    Color(0xFF3A3A1B),
-    Color(0xFF3A3A1B),
-    Color(0xFF3A3A1B),
-    Color(0xFF3A1B1B),
-    Color(0xFF3A1B1B),
-    Color(0xFF3A1B1B),
-    Color(0xFF1B2A3A),
-  ];
-
   const RpmLedBarPainter({
     required this.rpmFraction,
     this.blinkPhase = 1.0,
+    this.lowColor = const Color(0xFF00E676),
+    this.midColor = const Color(0xFFFFEB3B),
+    this.highColor = const Color(0xFFFF1744),
+    this.limColor = const Color(0xFF448AFF),
   });
+
+  Color _segmentColorAt(int index) {
+    if (index <= 5) {
+      return Color.lerp(lowColor, midColor, index / 7.5)!;
+    }
+    if (index <= 10) {
+      return Color.lerp(midColor, highColor, (index - 5) / 6.0)!;
+    }
+    if (index < 14) {
+      return Color.lerp(highColor, limColor, (index - 11) / 5.0)!;
+    }
+    return limColor;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -67,6 +53,7 @@ class RpmLedBarPainter extends CustomPainter {
 
     for (int i = 0; i < _segmentCount; i++) {
       final isActive = i < activeSegments;
+      final segCol = _segmentColorAt(i);
       final x = i * (segmentWidth + _segmentGap);
       final rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, 0, segmentWidth, segmentHeight),
@@ -75,13 +62,13 @@ class RpmLedBarPainter extends CustomPainter {
 
       Color color;
       if (isActive) {
-        color = _segmentColors[i];
+        color = segCol;
         // Son segment (14) — yanıp söner
         if (i == 14) {
           color = color.withValues(alpha: 0.3 + 0.7 * blinkPhase);
         }
       } else {
-        color = _dimColors[i];
+        color = Color.lerp(const Color(0xFF14141E), segCol, 0.16)!;
       }
 
       final paint = Paint()
@@ -93,7 +80,7 @@ class RpmLedBarPainter extends CustomPainter {
       // Aktif segmentlere parlaklık efekti
       if (isActive) {
         final glowPaint = Paint()
-          ..color = _segmentColors[i].withValues(alpha: 0.3)
+          ..color = segCol.withValues(alpha: 0.3)
           ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 4);
         canvas.drawRRect(rect, glowPaint);
       }

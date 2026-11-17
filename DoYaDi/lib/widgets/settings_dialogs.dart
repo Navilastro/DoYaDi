@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/app_settings.dart';
 import '../core/widgets/searchable_key_picker.dart';
 import '../core/utils/keyboard_keys.dart';
 import '../core/utils/app_translations.dart';
+import 'looping_media_widget.dart';
 
 // ── Direksiyon: 1'den 1080'e tüm değerler ───────────────────────────────────
 final steeringAngles = {
@@ -111,6 +113,15 @@ const swipeDirLabels = <String, int>{
 // Ortak dialog/helper mixin — SettingsScreen tarafından kullanılır.
 // ────────────────────────────────────────────────────────────────────────────
 mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
+  AppSettings _effSettings([AppSettings? s]) {
+    if (s != null) return s;
+    try {
+      return Provider.of<SettingsProvider>(context, listen: false).settings;
+    } catch (_) {
+      return AppSettings();
+    }
+  }
+
   String keyName(int v) {
     if (v >= 2000) return 'Makro ${v - 1999}';
     return KeyboardKeys.appKeyMap.entries
@@ -140,6 +151,10 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
     required R current,
     required Map<String, R> options,
   }) {
+    final cfg = _effSettings();
+    final ac = cfg.detailColor;
+    final txt = cfg.textColor;
+    final sub = cfg.textDisabledColor;
     return showDialog<R>(
       context: ctx,
       builder: (dctx) {
@@ -147,13 +162,13 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
         return StatefulBuilder(
           builder: (dctx, ss) {
             return AlertDialog(
-              backgroundColor: const Color(0xFF12122A),
+              backgroundColor: cfg.surfaceColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
               title: Text(
                 title,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
+                style: TextStyle(color: txt, fontSize: 15),
               ),
               content: SizedBox(
                 width: double.maxFinite,
@@ -175,15 +190,15 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                             children: [
                               Radio<R>(
                                 value: e.value,
-                                activeColor: const Color(0xFF40E0D0),
+                                activeColor: ac,
                               ),
-                              Text(
-                                e.key,
-                                style: TextStyle(
-                                  color: isSel
-                                      ? const Color(0xFF40E0D0)
-                                      : Colors.white70,
-                                  fontSize: 14,
+                              Expanded(
+                                child: Text(
+                                  e.key,
+                                  style: TextStyle(
+                                    color: isSel ? ac : txt.withValues(alpha: 0.78),
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ],
@@ -199,13 +214,13 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                   onPressed: () => Navigator.pop(dctx),
                   child: Text(
                     AppTranslations.getText('cancel'),
-                    style: const TextStyle(color: Colors.white54),
+                    style: TextStyle(color: sub),
                   ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF40E0D0),
-                    foregroundColor: Colors.black,
+                    backgroundColor: ac,
+                    foregroundColor: cfg.contrastTextFor(ac),
                   ),
                   onPressed: () => Navigator.pop(dctx, selected),
                   child: Text(AppTranslations.getText('apply')),
@@ -237,19 +252,57 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
     int r = (initial.r * 255.0).round().clamp(0, 255);
     int g = (initial.g * 255.0).round().clamp(0, 255);
     int b = (initial.b * 255.0).round().clamp(0, 255);
+
+    final rCtrl = TextEditingController(text: r.toString());
+    final gCtrl = TextEditingController(text: g.toString());
+    final bCtrl = TextEditingController(text: b.toString());
+    final hexCtrl = TextEditingController(
+      text: '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}'.toUpperCase(),
+    );
+
     return showDialog<Color>(
       context: ctx,
       builder: (dctx) => StatefulBuilder(
         builder: (dctx, ss) {
           final preview = Color.fromARGB(255, r, g, b);
+          final previewTextColor = preview.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+
+          void updateFromRgb(int newR, int newG, int newB) {
+            r = newR.clamp(0, 255);
+            g = newG.clamp(0, 255);
+            b = newB.clamp(0, 255);
+            rCtrl.text = r.toString();
+            gCtrl.text = g.toString();
+            bCtrl.text = b.toString();
+            hexCtrl.text = '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}'.toUpperCase();
+          }
+
+          void updateFromHex(String hex) {
+            String clean = hex.replaceAll('#', '').trim();
+            if (clean.length == 6) {
+              final parsed = int.tryParse(clean, radix: 16);
+              if (parsed != null) {
+                r = (parsed >> 16) & 0xFF;
+                g = (parsed >> 8) & 0xFF;
+                b = parsed & 0xFF;
+                rCtrl.text = r.toString();
+                gCtrl.text = g.toString();
+                bCtrl.text = b.toString();
+              }
+            }
+          }
+
+          final cfg = _effSettings();
+          final dlgTxt = cfg.textColor;
+          final dlgSub = cfg.textDisabledColor;
           return AlertDialog(
-            backgroundColor: const Color(0xFF12122A),
+            backgroundColor: cfg.surfaceColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
             ),
             title: Text(
               title,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: TextStyle(color: dlgTxt, fontSize: 16, fontWeight: FontWeight.bold),
             ),
             content: SizedBox(
               width: double.maxFinite,
@@ -257,17 +310,94 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Canlı Renk Önizleme Kutusu
                     Container(
-                      height: 50,
+                      height: 55,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         color: preview,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: dlgTxt.withValues(alpha: 0.3), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: preview.withValues(alpha: 0.35),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'RGB($r, $g, $b)  •  ${hexCtrl.text}',
+                        style: TextStyle(
+                          color: previewTextColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          letterSpacing: 1.1,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _rgbSlider('R', r, Colors.red, ss, (v) => r = v),
-                    _rgbSlider('G', g, Colors.green, ss, (v) => g = v),
-                    _rgbSlider('B', b, Colors.blue, ss, (v) => b = v),
+
+                    // R, G, B Kaydırıcılar
+                    _rgbSlider('R', r, Colors.redAccent, ss, (v) {
+                      ss(() => updateFromRgb(v, g, b));
+                    }),
+                    _rgbSlider('G', g, Colors.greenAccent, ss, (v) {
+                      ss(() => updateFromRgb(r, v, b));
+                    }),
+                    _rgbSlider('B', b, Colors.lightBlueAccent, ss, (v) {
+                      ss(() => updateFromRgb(r, g, v));
+                    }),
+                    const SizedBox(height: 12),
+
+                    // Sayısal RGB & HEX Giriş Satırı
+                    Row(
+                      children: [
+                        _rgbNumberField('R', rCtrl, (val) {
+                          final v = int.tryParse(val);
+                          if (v != null) ss(() => updateFromRgb(v, g, b));
+                        }),
+                        const SizedBox(width: 8),
+                        _rgbNumberField('G', gCtrl, (val) {
+                          final v = int.tryParse(val);
+                          if (v != null) ss(() => updateFromRgb(r, v, b));
+                        }),
+                        const SizedBox(width: 8),
+                        _rgbNumberField('B', bCtrl, (val) {
+                          final v = int.tryParse(val);
+                          if (v != null) ss(() => updateFromRgb(r, g, v));
+                        }),
+                        const SizedBox(width: 12),
+                        // Hex input
+                        Expanded(
+                          child: TextField(
+                            controller: hexCtrl,
+                            maxLength: 7,
+                            style: TextStyle(color: dlgTxt, fontSize: 13, fontWeight: FontWeight.bold),
+                            decoration: InputDecoration(
+                              counterText: '',
+                              labelText: 'HEX',
+                              labelStyle: TextStyle(color: dlgSub, fontSize: 11),
+                              filled: true,
+                              fillColor: dlgTxt.withValues(alpha: 0.05),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: dlgTxt.withValues(alpha: 0.24)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: preview, width: 1.5),
+                              ),
+                            ),
+                            onChanged: (val) {
+                              ss(() => updateFromHex(val));
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -277,21 +407,57 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                 onPressed: () => Navigator.pop(dctx),
                 child: Text(
                   AppTranslations.getText('cancel'),
-                  style: const TextStyle(color: Colors.white54),
+                  style: TextStyle(color: dlgSub),
                 ),
               ),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: preview),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: preview,
+                  foregroundColor: previewTextColor,
+                ),
                 onPressed: () =>
                     Navigator.pop(dctx, Color.fromARGB(255, r, g, b)),
                 child: Text(
                   AppTranslations.getText('apply'),
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: previewTextColor, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _rgbNumberField(String label, TextEditingController ctrl, void Function(String) onChanged) {
+    final cfg = _effSettings();
+    final dlgTxt = cfg.textColor;
+    final dlgSub = cfg.textDisabledColor;
+    return SizedBox(
+      width: 48,
+      child: TextField(
+        controller: ctrl,
+        keyboardType: TextInputType.number,
+        maxLength: 3,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: dlgTxt, fontSize: 13, fontWeight: FontWeight.bold),
+        decoration: InputDecoration(
+          counterText: '',
+          labelText: label,
+          labelStyle: TextStyle(color: dlgSub, fontSize: 11),
+          filled: true,
+          fillColor: dlgTxt.withValues(alpha: 0.05),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: dlgTxt.withValues(alpha: 0.24)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: cfg.detailColor),
+          ),
+        ),
+        onChanged: onChanged,
       ),
     );
   }
@@ -303,6 +469,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
     StateSetter ss,
     void Function(int) cb,
   ) {
+    final cfg = _effSettings();
     return Row(
       children: [
         SizedBox(
@@ -337,7 +504,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
           width: 34,
           child: Text(
             val.toString(),
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: TextStyle(color: cfg.textColor.withValues(alpha: 0.78), fontSize: 12),
             textAlign: TextAlign.end,
           ),
         ),
@@ -347,74 +514,145 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
 
   // ── Shared UI helpers ────────────────────────────────────────────────────
 
-  Widget settingsHeader(String t) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-    child: Text(
+  Widget settingsHeader(String t, [AppSettings? s]) {
+    final cfg = _effSettings(s);
+    final hasBgMedia = AppMediaHelper.hasMedia(cfg.bgMediaPath);
+    final headerText = Text(
       t.toUpperCase(),
-      style: const TextStyle(
-        color: Colors.white38,
+      style: TextStyle(
+        color: hasBgMedia ? Colors.white70 : cfg.textDisabledColor,
         fontSize: 11,
         letterSpacing: 1.4,
         fontWeight: FontWeight.w600,
       ),
-    ),
-  );
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: hasBgMedia
+          ? BlurredTextChip(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              child: headerText,
+            )
+          : headerText,
+    );
+  }
 
   Widget settingsTile({
     required String title,
     String? subtitle,
     Widget? trailing,
     VoidCallback? onTap,
+    AppSettings? s,
   }) {
-    return ListTile(
+    final cfg = _effSettings(s);
+    final hasBgMedia = AppMediaHelper.hasMedia(cfg.bgMediaPath);
+    final txt = hasBgMedia ? Colors.white : cfg.textColor;
+    final sub = hasBgMedia ? Colors.white70 : cfg.textDisabledColor;
+    final tile = ListTile(
       title: Text(
         title,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
+        style: TextStyle(color: txt, fontSize: 15),
       ),
       subtitle: subtitle != null
           ? Text(
               subtitle,
-              style: const TextStyle(color: Colors.white38, fontSize: 12),
+              style: TextStyle(color: sub, fontSize: 12),
             )
           : null,
       trailing: trailing,
       onTap: onTap,
     );
+    if (!hasBgMedia) return tile;
+    return GlassContainer(
+      isGlassActive: true,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      padding: EdgeInsets.zero,
+      borderRadius: BorderRadius.circular(14),
+      child: tile,
+    );
+  }
+
+  Widget settingsSwitchTile({
+    required String title,
+    String? subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    AppSettings? s,
+  }) {
+    final cfg = _effSettings(s);
+    final hasBgMedia = AppMediaHelper.hasMedia(cfg.bgMediaPath);
+    final txt = hasBgMedia ? Colors.white : cfg.textColor;
+    final sub = hasBgMedia ? Colors.white70 : cfg.textDisabledColor;
+    final tile = SwitchListTile(
+      title: Text(
+        title,
+        style: TextStyle(color: txt, fontSize: 15),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: TextStyle(color: sub, fontSize: 12),
+            )
+          : null,
+      value: value,
+      activeThumbColor: cfg.detailColor,
+      onChanged: onChanged,
+    );
+    if (!hasBgMedia) return tile;
+    return GlassContainer(
+      isGlassActive: true,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      padding: EdgeInsets.zero,
+      borderRadius: BorderRadius.circular(14),
+      child: tile,
+    );
   }
 
   Widget swipeTile(Color ac, String dir, String assigned, VoidCallback? onTap) {
+    final cfg = _effSettings();
+    final hasBgMedia = AppMediaHelper.hasMedia(cfg.bgMediaPath);
+    final txt = hasBgMedia ? Colors.white : cfg.textColor;
+    final sub = hasBgMedia ? Colors.white54 : cfg.textDisabledColor;
     final isFixed = onTap == null;
-    return ListTile(
+    final tile = ListTile(
       dense: true,
       leading: Text(
         dir.substring(0, 2),
-        style: const TextStyle(fontSize: 20, color: Colors.white70),
+        style: TextStyle(fontSize: 20, color: txt.withValues(alpha: 0.78)),
       ),
       title: Text(
         dir.substring(2).trim(),
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        style: TextStyle(color: txt, fontSize: 14),
       ),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: isFixed
-              ? Colors.white.withValues(alpha: 0.05)
+              ? txt.withValues(alpha: 0.05)
               : ac.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isFixed ? Colors.white12 : ac.withValues(alpha: 0.4),
+            color: isFixed ? txt.withValues(alpha: 0.14) : ac.withValues(alpha: 0.4),
           ),
         ),
         child: Text(
           isFixed ? 'Bar (fixed)' : assigned,
           style: TextStyle(
-            color: isFixed ? Colors.white38 : ac,
+            color: isFixed ? sub : ac,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
         ),
       ),
       onTap: onTap,
+    );
+    if (!hasBgMedia) return tile;
+    return GlassContainer(
+      isGlassActive: true,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      padding: EdgeInsets.zero,
+      borderRadius: BorderRadius.circular(14),
+      child: tile,
     );
   }
 
@@ -426,6 +664,9 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
     Color current,
     void Function(Color) onChanged,
   ) {
+    final hasBgMedia = AppMediaHelper.hasMedia(s.bgMediaPath);
+    final txt = hasBgMedia ? Colors.white : s.textColor;
+    final sub = hasBgMedia ? Colors.white70 : s.textDisabledColor;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: InkWell(
@@ -434,12 +675,15 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
           final c = await showRgbPicker(ctx, current, label);
           if (c != null) onChanged(c);
         },
-        child: Container(
+        child: GlassContainer(
+          isGlassActive: hasBgMedia,
+          solidBackgroundColor: txt.withValues(alpha: 0.05),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasBgMedia
+                ? Colors.white.withValues(alpha: 0.22)
+                : txt.withValues(alpha: 0.14),
           ),
           child: Row(
             children: [
@@ -449,7 +693,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                 decoration: BoxDecoration(
                   color: current,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white30, width: 1.5),
+                  border: Border.all(color: txt.withValues(alpha: 0.35), width: 1.5),
                 ),
               ),
               const SizedBox(width: 16),
@@ -459,19 +703,19 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                   children: [
                     Text(
                       label,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      style: TextStyle(color: txt, fontSize: 14),
                     ),
                     Text(
                       'R:${(current.r * 255).round()}  G:${(current.g * 255).round()}  B:${(current.b * 255).round()}',
-                      style: const TextStyle(
-                        color: Colors.white38,
+                      style: TextStyle(
+                        color: sub,
                         fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.white38),
+              Icon(Icons.chevron_right, color: sub),
             ],
           ),
         ),
@@ -1643,6 +1887,59 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
       },
     );
   }
+}
+
+/// Ayarlar ve Mod 5 düzenleme ekranında ortak kullanılan bilgi penceresi.
+Future<void> showKeyMappingsInfoDialog(
+  BuildContext context, [
+  AppSettings? settings,
+]) {
+  AppSettings cfg;
+  if (settings != null) {
+    cfg = settings;
+  } else {
+    try {
+      cfg = Provider.of<SettingsProvider>(context, listen: false).settings;
+    } catch (_) {
+      cfg = AppSettings();
+    }
+  }
+  final Color surface = cfg.surfaceColor;
+  final Color txt = cfg.contrastTextFor(surface);
+  final Color sub = cfg.textSecondaryColor;
+  final Color accent = cfg.detailColor;
+
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Text(
+        AppTranslations.getText('key_mappings'),
+        style: TextStyle(color: txt, fontWeight: FontWeight.bold),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppTranslations.getText('key_mapping_desc'),
+              style: TextStyle(color: sub, height: 1.5),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text(
+            AppTranslations.getText('ok'),
+            style: TextStyle(color: accent, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// İvmelenme süresi (saniye veya milisaniye türünde) değer girme penceresi.

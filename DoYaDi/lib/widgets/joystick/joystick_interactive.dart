@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'joystick_controller.dart';
 import 'joystick_painter.dart';
+import '../looping_media_widget.dart';
 
 /// Birleşik joystick widget'ı — Sabit (Fixed) ve Sürüklenen (Floating) modları
 /// tek widget'ta yönetir.
@@ -16,6 +17,8 @@ class JoystickInteractive extends StatefulWidget {
   final Color thumbColor;
   final double deadzone;
   final double ghostOpacity;
+  final String? baseMediaPath;
+  final String? thumbMediaPath;
 
   /// true: floating base davranışı (base parmağı takip eder).
   /// false: sabit mod (base yerinden oynamaz).
@@ -30,6 +33,8 @@ class JoystickInteractive extends StatefulWidget {
     this.deadzone = 0.08,
     this.ghostOpacity = 1.0,
     this.floating = false,
+    this.baseMediaPath,
+    this.thumbMediaPath,
   });
 
   @override
@@ -193,15 +198,86 @@ class _JoystickInteractiveState extends State<JoystickInteractive>
   }
 
   Widget _buildPainter(double thumbRadius) {
-    return CustomPaint(
-      painter: JoystickPainter(
-        thumbPos: _thumbPos,
-        radius: widget.radius,
-        baseColor: widget.baseColor,
-        thumbColor: widget.thumbColor,
-        thumbRadius: thumbRadius,
-        ghostOpacity: widget.ghostOpacity,
-      ),
+    final hasBaseMedia = widget.baseMediaPath != null && widget.baseMediaPath!.isNotEmpty;
+    final hasThumbMedia = widget.thumbMediaPath != null && widget.thumbMediaPath!.isNotEmpty;
+
+    if (!hasBaseMedia && !hasThumbMedia) {
+      return CustomPaint(
+        painter: JoystickPainter(
+          thumbPos: _thumbPos,
+          radius: widget.radius,
+          baseColor: widget.baseColor,
+          thumbColor: widget.thumbColor,
+          thumbRadius: thumbRadius,
+          ghostOpacity: widget.ghostOpacity,
+        ),
+      );
+    }
+
+    final double diameter = widget.radius * 2;
+    final Offset thumbCenter = Offset(widget.radius, widget.radius) + _thumbPos;
+
+    return Stack(
+      children: [
+        // Base media veya custom paint
+        if (hasBaseMedia)
+          ClipOval(
+            child: SizedBox(
+              width: diameter,
+              height: diameter,
+              child: LoopingMediaWidget(
+                mediaPath: widget.baseMediaPath,
+                fit: BoxFit.cover,
+              ),
+            ),
+          )
+        else
+          CustomPaint(
+            size: Size(diameter, diameter),
+            painter: JoystickPainter(
+              thumbPos: Offset.zero,
+              radius: widget.radius,
+              baseColor: widget.baseColor,
+              thumbColor: Colors.transparent,
+              thumbRadius: 0,
+              ghostOpacity: widget.ghostOpacity,
+            ),
+          ),
+
+        // Thumb media veya thumb circle
+        Positioned(
+          left: thumbCenter.dx - thumbRadius,
+          top: thumbCenter.dy - thumbRadius,
+          width: thumbRadius * 2,
+          height: thumbRadius * 2,
+          child: hasThumbMedia
+              ? ClipOval(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white30, width: 1.5),
+                    ),
+                    child: LoopingMediaWidget(
+                      mediaPath: widget.thumbMediaPath,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: widget.thumbColor,
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.thumbColor.withValues(alpha: 0.5),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

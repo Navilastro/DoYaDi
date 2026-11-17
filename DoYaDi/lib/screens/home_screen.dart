@@ -1,18 +1,29 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../providers/settings_provider.dart';
 import '../providers/connection_provider.dart';
+import '../providers/monetization_provider.dart';
+import '../services/ad_service.dart';
+import '../models/app_settings.dart';
 import '../core/utils/result.dart';
 import 'settings_screen.dart';
 import 'driving_screen.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../core/utils/app_translations.dart';
+import '../widgets/looping_media_widget.dart';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PC İSTEMCİ WEB SİTESİ BAĞLANTISI (Daha sonra buradan güncelleyebilirsiniz)
+// ═══════════════════════════════════════════════════════════════════════════
+const String kClientWebsiteUrl = 'https://doyadi.com';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -470,15 +481,31 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context).settings;
-    
+    final hasBgMedia = AppMediaHelper.hasMedia(settings.bgMediaPath);
+    final fgColor = hasBgMedia ? Colors.white : settings.textColor;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              color: settings.surfaceColor.withValues(alpha: hasBgMedia ? 0.35 : 0.0),
+            ),
+          ),
+        ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.info_outline, color: fgColor),
+            tooltip: AppTranslations.getText('client_website_title'),
+            onPressed: () => _showClientWebsiteDialog(context, settings),
+          ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            color: const Color(0xFF12122A),
+            icon: Icon(Icons.more_vert, color: fgColor),
+            color: settings.surfaceColor,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             onSelected: (value) async {
               if (value == 'calibrate') {
@@ -502,7 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 } catch (_) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(AppTranslations.getText('sensor_error')), backgroundColor: Colors.red),
+                      SnackBar(content: Text(AppTranslations.getText('sensor_error')), backgroundColor: settings.warningColor),
                     );
                   }
                 }
@@ -517,241 +544,447 @@ class _HomeScreenState extends State<HomeScreen> {
               PopupMenuItem<String>(
                 value: 'calibrate',
                 child: Row(children: [
-                  const Icon(Icons.tune, color: Color(0xFF40E0D0), size: 20),
+                  Icon(Icons.tune, color: settings.detailColor, size: 20),
                   const SizedBox(width: 10),
                   Text(AppTranslations.getText('calibrate_accel'),
-                      style: const TextStyle(color: Colors.white, fontSize: 14)),
+                      style: TextStyle(color: settings.contrastTextFor(settings.surfaceColor), fontSize: 14)),
                 ]),
               ),
               PopupMenuItem<String>(
                 value: 'settings',
                 child: Row(children: [
-                  const Icon(Icons.settings, color: Color(0xFF40E0D0), size: 20),
+                  Icon(Icons.settings, color: settings.detailColor, size: 20),
                   const SizedBox(width: 10),
                   Text(AppTranslations.getText('settings'),
-                      style: const TextStyle(color: Colors.white, fontSize: 14)),
+                      style: TextStyle(color: settings.contrastTextFor(settings.surfaceColor), fontSize: 14)),
                 ]),
               ),
             ],
           ),
         ],
       ),
-      body: Center(
-        child: Consumer<ConnectionProvider>(
-          builder: (context, connection, _) {
-            final bool hasRecentLogin = connection.hasRecentLogin;
-            final bool showExpandedOptions =
-                !hasRecentLogin || _isConnectionOptionsExpanded;
-            final String welcomePrefix = AppTranslations.getText('welcome_prefix');
-            final String defaultDriver = AppTranslations.getText('default_driver_name');
-            final String driverName = settings.customDriverName.trim().isNotEmpty
-                ? settings.customDriverName.trim()
-                : defaultDriver;
+      backgroundColor: settings.backgroundColor,
+      body: Stack(
+        children: [
+          if (hasBgMedia)
+            Positioned.fill(
+              child: LoopingMediaWidget(
+                mediaPath: settings.bgMediaPath,
+                fit: BoxFit.cover,
+              ),
+            ),
+          SafeArea(
+            child: Center(
+              child: Consumer<ConnectionProvider>(
+                builder: (context, connection, _) {
+                  final bool hasRecentLogin = connection.hasRecentLogin;
+                  final bool showExpandedOptions =
+                      !hasRecentLogin || _isConnectionOptionsExpanded;
+                  final String welcomePrefix = AppTranslations.getText('welcome_prefix');
+                  final String defaultDriver = AppTranslations.getText('default_driver_name');
+                  final String driverName = settings.customDriverName.trim().isNotEmpty
+                      ? settings.customDriverName.trim()
+                      : defaultDriver;
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _DriverSketchWelcomeBanner(
-                    prefix: welcomePrefix,
-                    driverName: driverName,
-                    accentColor: settings.detailColor,
-                  ),
-                  const SizedBox(height: 18),
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 240),
-                    curve: Curves.easeInOut,
-                    child: showExpandedOptions
-                        ? Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // İlk girişten sonraki girişlerde yeniden gizleyebilmek için üstte ok işareti
-                              if (hasRecentLogin) ...[
-                                Tooltip(
-                                  message: AppTranslations.getText('hide_conn_types'),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(24),
-                                    onTap: () {
-                                      setState(() {
-                                        _isConnectionOptionsExpanded = false;
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 18,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: settings.detailColor.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(24),
-                                        border: Border.all(
-                                          color: settings.detailColor.withValues(alpha: 0.45),
-                                          width: 1.2,
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        BlurredTextChip(
+                          enabled: hasBgMedia,
+                          borderRadius: BorderRadius.circular(18),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          child: _DriverSketchWelcomeBanner(
+                            prefix: welcomePrefix,
+                            driverName: driverName,
+                            accentColor: settings.detailColor,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 240),
+                          curve: Curves.easeInOut,
+                          child: showExpandedOptions
+                              ? Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (hasRecentLogin) ...[
+                                      Tooltip(
+                                        message: AppTranslations.getText('hide_conn_types'),
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(24),
+                                          onTap: () {
+                                            setState(() {
+                                              _isConnectionOptionsExpanded = false;
+                                            });
+                                          },
+                                          child: GlassContainer(
+                                            isGlassActive: hasBgMedia,
+                                            solidBackgroundColor: settings.detailColor.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(24),
+                                            border: Border.all(
+                                              color: settings.detailColor.withValues(alpha: 0.45),
+                                              width: 1.2,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 18,
+                                              vertical: 4,
+                                            ),
+                                            child: Icon(
+                                              Icons.keyboard_arrow_up_rounded,
+                                              color: settings.detailColor,
+                                              size: 28,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                      child: Icon(
-                                        Icons.keyboard_arrow_up_rounded,
-                                        color: settings.detailColor,
-                                        size: 28,
+                                      const SizedBox(height: 12),
+                                    ],
+                                    GlassContainer(
+                                      isGlassActive: hasBgMedia,
+                                      solidBackgroundColor: Colors.transparent,
+                                      borderRadius: BorderRadius.circular(30),
+                                      border: Border.all(color: settings.detailColor, width: 2),
+                                      child: ElevatedButton(
+                                        onPressed: () => _showConnectionDialog(context),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: settings.detailColor.withValues(alpha: hasBgMedia ? 0.15 : 0.2),
+                                          foregroundColor: hasBgMedia ? Colors.white : settings.detailColor,
+                                          shadowColor: Colors.transparent,
+                                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(30),
+                                          ),
+                                        ),
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            AppTranslations.getText('select_device_to_connect'),
+                                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 15),
+                                    GlassContainer(
+                                      isGlassActive: hasBgMedia,
+                                      solidBackgroundColor: Colors.transparent,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: settings.detailColor.withValues(alpha: 0.5), width: 1.5),
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => _showUsbTetheringDialog(context),
+                                        icon: Icon(Icons.cable, color: fgColor),
+                                        label: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            AppTranslations.getText('wired_connect_usb'),
+                                            style: TextStyle(color: fgColor, fontSize: 16),
+                                          ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: settings.detailColor.withValues(alpha: 0.15),
+                                          shadowColor: Colors.transparent,
+                                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : GlassContainer(
+                                  isGlassActive: hasBgMedia,
+                                  solidBackgroundColor: Colors.transparent,
+                                  borderRadius: BorderRadius.circular(26),
+                                  border: Border.all(
+                                    color: settings.detailColor.withValues(alpha: 0.7),
+                                    width: 1.5,
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _isConnectionOptionsExpanded = true;
+                                      });
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: settings.detailColor.withValues(alpha: 0.16),
+                                      foregroundColor: hasBgMedia ? Colors.white : settings.detailColor,
+                                      shadowColor: Colors.transparent,
+                                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(26),
+                                      ),
+                                    ),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            _rememberedConnectionIcon(connection),
+                                            color: hasBgMedia ? Colors.white : settings.detailColor,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            _rememberedConnectionLabel(connection),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                            color: hasBgMedia ? Colors.white : settings.detailColor,
+                                            size: 24,
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                              ],
-                              ElevatedButton(
-                                onPressed: () => _showConnectionDialog(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: settings.detailColor.withValues(alpha: 0.2),
-                                  foregroundColor: settings.detailColor,
-                                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                    side: BorderSide(color: settings.detailColor, width: 2),
-                                  ),
+                        ),
+                        const SizedBox(height: 24),
+                        Builder(
+                          builder: (context) {
+                            final hasStartMedia = AppMediaHelper.hasMedia(settings.homeStartBtnMediaPath);
+                            final startBgColor = settings.homeStartBtnColor;
+                            final startBtnFgColor = hasStartMedia
+                                ? Colors.white
+                                : startBgColor.contrastingTextColor;
+
+                            Future<void> handleStart() async {
+                              final conn = Provider.of<ConnectionProvider>(context, listen: false);
+                              final connResult = await conn.ensureConnectedForDriving();
+                              if (connResult.isFailure) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        conn.wifiIp.isEmpty && conn.selectedDevice == null
+                                            ? AppTranslations.getText('please_select_device_first')
+                                            : (connResult.errorMessage ??
+                                                AppTranslations.getText('please_select_device_first')),
+                                      ),
+                                      backgroundColor: settings.warningColor,
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+
+                              if (mounted) {
+                                setState(() {
+                                  _isConnectionOptionsExpanded = false;
+                                });
+                              }
+
+                              if (!context.mounted) return;
+                              final monetization =
+                                  Provider.of<MonetizationProvider>(
+                                    context,
+                                    listen: false,
+                                  );
+                              AdService().showInterstitial(
+                                isAdFree: monetization.isAdFree,
+                                onComplete: () {
+                                  if (!context.mounted) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const DrivingScreen(),
+                                    ),
+                                  );
+                                },
+                              );
+                            }
+
+                            if (hasStartMedia) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: startBgColor.withValues(alpha: 0.5),
+                                      blurRadius: 12,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
                                 ),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    AppTranslations.getText('select_device_to_connect'),
-                                    style: const TextStyle(fontSize: 18),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 15),
-                              ElevatedButton.icon(
-                                onPressed: () => _showUsbTetheringDialog(context),
-                                icon: const Icon(Icons.cable, color: Colors.white),
-                                label: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    AppTranslations.getText('wired_connect_usb'),
-                                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: settings.detailColor.withValues(alpha: 0.15),
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                    side: BorderSide(color: settings.detailColor.withValues(alpha: 0.5), width: 1.5),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _isConnectionOptionsExpanded = true;
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: settings.detailColor.withValues(alpha: 0.16),
-                              foregroundColor: settings.detailColor,
-                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(26),
-                                side: BorderSide(
-                                  color: settings.detailColor.withValues(alpha: 0.7),
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _rememberedConnectionIcon(connection),
-                                    color: settings.detailColor,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    _rememberedConnectionLabel(connection),
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(30),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: handleStart,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Positioned.fill(
+                                            child: LoopingMediaWidget(
+                                              mediaPath: settings.homeStartBtnMediaPath,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: math.min(60.0, MediaQuery.of(context).size.width * 0.12),
+                                              vertical: 25,
+                                            ),
+                                            child: BlurredTextChip(
+                                              enabled: true,
+                                              borderRadius: BorderRadius.circular(18),
+                                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text(
+                                                  AppTranslations.getText('start_button'),
+                                                  style: const TextStyle(
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    color: settings.detailColor,
-                                    size: 24,
+                                ),
+                              );
+                            }
+
+                            return ElevatedButton(
+                              onPressed: handleStart,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: startBgColor,
+                                foregroundColor: startBtnFgColor,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: math.min(60.0, MediaQuery.of(context).size.width * 0.12),
+                                  vertical: 25,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                elevation: 10,
+                                shadowColor: startBgColor.withValues(alpha: 0.5),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  AppTranslations.getText('start_button'),
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: startBtnFgColor,
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final conn = Provider.of<ConnectionProvider>(context, listen: false);
-
-                      // Sürüşe girerken (veya ayarlardan geri dönüldüğünde) bağlantıyı
-                      // ve UDP soketini otomatik olarak yeniden kur / tazele
-                      final connResult = await conn.ensureConnectedForDriving();
-                      if (connResult.isFailure) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                conn.wifiIp.isEmpty && conn.selectedDevice == null
-                                    ? AppTranslations.getText('please_select_device_first')
-                                    : (connResult.errorMessage ??
-                                        AppTranslations.getText('please_select_device_first')),
-                              ),
-                              backgroundColor: Colors.red,
-                              duration: const Duration(seconds: 3),
-                            ),
-                          );
-                        }
-                        return;
-                      }
-
-                      if (mounted) {
-                        setState(() {
-                          _isConnectionOptionsExpanded = false;
-                        });
-                      }
-
-                      if (!context.mounted) return;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const DrivingScreen()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: settings.detailColor,
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: math.min(60.0, MediaQuery.of(context).size.width * 0.12),
-                        vertical: 25,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      elevation: 10,
-                      shadowColor: settings.detailColor.withValues(alpha: 0.5),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        AppTranslations.getText('start_steering_mode'),
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClientWebsiteDialog(BuildContext context, AppSettings settings) {
+    final Color surface = settings.surfaceColor;
+    final Color txt = settings.contrastTextFor(surface);
+    final Color sub = settings.textSecondaryColor;
+    final Color accent = settings.detailColor;
+
+    showDialog(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            Icon(Icons.info_outline, color: accent),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                AppTranslations.getText('client_website_title'),
+                style: TextStyle(color: txt, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
         ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppTranslations.getText('client_website_desc'),
+              style: TextStyle(color: sub, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () async {
+                try {
+                  final ok = await const MethodChannel('Navilastro.DoYaDi/volume_keys')
+                      .invokeMethod<bool>('open_url', {'url': kClientWebsiteUrl});
+                  if (ok != true) {
+                    await Clipboard.setData(const ClipboardData(text: kClientWebsiteUrl));
+                  }
+                } catch (_) {
+                  await Clipboard.setData(const ClipboardData(text: kClientWebsiteUrl));
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: accent.withValues(alpha: 0.6)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        kClientWebsiteUrl,
+                        style: TextStyle(
+                          color: accent,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: accent,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.open_in_new_rounded, color: accent, size: 18),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dctx),
+            child: Text(
+              AppTranslations.getText('ok'),
+              style: TextStyle(color: accent, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }

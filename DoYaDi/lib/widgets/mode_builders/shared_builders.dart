@@ -167,29 +167,28 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
     required bool isBrake,
     required int tapKey,
   }) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Listener(
-            behavior: HitTestBehavior.opaque,
-            onPointerDown: (e) => onPedalDown(e, !isBrake, tapKey: tapKey),
-            onPointerMove: (e) => onPedalMove(e, s),
-            onPointerUp: onPedalUp,
-            onPointerCancel: onPedalUp,
-            child: RepaintBoundary(
-              child: CustomPaint(
-                painter: PedalPainter(
-                  fillPercentage: isBrake ? brakePercentage : gasPercentage,
-                  baseColor: isBrake ? s.brakeColor : s.gasColor,
-                  bgColor: s.pedalBgColor,
-                  yetsoreColor: s.yetsoreColor,
-                ),
-                child: const SizedBox.expand(),
-              ),
-            ),
-          ),
-        ),
-      ],
+    final bgColor = s.separatePedalBg
+        ? (isBrake ? s.leftPedalBgColor : s.rightPedalBgColor)
+        : s.pedalBgColor;
+    final bgMedia = s.separatePedalBg
+        ? (isBrake ? s.leftPedalBgMediaPath : s.rightPedalBgMediaPath)
+        : s.pedalBarBgMediaPath;
+
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (e) => onPedalDown(e, !isBrake, tapKey: tapKey),
+      onPointerMove: (e) => onPedalMove(e, s),
+      onPointerUp: onPedalUp,
+      onPointerCancel: onPedalUp,
+      child: CustomizablePedalBar(
+        fillPercentage: isBrake ? brakePercentage : gasPercentage,
+        baseColor: isBrake ? s.brakeColor : s.gasColor,
+        bgColor: bgColor,
+        yetsoreColor: s.yetsoreColor,
+        fillMediaPath: isBrake ? s.brakeBarMediaPath : s.gasBarMediaPath,
+        bgMediaPath: bgMedia,
+        yetsoreMediaPath: s.yetsoreMediaPath,
+      ),
     );
   }
 
@@ -202,7 +201,11 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
     required int k4,
     int? k5,
   }) {
-    final color = s.detailColor;
+    final color = s.mode234ButtonColor;
+    final btnMedia = (s.mode234ButtonMediaPath != null && s.mode234ButtonMediaPath!.isNotEmpty)
+        ? s.mode234ButtonMediaPath
+        : s.generalButtonMediaPath;
+    final hasBgMedia = s.modeBackgroundMedia(s.defaultDrivingMode)?.isNotEmpty == true;
     return Column(
       children: [
         Expanded(
@@ -212,6 +215,8 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
                 child: TapZone(
                   label: '${AppTranslations.getText('key_prefix')} $k1',
                   color: color,
+                  mediaPath: btnMedia,
+                  blurLabel: hasBgMedia,
                   isActive: pressedKeys.contains(k1),
                   onDown: () => handleButtonDown(k1),
                   onUp: () => handleButtonUp(k1),
@@ -221,6 +226,8 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
                 child: TapZone(
                   label: '${AppTranslations.getText('key_prefix')} $k2',
                   color: color,
+                  mediaPath: btnMedia,
+                  blurLabel: hasBgMedia,
                   isActive: pressedKeys.contains(k2),
                   onDown: () => handleButtonDown(k2),
                   onUp: () => handleButtonUp(k2),
@@ -236,6 +243,8 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
                 child: TapZone(
                   label: '${AppTranslations.getText('key_prefix')} $k3',
                   color: color,
+                  mediaPath: btnMedia,
+                  blurLabel: hasBgMedia,
                   isActive: pressedKeys.contains(k3),
                   onDown: () => handleButtonDown(k3),
                   onUp: () => handleButtonUp(k3),
@@ -245,6 +254,8 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
                 child: TapZone(
                   label: '${AppTranslations.getText('key_prefix')} $k4',
                   color: color,
+                  mediaPath: btnMedia,
+                  blurLabel: hasBgMedia,
                   isActive: pressedKeys.contains(k4),
                   onDown: () => handleButtonDown(k4),
                   onUp: () => handleButtonUp(k4),
@@ -258,6 +269,8 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
             child: TapZone(
               label: '${AppTranslations.getText('key_prefix')} $k5',
               color: color,
+              mediaPath: btnMedia,
+              blurLabel: hasBgMedia,
               isActive: pressedKeys.contains(k5),
               onDown: () => handleButtonDown(k5),
               onUp: () => handleButtonUp(k5),

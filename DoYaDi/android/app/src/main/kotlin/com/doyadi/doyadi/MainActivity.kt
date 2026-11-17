@@ -92,6 +92,22 @@ class MainActivity : FlutterActivity() {
                         stopMod8BgService()
                         result.success(true)
                     }
+                    "open_url" -> {
+                        val url = call.argument<String>("url")
+                        if (!url.isNullOrBlank()) {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e: Exception) {
+                                result.success(false)
+                            }
+                        } else {
+                            result.success(false)
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -139,6 +155,12 @@ class MainActivity : FlutterActivity() {
         }
         (args["cruiseLocked"] as? Boolean)?.let { Mod8BackgroundService.cruiseLocked = it }
         (args["cruiseGasValue"] as? Number)?.let { Mod8BackgroundService.cruiseGasValue = it.toDouble() }
+        (args["overlayBgColor"] as? Number)?.let { Mod8BackgroundService.overlayBgColor = it.toInt() }
+        (args["overlayBorderColor"] as? Number)?.let { Mod8BackgroundService.overlayBorderColor = it.toInt() }
+        (args["overlaySteerColor"] as? Number)?.let { Mod8BackgroundService.overlaySteerColor = it.toInt() }
+        (args["overlayGasColor"] as? Number)?.let { Mod8BackgroundService.overlayGasColor = it.toInt() }
+        (args["overlayBrakeColor"] as? Number)?.let { Mod8BackgroundService.overlayBrakeColor = it.toInt() }
+        (args["overlayGearBtnColor"] as? Number)?.let { Mod8BackgroundService.overlayGearBtnColor = it.toInt() }
     }
 
     private fun sendServiceAction(action: String) {

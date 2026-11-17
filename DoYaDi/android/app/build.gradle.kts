@@ -31,6 +31,20 @@ android {
         multiDexEnabled = true
     }
 
+    flavorDimensions += "app"
+    productFlavors {
+        create("oyuku") {
+            dimension = "app"
+            applicationId = "com.navilastro.oyuku"
+            resValue("string", "app_name", "OyuKu")
+        }
+        create("doyadi") {
+            dimension = "app"
+            applicationId = "com.navilastro.doyadi"
+            resValue("string", "app_name", "DoYaDi")
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

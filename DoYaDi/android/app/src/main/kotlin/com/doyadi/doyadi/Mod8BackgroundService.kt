@@ -109,6 +109,36 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         @Volatile
         var cruiseGasValue: Double = 0.0
 
+        @Volatile
+        var overlayBgColor: Int = Color.parseColor("#EB0A0A18")
+
+        @Volatile
+        var overlayBorderColor: Int = Color.parseColor("#CC40E0D0")
+
+        @Volatile
+        var overlaySteerColor: Int = Color.parseColor("#40E0D0")
+
+        @Volatile
+        var overlayGasColor: Int = Color.parseColor("#00E676")
+
+        @Volatile
+        var overlayBrakeColor: Int = Color.parseColor("#FF2A6D")
+
+        @Volatile
+        var overlayGearBtnColor: Int = Color.parseColor("#40E0D0")
+
+        private fun withAlphaInt(color: Int, alpha: Int): Int {
+            return (color and 0x00FFFFFF) or ((alpha.coerceIn(0, 255)) shl 24)
+        }
+
+        private fun contrastTextInt(bgColor: Int): Int {
+            val r = Color.red(bgColor) / 255.0
+            val g = Color.green(bgColor) / 255.0
+            val b = Color.blue(bgColor) / 255.0
+            val lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+            return if (lum > 0.55) Color.BLACK else Color.WHITE
+        }
+
         var onRecalibrateCallback: ((Double, Double) -> Unit)? = null
         var onBluetoothPacketCallback: ((ByteArray) -> Unit)? = null
         var onOverlayClosedByUserCallback: (() -> Unit)? = null
@@ -228,7 +258,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
     fun applyConfigUpdate() {
         mainHandler.post {
             gearRowView?.visibility = if (showGearButtons) View.VISIBLE else View.GONE
-            if (isInBackgroundMode && bubbleRootView != null && currentActiveOverlayStyle != overlayStyle) {
+            if (isInBackgroundMode && bubbleRootView != null) {
                 hideBubbleOverlay()
                 showBubbleOverlay()
             }
@@ -508,8 +538,13 @@ class Mod8BackgroundService : Service(), SensorEventListener {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        val maxOverlayWidth = (resources.displayMetrics.widthPixels * 0.88f)
+            .toInt()
+            .coerceAtLeast(dp(180f))
+        val capsuleWidth = dp(226f).coerceAtMost(maxOverlayWidth)
+
         val params = WindowManager.LayoutParams(
-            dp(226f),
+            capsuleWidth,
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -522,14 +557,18 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
         bubbleLayoutParams = params
 
+        val ovBg = withAlphaInt(overlayBgColor, 235)
+        val ovBorder = withAlphaInt(overlayBorderColor, 215)
+        val ovTxt = contrastTextInt(overlayBgColor)
+
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12f), dp(10f), dp(12f), dp(10f))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dp(24f).toFloat()
-                setColor(Color.parseColor("#EB0A0A18"))
-                setStroke(dp(1.8f), Color.parseColor("#CC40E0D0"))
+                setColor(ovBg)
+                setStroke(dp(1.8f), ovBorder)
             }
         }
 
@@ -541,7 +580,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
         val titleTv = TextView(this).apply {
             text = "🚗 CHILL DRIVE"
-            setTextColor(Color.parseColor("#40E0D0"))
+            setTextColor(withAlphaInt(overlayBorderColor, 255))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
             typeface = Typeface.DEFAULT_BOLD
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -559,14 +598,14 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
         val resetBtn = TextView(this).apply {
             text = "SIFIRLA"
-            setTextColor(Color.parseColor("#40E0D0"))
+            setTextColor(withAlphaInt(overlayBorderColor, 255))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 8.5f)
             typeface = Typeface.DEFAULT_BOLD
             setPadding(dp(8f), dp(4f), dp(8f), dp(4f))
             background = GradientDrawable().apply {
                 cornerRadius = dp(10f).toFloat()
-                setColor(Color.parseColor("#2940E0D0"))
-                setStroke(dp(1f), Color.parseColor("#8840E0D0"))
+                setColor(withAlphaInt(overlayBorderColor, 45))
+                setStroke(dp(1f), withAlphaInt(overlayBorderColor, 145))
             }
             setOnClickListener {
                 recalibrateNow()
@@ -605,7 +644,12 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         root.addView(headerRow)
 
         // Direksiyon Mini Çubuğu
-        val sBar = SteeringBarView(this).apply {
+        val sBar = SteeringBarView(
+            this,
+            barBgColor = withAlphaInt(ovTxt, 32),
+            fillColorInt = withAlphaInt(overlaySteerColor, 255),
+            centerColorInt = withAlphaInt(ovTxt, 110)
+        ).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(9f)
@@ -625,14 +669,14 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
         val bTv = TextView(this).apply {
             text = "FREN 0%"
-            setTextColor(Color.parseColor("#FF2A6D"))
+            setTextColor(withAlphaInt(overlayBrakeColor, 255))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             typeface = Typeface.MONOSPACE
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         val sTv = TextView(this).apply {
             text = "DİR 0%"
-            setTextColor(Color.parseColor("#CCFFFFFF"))
+            setTextColor(withAlphaInt(ovTxt, 215))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             typeface = Typeface.MONOSPACE
             gravity = Gravity.CENTER
@@ -640,7 +684,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
         val gTv = TextView(this).apply {
             text = "GAZ 0%"
-            setTextColor(Color.parseColor("#00E676"))
+            setTextColor(withAlphaInt(overlayGasColor, 255))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             typeface = Typeface.MONOSPACE
             gravity = Gravity.END
@@ -668,28 +712,28 @@ class Mod8BackgroundService : Service(), SensorEventListener {
             }
         }
 
-        fun createGearBg(active: Boolean, activeHex: String): GradientDrawable {
+        fun createGearBg(active: Boolean): GradientDrawable {
             return GradientDrawable().apply {
                 cornerRadius = dp(11f).toFloat()
                 setColor(
-                    if (active) Color.parseColor(activeHex)
-                    else Color.parseColor("#16162B")
+                    if (active) withAlphaInt(overlayGearBtnColor, 150)
+                    else withAlphaInt(ovTxt, 24)
                 )
                 setStroke(
                     dp(1f),
-                    if (active) Color.WHITE else Color.parseColor("#44FFFFFF")
+                    if (active) ovTxt else withAlphaInt(overlayGearBtnColor, 165)
                 )
             }
         }
 
         val gearDownBtn = TextView(this).apply {
             text = "VİTES -"
-            setTextColor(Color.WHITE)
+            setTextColor(ovTxt)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setPadding(0, dp(6f), 0, dp(6f))
-            background = createGearBg(false, "#66FF2A6D")
+            background = createGearBg(false)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                 marginEnd = dp(4f)
             }
@@ -697,12 +741,12 @@ class Mod8BackgroundService : Service(), SensorEventListener {
                 when (ev.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         gearDownPressed = true
-                        v.background = createGearBg(true, "#66FF2A6D")
+                        v.background = createGearBg(true)
                         sendCurrentPacket()
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         gearDownPressed = false
-                        v.background = createGearBg(false, "#66FF2A6D")
+                        v.background = createGearBg(false)
                         sendCurrentPacket()
                     }
                 }
@@ -712,12 +756,12 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
         val gearUpBtn = TextView(this).apply {
             text = "VİTES +"
-            setTextColor(Color.WHITE)
+            setTextColor(ovTxt)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setPadding(0, dp(6f), 0, dp(6f))
-            background = createGearBg(false, "#6640E0D0")
+            background = createGearBg(false)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                 marginStart = dp(4f)
             }
@@ -725,12 +769,12 @@ class Mod8BackgroundService : Service(), SensorEventListener {
                 when (ev.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         gearUpPressed = true
-                        v.background = createGearBg(true, "#6640E0D0")
+                        v.background = createGearBg(true)
                         sendCurrentPacket()
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         gearUpPressed = false
-                        v.background = createGearBg(false, "#6640E0D0")
+                        v.background = createGearBg(false)
                         sendCurrentPacket()
                     }
                 }
@@ -823,13 +867,18 @@ class Mod8BackgroundService : Service(), SensorEventListener {
             background = null
         }
 
-        fun createCircleDrawable(bgColorHex: String, strokeColorHex: String, strokeWidthDp: Float): GradientDrawable {
+        fun createCircleDrawableInt(bgColor: Int, strokeColor: Int, strokeWidthDp: Float): GradientDrawable {
             return GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor(bgColorHex))
-                setStroke(dp(strokeWidthDp), Color.parseColor(strokeColorHex))
+                setColor(bgColor)
+                setStroke(dp(strokeWidthDp), strokeColor)
             }
         }
+
+        val ovCircleBg = withAlphaInt(overlayBgColor, 235)
+        val ovTxt = contrastTextInt(overlayBgColor)
+        val ovGearCol = withAlphaInt(overlayGearBtnColor, 255)
+        val ovBorderCol = withAlphaInt(overlayBorderColor, 255)
 
         // 0. En Üst: Minik Kapatma Rozeti ("✕")
         val closeBtn = TextView(this).apply {
@@ -841,7 +890,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
             layoutParams = LinearLayout.LayoutParams(dp(18f), dp(18f)).apply {
                 bottomMargin = dp(5f)
             }
-            background = createCircleDrawable("#D90A0A18", "#88FF5252", 1f)
+            background = createCircleDrawableInt(ovCircleBg, Color.parseColor("#88FF5252"), 1f)
             setOnClickListener {
                 onOverlayClosedByUserCallback?.invoke()
                 stopEverything()
@@ -851,8 +900,8 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         root.addView(closeBtn)
 
         // 1. ÜST PARÇA (Küçük Yuvarlak - 44dp): VİTES ARTTIR (Vites +)
-        val normalUpBg = createCircleDrawable("#EB0F172A", "#38BDF8", 1.8f)
-        val activeUpBg = createCircleDrawable("#9938BDF8", "#FFFFFF", 2.2f)
+        val normalUpBg = createCircleDrawableInt(ovCircleBg, ovGearCol, 1.8f)
+        val activeUpBg = createCircleDrawableInt(withAlphaInt(ovGearCol, 160), ovTxt, 2.2f)
 
         val gearUpCircle = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -864,14 +913,14 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
             val arrowTv = TextView(this@Mod8BackgroundService).apply {
                 text = "▲"
-                setTextColor(Color.parseColor("#38BDF8"))
+                setTextColor(ovGearCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
             }
             val labelTv = TextView(this@Mod8BackgroundService).apply {
                 text = "V+"
-                setTextColor(Color.parseColor("#E2E8F0"))
+                setTextColor(ovTxt)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 7.5f)
                 typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
@@ -933,8 +982,8 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         root.addView(gearUpCircle)
 
         // 2. ORTANCA PARÇA (Orta Yuvarlak - 56dp): SENSÖRÜ KALİBRE ET
-        val normalMidBg = createCircleDrawable("#EB0A1020", "#00F0FF", 2.2f)
-        val activeMidBg = createCircleDrawable("#EB132338", "#FFFFFF", 2.5f)
+        val normalMidBg = createCircleDrawableInt(ovCircleBg, ovBorderCol, 2.2f)
+        val activeMidBg = createCircleDrawableInt(withAlphaInt(ovBorderCol, 90), ovTxt, 2.5f)
 
         val calibrateCircle = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -946,14 +995,14 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
             val iconTv = TextView(this@Mod8BackgroundService).apply {
                 text = "⟲"
-                setTextColor(Color.parseColor("#00F0FF"))
+                setTextColor(ovBorderCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
                 typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
             }
             val labelTv = TextView(this@Mod8BackgroundService).apply {
                 text = "SIFIRLA"
-                setTextColor(Color.parseColor("#FFFFFF"))
+                setTextColor(ovTxt)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 7.5f)
                 typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
@@ -1011,7 +1060,11 @@ class Mod8BackgroundService : Service(), SensorEventListener {
                             } else {
                                 // Normal tıklama: Sensörü sıfırla/kalibre et
                                 recalibrateNow()
-                                v.background = createCircleDrawable("#CC00E676", "#FFFFFF", 2.5f)
+                                v.background = createCircleDrawableInt(
+                                    Color.parseColor("#CC00E676"),
+                                    ovTxt,
+                                    2.5f
+                                )
                                 mainHandler.postDelayed({
                                     v.background = normalMidBg
                                 }, 220)
@@ -1026,8 +1079,8 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         root.addView(calibrateCircle)
 
         // 3. ALT PARÇA (Küçük Yuvarlak - 44dp): VİTES DÜŞÜR (Vites -)
-        val normalDownBg = createCircleDrawable("#EB1A0B18", "#FF2A6D", 1.8f)
-        val activeDownBg = createCircleDrawable("#99FF2A6D", "#FFFFFF", 2.2f)
+        val normalDownBg = createCircleDrawableInt(ovCircleBg, ovGearCol, 1.8f)
+        val activeDownBg = createCircleDrawableInt(withAlphaInt(ovGearCol, 160), ovTxt, 2.2f)
 
         val gearDownCircle = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1037,14 +1090,14 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
             val arrowTv = TextView(this@Mod8BackgroundService).apply {
                 text = "▼"
-                setTextColor(Color.parseColor("#FF2A6D"))
+                setTextColor(ovGearCol)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
             }
             val labelTv = TextView(this@Mod8BackgroundService).apply {
                 text = "V-"
-                setTextColor(Color.parseColor("#E2E8F0"))
+                setTextColor(ovTxt)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 7.5f)
                 typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
@@ -1142,18 +1195,23 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
     }
 
-    private class SteeringBarView(context: Context) : View(context) {
+    private class SteeringBarView(
+        context: Context,
+        barBgColor: Int = Color.parseColor("#1A1A2E"),
+        fillColorInt: Int = Color.parseColor("#40E0D0"),
+        centerColorInt: Int = Color.parseColor("#55FFFFFF"),
+    ) : View(context) {
         var steering: Float = 0f
         private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#1A1A2E")
+            color = barBgColor
             style = Paint.Style.FILL
         }
         private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#40E0D0")
+            color = fillColorInt
             style = Paint.Style.FILL
         }
         private val centerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#55FFFFFF")
+            color = centerColorInt
             strokeWidth = 3f
         }
         private val rect = RectF()
@@ -1293,11 +1351,14 @@ class Mod8BackgroundService : Service(), SensorEventListener {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
 
+        // Android 5.0-6.0 (API 21-23) sürümlerinde 0 ikon değeri aksiyon butonunu gizleyebildiği/çökertebildiği için geçerli ikon verilir
+        val actionIcon = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) 0 else R.mipmap.ic_launcher
+
         @Suppress("DEPRECATION")
         builder
-            .addAction(Notification.Action.Builder(0, "SIFIRLA", serviceAction(ACTION_RECALIBRATE, 11)).build())
-            .addAction(Notification.Action.Builder(0, "VİTES -", serviceAction(ACTION_GEAR_DOWN, 12)).build())
-            .addAction(Notification.Action.Builder(0, "VİTES +", serviceAction(ACTION_GEAR_UP, 13)).build())
+            .addAction(Notification.Action.Builder(actionIcon, "SIFIRLA", serviceAction(ACTION_RECALIBRATE, 11)).build())
+            .addAction(Notification.Action.Builder(actionIcon, "VİTES -", serviceAction(ACTION_GEAR_DOWN, 12)).build())
+            .addAction(Notification.Action.Builder(actionIcon, "VİTES +", serviceAction(ACTION_GEAR_UP, 13)).build())
 
         return builder.build()
     }

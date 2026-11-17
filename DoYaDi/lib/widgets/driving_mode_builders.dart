@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../config/app_config.dart';
 import '../models/app_settings.dart';
 import '../providers/settings_provider.dart';
 import '../models/layout5_item.dart';
@@ -14,6 +15,7 @@ import '../widgets/driving_painters.dart';
 import '../widgets/dynamic_steering_painter.dart';
 import '../widgets/driving_tap_zone.dart';
 import '../widgets/joystick_widget.dart';
+import '../widgets/looping_media_widget.dart';
 import '../widgets/joystick/joystick_spawn_layer.dart';
 import '../widgets/telemetry/rpm_led_bar_painter.dart';
 import '../widgets/telemetry/seven_segment_painter.dart';
@@ -48,7 +50,11 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
   void setState(VoidCallback fn) => super.setState(fn);
 
   Widget buildLayout(AppSettings settings, Size size) {
-    switch (settings.defaultDrivingMode) {
+    // Flavor kısıtlaması: izin verilmeyen modları asla render etme, izinli ilk moda dön
+    final int activeMode = AppConfig.instance.sanitizeMode(
+      settings.defaultDrivingMode,
+    );
+    switch (activeMode) {
       case 0:
         return buildMode0(settings, size);
       case 1:
@@ -72,6 +78,15 @@ mixin DrivingModeBuildMixin<T extends StatefulWidget>
       case 10:
         return buildMode10(settings, size);
       default:
+        final int fallback = AppConfig.instance.allowedModes.first;
+        if (fallback != activeMode) {
+          switch (fallback) {
+            case 9:
+              return buildMode9(settings, size);
+            case 5:
+              return buildMode5(settings, size);
+          }
+        }
         return buildMode0(settings, size);
     }
   }

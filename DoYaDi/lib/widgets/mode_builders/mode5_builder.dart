@@ -17,6 +17,13 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         items = defaultLayout5();
       }
     }
+
+    if (AppConfig.instance.hasRestrictedMod5) {
+      items = items.where((e) => isLayout5TypeAllowedForFlavor(e.type)).toList();
+      if (items.isEmpty) {
+        items = defaultLayout5();
+      }
+    }
     
     // Katman sırasına (Z-Index) göre küçükten büyüğe sırala
     items.sort((a, b) => a.zIndex.compareTo(b.zIndex));
@@ -141,6 +148,8 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
             isLeft: item.type == Layout5ItemType.leftJoystick,
             baseColor: item.bgColor,
             thumbColor: item.textColor,
+            baseMediaPath: item.mediaPath ?? s.mod5JoystickBaseMediaPath,
+            thumbMediaPath: item.secondaryMediaPath ?? s.mod5JoystickMediaPath,
           ));
         }
       }
@@ -209,6 +218,8 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           thumbColor: item.textColor,
           mode: joystickMode,
           ghostOpacity: ghostOpacity,
+          baseMediaPath: item.mediaPath ?? s.mod5JoystickBaseMediaPath,
+          thumbMediaPath: item.secondaryMediaPath ?? s.mod5JoystickMediaPath,
           onChanged: (x, y) {
             setState(() {
               joy0x = x;
@@ -229,6 +240,8 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           thumbColor: item.textColor,
           mode: joystickMode,
           ghostOpacity: ghostOpacity,
+          baseMediaPath: item.mediaPath ?? s.mod5JoystickBaseMediaPath,
+          thumbMediaPath: item.secondaryMediaPath ?? s.mod5JoystickMediaPath,
           onChanged: (x, y) {
             setState(() {
               joy1x = x;
@@ -243,15 +256,13 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           onPointerMove: (e) => onPedalMove(e, s),
           onPointerUp: onPedalUp,
           onPointerCancel: onPedalUp,
-          child: RepaintBoundary(
-            child: CustomPaint(
-              painter: PedalPainter(
-                fillPercentage: gasPercentage,
-                baseColor: s.gasColor,
-                bgColor: item.bgColor,
-                yetsoreColor: s.yetsoreColor,
-              ),
-            ),
+          child: CustomizablePedalBar(
+            fillPercentage: gasPercentage,
+            baseColor: s.gasColor,
+            bgColor: item.bgColor,
+            yetsoreColor: s.yetsoreColor,
+            fillMediaPath: item.mediaPath ?? s.gasBarMediaPath,
+            yetsoreMediaPath: s.yetsoreMediaPath,
           ),
         );
         break;
@@ -261,15 +272,13 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           onPointerMove: (e) => onPedalMove(e, s),
           onPointerUp: onPedalUp,
           onPointerCancel: onPedalUp,
-          child: RepaintBoundary(
-            child: CustomPaint(
-              painter: PedalPainter(
-                fillPercentage: brakePercentage,
-                baseColor: s.brakeColor,
-                bgColor: item.bgColor,
-                yetsoreColor: s.yetsoreColor,
-              ),
-            ),
+          child: CustomizablePedalBar(
+            fillPercentage: brakePercentage,
+            baseColor: s.brakeColor,
+            bgColor: item.bgColor,
+            yetsoreColor: s.yetsoreColor,
+            fillMediaPath: item.mediaPath ?? s.brakeBarMediaPath,
+            yetsoreMediaPath: s.yetsoreMediaPath,
           ),
         );
         break;
@@ -389,23 +398,48 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
               setState(() => clutchPercentage = 0.0);
             }
           },
-          child: Container(
-            decoration: BoxDecoration(
-              color: item.bgColor,
-              borderRadius: radius,
-              border: Border.all(color: item.textColor.withValues(alpha: 0.3)),
-            ),
-            child: Center(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: item.textColor,
-                  fontSize: math.min(w, h) * 0.18,
-                  fontWeight: FontWeight.w600,
+          child: Builder(
+            builder: (_) {
+              final btnMedia = AppMediaHelper.hasMedia(item.mediaPath)
+                  ? item.mediaPath
+                  : s.mod5ButtonMediaPath;
+              final hasMedia = AppMediaHelper.hasMedia(btnMedia);
+              final needsBlur = hasMedia || AppMediaHelper.hasMedia(s.modeBackgroundMedia(5));
+              return Container(
+                decoration: BoxDecoration(
+                  color: item.bgColor,
+                  borderRadius: radius,
+                  border: Border.all(color: item.textColor.withValues(alpha: 0.3)),
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (hasMedia)
+                      Positioned.fill(
+                        child: LoopingMediaWidget(
+                          mediaPath: btnMedia,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    Center(
+                      child: BlurredTextChip(
+                        enabled: needsBlur,
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: hasMedia ? Colors.white : item.textColor,
+                            fontSize: math.min(w, h) * 0.18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         );
       case Layout5ItemType.touchpad:
@@ -609,15 +643,13 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
               });
             }
           },
-          child: RepaintBoundary(
-            child: CustomPaint(
-              painter: PedalIconPainter(
-                fillPercentage:
-                    isGasIcon ? gasPedalIconValue : brakePedalIconValue,
-                baseColor: isGasIcon ? s.gasColor : s.brakeColor,
-                isGas: isGasIcon,
-              ),
-            ),
+          child: CustomizablePedalIcon(
+            fillPercentage:
+                isGasIcon ? gasPedalIconValue : brakePedalIconValue,
+            baseColor: isGasIcon ? s.gasColor : s.brakeColor,
+            isGas: isGasIcon,
+            mediaPath: item.mediaPath,
+            label: isGasIcon ? 'GAZ' : 'FREN',
           ),
         );
         break;
@@ -645,15 +677,13 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
               },
               onPointerUp: (_) => setState(() => clutchPercentage = 0.0),
               onPointerCancel: (_) => setState(() => clutchPercentage = 0.0),
-              child: RepaintBoundary(
-                child: CustomPaint(
-                  painter: PedalPainter(
-                    fillPercentage: clutchPercentage,
-                    baseColor: Colors.blueAccent,
-                    bgColor: item.bgColor,
-                    yetsoreColor: s.yetsoreColor,
-                  ),
-                ),
+              child: CustomizablePedalBar(
+                fillPercentage: clutchPercentage,
+                baseColor: s.clutchColor,
+                bgColor: item.bgColor,
+                yetsoreColor: s.clutchYetsoreColor,
+                fillMediaPath: item.mediaPath ?? s.clutchBarMediaPath,
+                yetsoreMediaPath: s.yetsoreMediaPath,
               ),
             );
           },
@@ -681,14 +711,12 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
               clutchPercentage = 0.0;
             });
           },
-          child: RepaintBoundary(
-            child: CustomPaint(
-              painter: PedalIconPainter(
-                fillPercentage: clutchIconValue,
-                baseColor: Colors.blueAccent,
-                isGas: false,
-              ),
-            ),
+          child: CustomizablePedalIcon(
+            fillPercentage: clutchIconValue,
+            baseColor: s.clutchColor,
+            isGas: false,
+            mediaPath: item.mediaPath,
+            label: 'DEB',
           ),
         );
         break;
@@ -716,15 +744,13 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
               },
               onPointerUp: (_) => setState(() => handbrakePercentage = 0.0),
               onPointerCancel: (_) => setState(() => handbrakePercentage = 0.0),
-              child: RepaintBoundary(
-                child: CustomPaint(
-                  painter: PedalPainter(
-                    fillPercentage: handbrakePercentage,
-                    baseColor: Colors.redAccent,
-                    bgColor: item.bgColor,
-                    yetsoreColor: s.yetsoreColor,
-                  ),
-                ),
+              child: CustomizablePedalBar(
+                fillPercentage: handbrakePercentage,
+                baseColor: s.handbrakeColor,
+                bgColor: item.bgColor,
+                yetsoreColor: s.handbrakeYetsoreColor,
+                fillMediaPath: item.mediaPath ?? s.handbrakeBarMediaPath,
+                yetsoreMediaPath: s.yetsoreMediaPath,
               ),
             );
           },
@@ -816,15 +842,12 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
       case Layout5ItemType.steeringBar:
         final sensor = SensorManager();
         content = IgnorePointer(
-          child: RepaintBoundary(
-            child: CustomPaint(
-              painter: SteeringPainter(
-                angle: steeringAngle,
-                pitch: sensor.pitchDeg,
-                indicatorColor: item.textColor,
-                bgColor: item.bgColor,
-              ),
-            ),
+          child: CustomizableSteeringBar(
+            angle: steeringAngle,
+            pitch: sensor.pitchDeg,
+            indicatorColor: item.textColor,
+            bgColor: item.bgColor,
+            mediaPath: item.mediaPath ?? s.steeringBarMediaPath,
           ),
         );
         break;

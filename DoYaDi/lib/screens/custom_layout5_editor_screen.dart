@@ -2,9 +2,12 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config/app_config.dart';
 import '../models/layout5_item.dart';
 
 import '../providers/settings_provider.dart';
+import '../providers/monetization_provider.dart';
+import '../services/ad_service.dart';
 import '../core/widgets/searchable_key_picker.dart';
 import '../core/utils/keyboard_keys.dart';
 import '../widgets/joystick_widget.dart';
@@ -12,6 +15,8 @@ import '../widgets/driving_painters.dart';
 import '../core/utils/app_translations.dart';
 import '../core/utils/template_profiles.dart';
 import '../widgets/dynamic_steering_painter.dart';
+import '../widgets/looping_media_widget.dart';
+import '../widgets/settings_dialogs.dart';
 import '../core/sensor_manager.dart';
 
 part 'layout5_sections/editor_dialogs.dart';
@@ -58,6 +63,14 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
     } else {
       _items = defaultLayout5();
     }
+    if (AppConfig.instance.hasRestrictedMod5) {
+      _items = _items
+          .where((e) => isLayout5TypeAllowedForFlavor(e.type))
+          .toList();
+      if (_items.isEmpty) {
+        _items = defaultLayout5();
+      }
+    }
   }
 
   @override
@@ -65,7 +78,7 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
     final size = MediaQuery.of(context).size;
     final s = Provider.of<SettingsProvider>(context).settings;
     return Scaffold(
-      backgroundColor: const Color(0xFF050510),
+      backgroundColor: s.mod5BgColor,
       body: Stack(
         children: [
           // ── Canvas ──────────────────────────────────────────────────────
@@ -75,7 +88,15 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                 _selectedId = null;
                 _removeMode = false;
               }),
-              child: Container(color: const Color(0xFF080820)),
+              child: Container(
+                color: s.mod5BgColor,
+                child: (s.mod5BgMediaPath != null && s.mod5BgMediaPath!.isNotEmpty)
+                    ? LoopingMediaWidget(
+                        mediaPath: s.mod5BgMediaPath,
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
             ),
           ),
 
@@ -171,7 +192,19 @@ class _CustomLayout5EditorScreenState extends State<CustomLayout5EditorScreen> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.white70),
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () {
+                            final monetization =
+                                Provider.of<MonetizationProvider>(
+                                  context,
+                                  listen: false,
+                                );
+                            AdService().showInterstitial(
+                              isAdFree: monetization.isAdFree,
+                              onComplete: () {
+                                if (mounted) Navigator.pop(context);
+                              },
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -728,6 +761,48 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
           // Arka plan rengi
           _label(AppTranslations.getText('bg_color')),
           _colorPicker(item.bgColor, (c) => _update(item.copyWith(bgColor: c))),
+          if (_isJoystick) ...[
+            const SizedBox(height: 6),
+            _label(AppTranslations.getText('accent_color')),
+            _colorPicker(
+              item.textColor,
+              (c) => _update(item.copyWith(textColor: c)),
+            ),
+            const SizedBox(height: 6),
+            _mediaPickerRow(
+              AppTranslations.getText('joystick_base_media_label'),
+              item.mediaPath,
+              (path) => _update(
+                item.copyWith(
+                  mediaPath: path,
+                  clearMediaPath: path == null,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            _mediaPickerRow(
+              AppTranslations.getText('joystick_thumb_media_label'),
+              item.secondaryMediaPath,
+              (path) => _update(
+                item.copyWith(
+                  secondaryMediaPath: path,
+                  clearSecondaryMediaPath: path == null,
+                ),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 6),
+            _mediaPickerRow(
+              AppTranslations.getText('item_media_label'),
+              item.mediaPath,
+              (path) => _update(
+                item.copyWith(
+                  mediaPath: path,
+                  clearMediaPath: path == null,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
 
           // Haptik geri bildirim switch'i

@@ -6,41 +6,33 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
     AppSettings s,
     Color ac,
   ) {
+    final hasBgMedia = AppMediaHelper.hasMedia(s.bgMediaPath);
+    final txt = hasBgMedia ? Colors.white : s.textColor;
+    final sub = hasBgMedia ? Colors.white70 : s.textDisabledColor;
+    final div = hasBgMedia ? Colors.white24 : s.dividerColor;
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
         settingsHeader(AppTranslations.getText('sensor')),
-        SwitchListTile(
-          title: Text(
-            AppTranslations.getText('use_gyro'),
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          subtitle: Text(
-            AppTranslations.getText('use_gyro_desc'),
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
-          ),
+        settingsSwitchTile(
+          title: AppTranslations.getText('use_gyro'),
+          subtitle: AppTranslations.getText('use_gyro_desc'),
           value: s.useGyroscope,
-          activeThumbColor: ac,
           onChanged: (val) {
             s.useGyroscope = val;
             prov.updateSettings(s);
           },
+          s: s,
         ),
-        SwitchListTile(
-          title: Text(
-            AppTranslations.getText('cumulative_steering'),
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          subtitle: Text(
-            AppTranslations.getText('cumulative_steering_desc'),
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
-          ),
+        settingsSwitchTile(
+          title: AppTranslations.getText('cumulative_steering'),
+          subtitle: AppTranslations.getText('cumulative_steering_desc'),
           value: s.isCumulativeSteering,
-          activeThumbColor: ac,
           onChanged: (val) {
             s.isCumulativeSteering = val;
             prov.updateSettings(s);
           },
+          s: s,
         ),
         settingsTile(
           title: AppTranslations.getText('gyro_center_mode'),
@@ -109,22 +101,16 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
               }
             },
           ),
-        SwitchListTile(
-          title: Text(
-            AppTranslations.getText('include_pitch_in_deadzone'),
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          subtitle: Text(
-            AppTranslations.getText('include_pitch_in_deadzone_desc'),
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
-          ),
+        settingsSwitchTile(
+          title: AppTranslations.getText('include_pitch_in_deadzone'),
+          subtitle: AppTranslations.getText('include_pitch_in_deadzone_desc'),
           value: s.includePitchInDeadzone,
-          activeThumbColor: ac,
           onChanged: (val) {
             s.includePitchInDeadzone = val;
             prov.updateSettings(s);
             setState(() {});
           },
+          s: s,
         ),
         if (s.gyroCenterMode == 1)
           settingsTile(
@@ -133,7 +119,7 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
             trailing: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: ac,
-                foregroundColor: Colors.black,
+                foregroundColor: s.contrastTextFor(ac),
               ),
               onPressed: () {
                 SensorManager().recenterGyro();
@@ -141,7 +127,6 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
                   SnackBar(
                     content: Text(
                       AppTranslations.getText('sensor_centered_success'),
-                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
                 );
@@ -172,24 +157,18 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
             }
           },
         ),
-        const Divider(color: Colors.white12, height: 24),
+        Divider(color: div, height: 24),
         settingsHeader(AppTranslations.getText('gyro_look_header')),
-        SwitchListTile(
-          title: Text(
-            AppTranslations.getText('gyro_look_global'),
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          subtitle: Text(
-            AppTranslations.getText('gyro_look_global_desc'),
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
-          ),
+        settingsSwitchTile(
+          title: AppTranslations.getText('gyro_look_global'),
+          subtitle: AppTranslations.getText('gyro_look_global_desc'),
           value: s.gyroLookEnabled,
-          activeThumbColor: ac,
           onChanged: (val) {
             s.gyroLookEnabled = val;
             prov.updateSettings(s);
             setState(() {});
           },
+          s: s,
         ),
         if (s.gyroLookEnabled) ...[
           settingsTile(
@@ -283,7 +262,7 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
             ),
           ),
         ],
-        const Divider(color: Colors.white12, height: 24),
+        Divider(color: div, height: 24),
         settingsHeader(AppTranslations.getText('steering_sens')),
         settingsTile(
           title: AppTranslations.getText('steering_angle'),
@@ -314,28 +293,29 @@ extension _SettingsSteeringTabExt on _SettingsScreenState {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Container(
+          child: GlassContainer(
+            isGlassActive: hasBgMedia,
+            solidBackgroundColor: txt.withValues(alpha: 0.04),
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasBgMedia ? Colors.white.withValues(alpha: 0.22) : div,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   AppTranslations.getText('how_it_works'),
-                  style: const TextStyle(
-                    color: Colors.white70,
+                  style: TextStyle(
+                    color: txt.withValues(alpha: 0.8),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   AppTranslations.getText('how_it_works_desc'),
-                  style: const TextStyle(
-                    color: Colors.white38,
+                  style: TextStyle(
+                    color: sub,
                     fontSize: 12,
                     height: 1.6,
                   ),

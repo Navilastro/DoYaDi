@@ -6,6 +6,9 @@ extension _SettingsAssignTabExt on _SettingsScreenState {
     AppSettings s,
     Color ac,
   ) {
+    final hasBgMedia = AppMediaHelper.hasMedia(s.bgMediaPath);
+    final sub = hasBgMedia ? Colors.white70 : s.textDisabledColor;
+    final div = hasBgMedia ? Colors.white24 : s.dividerColor;
     Future<void> pick(
       String label,
       int current,
@@ -82,10 +85,10 @@ extension _SettingsAssignTabExt on _SettingsScreenState {
         settingsTile(
           title: AppTranslations.getText('custom_press_mode'),
           subtitle: AppTranslations.getText('custom_press_desc'),
-          trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+          trailing: Icon(Icons.chevron_right, color: sub),
           onTap: () => showCustomPressModesDialog(ctx, prov, s),
         ),
-        const Divider(color: Colors.white12, height: 24),
+        Divider(color: div, height: 24),
         settingsHeader(AppTranslations.getText('right_pedal')),
         swipeTile(
           ac,
@@ -167,7 +170,7 @@ extension _SettingsAssignTabExt on _SettingsScreenState {
             (v) => s.gasSwipeDownRight = v,
           ),
         ),
-        const Divider(color: Colors.white12, height: 32),
+        Divider(color: div, height: 32),
         settingsHeader(AppTranslations.getText('left_pedal')),
         swipeTile(
           ac,

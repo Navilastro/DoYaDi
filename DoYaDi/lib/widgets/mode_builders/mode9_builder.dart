@@ -13,7 +13,18 @@ part of '../driving_mode_builders.dart';
 extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T> {
   Widget buildMode9(AppSettings s, Size size) {
     final sm = SensorManager();
-    final ac = s.detailColor;
+    final throttleCol = s.mod9ThrottleColor;
+    final wepCol = s.mod9WepColor;
+    final avionicsCol = s.mod9AvionicsColor;
+    final rudderCol = s.mod9RudderColor;
+    final hudCol = s.mod9HudColor;
+    final fireCol = s.mod9FireBtnColor;
+    final weaponCol = s.mod9WeaponBtnColor;
+    final hatCol = s.mod9HatSwitchColor;
+    final hasBgMedia = AppMediaHelper.hasMedia(s.modeBackgroundMedia(9));
+    final pageTxt = hasBgMedia
+        ? Colors.white
+        : s.contrastTextFor(s.modeBackgroundColor(9));
 
     final double activeRoll = flightTouchStickActive
         ? flightTouchRoll.clamp(-1.0, 1.0)
@@ -42,7 +53,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
     final bool isWep = gasPercentage >= 0.95;
 
     return Container(
-      color: s.backgroundColor,
+      color: Colors.transparent,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -63,12 +74,12 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0A0F1D),
+                          color: const Color(0xFF0A0F1D).withValues(alpha: 0.88),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: isWep
-                                ? const Color(0xFFFF5252).withValues(alpha: 0.7)
-                                : ac.withValues(alpha: 0.22),
+                                ? wepCol.withValues(alpha: 0.8)
+                                : throttleCol.withValues(alpha: 0.35),
                             width: isWep ? 1.5 : 1.0,
                           ),
                         ),
@@ -88,13 +99,13 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                 padding: const EdgeInsets.symmetric(vertical: 4),
                                 decoration: BoxDecoration(
                                   color: isWep
-                                      ? const Color(0xFFFF1744).withValues(alpha: 0.28)
-                                      : Colors.white.withValues(alpha: 0.04),
+                                      ? wepCol.withValues(alpha: 0.28)
+                                      : wepCol.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(7),
                                   border: Border.all(
                                     color: isWep
-                                        ? const Color(0xFFFF1744)
-                                        : Colors.white24,
+                                        ? wepCol
+                                        : wepCol.withValues(alpha: 0.45),
                                   ),
                                 ),
                                 child: Text(
@@ -102,8 +113,8 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: isWep
-                                        ? const Color(0xFFFF5252)
-                                        : Colors.white70,
+                                        ? wepCol
+                                        : wepCol.withValues(alpha: 0.85),
                                     fontSize: 9,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.8,
@@ -123,7 +134,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                   });
                                 },
                                 detents: s.flightThrustDetents,
-                                color: isWep ? const Color(0xFFFF5252) : ac,
+                                color: isWep ? wepCol : throttleCol,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -187,9 +198,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                   '${_shortFlightKeyLabel(s.m9FlapDownKey)}/${_shortFlightKeyLabel(s.m9FlapUpKey)}',
                               icon: Icons.layers,
                               isActive: flightFlapStage > 0,
-                              activeColor: flightFlapStage == 1
-                                  ? const Color(0xFF00E5FF)
-                                  : const Color(0xFFFFEA00),
+                              activeColor: avionicsCol,
                               onTap: () {
                                 setState(() {
                                   flightFlapStage = (flightFlapStage + 1) % 3;
@@ -212,7 +221,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                               subLabel: _shortFlightKeyLabel(s.m9GearKey),
                               icon: Icons.flight_land,
                               isActive: flightGearDown,
-                              activeColor: const Color(0xFF00E676),
+                              activeColor: avionicsCol,
                               onTap: () {
                                 setState(() {
                                   flightGearDown = !flightGearDown;
@@ -248,7 +257,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                     : 'LT',
                                 icon: Icons.air,
                                 isActive: flightAirbrakeActive || brakePercentage > 0.1,
-                                activeColor: const Color(0xFFFF9100),
+                                activeColor: avionicsCol,
                               ),
                             ),
                           ),
@@ -259,13 +268,17 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                             height: 56,
                             child: Column(
                               children: [
-                                const Text(
-                                  'DÜMEN (YAW)',
-                                  style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
+                                BlurredTextChip(
+                                  enabled: hasBgMedia,
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  child: Text(
+                                    'DÜMEN (YAW)',
+                                    style: TextStyle(
+                                      color: pageTxt.withValues(alpha: 0.65),
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.8,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -276,7 +289,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                         child: _buildRudderPedalButton(
                                           label: '◄ ${_shortFlightKeyLabel(s.m9RudderLeftKey)}',
                                           isActive: flightRudderTouch < -0.1,
-                                          color: ac,
+                                          color: rudderCol,
                                           onDown: () {
                                             setState(() {
                                               flightRudderTouch = -1.0;
@@ -303,7 +316,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                         child: _buildRudderPedalButton(
                                           label: '${_shortFlightKeyLabel(s.m9RudderRightKey)} ►',
                                           isActive: flightRudderTouch > 0.1,
-                                          color: ac,
+                                          color: rudderCol,
                                           onDown: () {
                                             setState(() {
                                               flightRudderTouch = 1.0;
@@ -346,12 +359,12 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF070B14),
+                    color: const Color(0xFF070B14).withValues(alpha: 0.88),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isGunsFiring || isMissileFiring
-                          ? const Color(0xFFFF1744).withValues(alpha: 0.75)
-                          : ac.withValues(alpha: 0.28),
+                          ? fireCol.withValues(alpha: 0.85)
+                          : hudCol.withValues(alpha: 0.35),
                       width: 1.3,
                     ),
                   ),
@@ -362,42 +375,47 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                         padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: ac.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: ac.withValues(alpha: 0.4)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    flightTouchStickActive
-                                        ? Icons.touch_app
-                                        : Icons.screen_rotation,
-                                    size: 12,
-                                    color: ac,
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: hudCol.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: hudCol.withValues(alpha: 0.4)),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        flightTouchStickActive
+                                            ? Icons.touch_app
+                                            : Icons.screen_rotation,
+                                        size: 12,
+                                        color: hudCol,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        flightTouchStickActive
+                                            ? 'DOKUNMATİK YOKE'
+                                            : 'SENSÖR HOTAS',
+                                        style: TextStyle(
+                                          color: hudCol,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.8,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    flightTouchStickActive
-                                        ? 'DOKUNMATİK YOKE'
-                                        : 'SENSÖR HOTAS',
-                                    style: TextStyle(
-                                      color: ac,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.8,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
-                            const Spacer(),
+                            const SizedBox(width: 6),
                             // PITCH INVERT Butonu (Uçak Lövyeli / Normal)
                             GestureDetector(
                               onTap: () {
@@ -527,7 +545,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                   RepaintBoundary(
                                     child: CustomPaint(
                                       painter: CrosshairPainter(
-                                        color: ac,
+                                        color: hudCol,
                                         offsetX: activeRoll,
                                         offsetY: activePitch,
                                         rollDeg: displayRollDeg,
@@ -546,7 +564,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                     child: Text(
                                       'Telefonu eğin veya HUD üzerinde sürükleyin',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.30),
+                                        color: Colors.white.withValues(alpha: 0.35),
                                         fontSize: 8.5,
                                       ),
                                     ),
@@ -561,32 +579,39 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                       // ── Alt Telemetri Şeridi ──
                       Padding(
                         padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildHudReadout(
-                              'THR',
-                              isWep
-                                  ? 'WEP ${(gasPercentage * 100).toStringAsFixed(0)}%'
-                                  : '${(gasPercentage * 100).toStringAsFixed(0)}%',
-                              isWep ? const Color(0xFFFF5252) : ac,
-                            ),
-                            _buildHudReadout(
-                              'PITCH',
-                              '${displayPitchDeg >= 0 ? '+' : ''}${displayPitchDeg.toStringAsFixed(1)}°',
-                              ac,
-                            ),
-                            _buildHudReadout(
-                              'ROLL',
-                              '${displayRollDeg >= 0 ? '+' : ''}${displayRollDeg.toStringAsFixed(1)}°',
-                              ac,
-                            ),
-                            _buildHudReadout(
-                              'YAW',
-                              '${displayYawDeg >= 0 ? '+' : ''}${displayYawDeg.toStringAsFixed(1)}°',
-                              ac,
-                            ),
-                          ],
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildHudReadout(
+                                'THR',
+                                isWep
+                                    ? 'WEP ${(gasPercentage * 100).toStringAsFixed(0)}%'
+                                    : '${(gasPercentage * 100).toStringAsFixed(0)}%',
+                                isWep ? wepCol : throttleCol,
+                              ),
+                              const SizedBox(width: 6),
+                              _buildHudReadout(
+                                'PITCH',
+                                '${displayPitchDeg >= 0 ? '+' : ''}${displayPitchDeg.toStringAsFixed(1)}°',
+                                hudCol,
+                              ),
+                              const SizedBox(width: 6),
+                              _buildHudReadout(
+                                'ROLL',
+                                '${displayRollDeg >= 0 ? '+' : ''}${displayRollDeg.toStringAsFixed(1)}°',
+                                hudCol,
+                              ),
+                              const SizedBox(width: 6),
+                              _buildHudReadout(
+                                'YAW',
+                                '${displayYawDeg >= 0 ? '+' : ''}${displayYawDeg.toStringAsFixed(1)}°',
+                                hudCol,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -630,60 +655,64 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                             gradient: LinearGradient(
                               colors: isGunsFiring
                                   ? [
-                                      const Color(0xFFFF1744),
-                                      const Color(0xFFD50000),
+                                      fireCol,
+                                      Color.lerp(fireCol, Colors.black, 0.25)!,
                                     ]
                                   : [
-                                      const Color(0xFF3B0D16),
-                                      const Color(0xFF1F080E),
+                                      fireCol.withValues(alpha: 0.24),
+                                      fireCol.withValues(alpha: 0.10),
                                     ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: const Color(0xFFFF1744),
+                              color: fireCol,
                               width: isGunsFiring ? 2.2 : 1.2,
                             ),
                             boxShadow: isGunsFiring
                                 ? [
                                     BoxShadow(
-                                      color: const Color(0xFFFF1744).withValues(alpha: 0.5),
+                                      color: fireCol.withValues(alpha: 0.5),
                                       blurRadius: 14,
                                     ),
                                   ]
                                 : null,
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.gps_fixed,
-                                color: isGunsFiring
-                                    ? Colors.white
-                                    : const Color(0xFFFF5252),
-                                size: 22,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'FIRE / GUNS',
-                                style: TextStyle(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.gps_fixed,
                                   color: isGunsFiring
-                                      ? Colors.white
-                                      : const Color(0xFFFF8A80),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.1,
+                                      ? s.contrastTextFor(fireCol)
+                                      : fireCol,
+                                  size: 22,
                                 ),
-                              ),
-                              Text(
-                                'TOP / MAKİNELİ (${_shortFlightKeyLabel(s.m9FireKey)})',
-                                style: const TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 8,
+                                const SizedBox(height: 2),
+                                Text(
+                                  'FIRE / GUNS',
+                                  style: TextStyle(
+                                    color: isGunsFiring
+                                        ? s.contrastTextFor(fireCol)
+                                        : fireCol,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.1,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                Text(
+                                  'TOP / MAKİNELİ (${_shortFlightKeyLabel(s.m9FireKey)})',
+                                  style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -703,7 +732,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                               label: 'FÜZE / ROKET',
                               subLabel: _shortFlightKeyLabel(s.m9MissileKey),
                               icon: Icons.rocket_launch,
-                              activeColor: const Color(0xFFFF9100),
+                              activeColor: weaponCol,
                             ),
                           ),
                           const SizedBox(width: 5),
@@ -714,7 +743,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                               label: 'BOMBA',
                               subLabel: _shortFlightKeyLabel(s.m9BombKey),
                               icon: Icons.vertical_align_bottom,
-                              activeColor: const Color(0xFFFFD600),
+                              activeColor: weaponCol,
                             ),
                           ),
                         ],
@@ -737,7 +766,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                     subLabel: _shortFlightKeyLabel(s.m9LockKey),
                                     icon: Icons.center_focus_strong,
                                     isActive: flightTargetLocked,
-                                    activeColor: const Color(0xFFFFEA00),
+                                    activeColor: avionicsCol,
                                     onTap: () {
                                       setState(() {
                                         flightTargetLocked = !flightTargetLocked;
@@ -755,7 +784,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                     subLabel: _shortFlightKeyLabel(s.m9FlareKey),
                                     icon: Icons.auto_awesome,
                                     isActive: pressedKeys.contains(s.m9FlareKey),
-                                    activeColor: const Color(0xFFFF9100),
+                                    activeColor: avionicsCol,
                                     onTap: () {
                                       if (s.m9FlareKey > 0) fireKey(s.m9FlareKey);
                                       HapticManager().triggerLight(s);
@@ -777,7 +806,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                     label: 'AĞIR SİLAH',
                                     subLabel: _shortFlightKeyLabel(s.m9HeavyGunKey),
                                     icon: Icons.whatshot,
-                                    activeColor: const Color(0xFFFF3D00),
+                                    activeColor: weaponCol,
                                   ),
                                 ),
                                 const SizedBox(width: 5),
@@ -788,7 +817,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                     subLabel: _shortFlightKeyLabel(s.m9MapKey),
                                     icon: Icons.radar,
                                     isActive: pressedKeys.contains(s.m9MapKey),
-                                    activeColor: ac,
+                                    activeColor: avionicsCol,
                                     onTap: () {
                                       if (s.m9MapKey > 0) fireKey(s.m9MapKey);
                                       HapticManager().triggerLight(s);
@@ -843,12 +872,12 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                             },
                             child: Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0A0F1D),
+                                color: const Color(0xFF0A0F1D).withValues(alpha: 0.88),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: flightFreeLookTouchActive
-                                      ? ac
-                                      : ac.withValues(alpha: 0.25),
+                                      ? hatCol
+                                      : hatCol.withValues(alpha: 0.35),
                                   width: flightFreeLookTouchActive ? 1.6 : 1.0,
                                 ),
                               ),
@@ -860,7 +889,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                     child: Text(
                                       'FREE LOOK (SAĞ ANALOG)',
                                       style: TextStyle(
-                                        color: ac.withValues(alpha: 0.7),
+                                        color: hatCol.withValues(alpha: 0.85),
                                         fontSize: 7.5,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: 0.6,
@@ -874,7 +903,7 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: Colors.white24,
+                                        color: hatCol.withValues(alpha: 0.3),
                                         width: 1,
                                       ),
                                     ),
@@ -893,21 +922,21 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: flightFreeLookTouchActive
-                                            ? ac
-                                            : ac.withValues(alpha: 0.35),
+                                            ? hatCol
+                                            : hatCol.withValues(alpha: 0.45),
                                         boxShadow: flightFreeLookTouchActive
                                             ? [
                                                 BoxShadow(
-                                                  color: ac.withValues(alpha: 0.5),
+                                                  color: hatCol.withValues(alpha: 0.5),
                                                   blurRadius: 8,
                                                 ),
                                               ]
                                             : null,
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.open_with,
                                         size: 13,
-                                        color: Colors.black87,
+                                        color: s.contrastTextFor(hatCol),
                                       ),
                                     ),
                                   ),
@@ -992,43 +1021,47 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
       decoration: BoxDecoration(
         color: isActive
-            ? activeColor.withValues(alpha: 0.18)
-            : const Color(0xFF0B1020),
+            ? activeColor.withValues(alpha: 0.22)
+            : const Color(0xFF0B1020).withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isActive ? activeColor : const Color(0xFF252B42),
+          color: isActive ? activeColor : activeColor.withValues(alpha: 0.32),
           width: isActive ? 1.6 : 1.0,
         ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 16,
-            color: isActive ? activeColor : Colors.white54,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: isActive ? activeColor : Colors.white70,
-              fontSize: 8.5,
-              fontWeight: FontWeight.w800,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isActive ? activeColor : activeColor.withValues(alpha: 0.72),
             ),
-          ),
-          Text(
-            subLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white38,
-              fontSize: 7,
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isActive ? activeColor : Colors.white.withValues(alpha: 0.85),
+                fontSize: 8.5,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-        ],
+            Text(
+              subLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 7,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1048,18 +1081,18 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isActive
-              ? color.withValues(alpha: 0.25)
-              : const Color(0xFF0B1020),
+              ? color.withValues(alpha: 0.28)
+              : const Color(0xFF0B1020).withValues(alpha: 0.88),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isActive ? color : const Color(0xFF252B42),
+            color: isActive ? color : color.withValues(alpha: 0.38),
             width: isActive ? 1.5 : 1.0,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isActive ? color : Colors.white70,
+            color: isActive ? color : color.withValues(alpha: 0.8),
             fontSize: 8.5,
             fontWeight: FontWeight.w800,
           ),

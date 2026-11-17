@@ -4,53 +4,70 @@ extension _Mode0To4BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin
   // MOD 0: Tek ekran, orta çizgiden sağ-gaz sol-fren
   // ──────────────────────────────────────────────────────────────────────────
   Widget buildMode0(AppSettings s, Size size) {
+    final leftPct = (mod0ActivePointer != null && !mod0IsGas) ? brakePercentage : 0.0;
+    final rightPct = (mod0ActivePointer != null && mod0IsGas) ? gasPercentage : 0.0;
+
     return _withTrackPoint(
       s,
       size,
       Stack(
         children: [
-        // Tam ekran Listener — gaz/fren
-        Positioned.fill(
-          child: Listener(
-            behavior: HitTestBehavior.opaque,
-            onPointerDown: (e) => onPedalDown(
-              e,
-              e.localPosition.dx >= size.width / 2,
-              tapKey: e.localPosition.dx >= size.width / 2 ? s.gasTap : s.brakeTap,
-            ),
-            onPointerMove: (e) => onPedalMove(e, s),
-            onPointerUp: onPedalUp,
-            onPointerCancel: onPedalUp,
-            child: RepaintBoundary(
-              child: CustomPaint(
-                painter: Mode0Painter(
-                  gasPercentage: gasPercentage,
-                  brakePercentage: brakePercentage,
-                  isGas: mod0IsGas,
-                  hasActive: mod0ActivePointer != null,
-                  gasColor: s.gasColor,
-                  brakeColor: s.brakeColor,
-                  bgColor: s.pedalBgColor,
-                  yetsoreColor: s.yetsoreColor,
-                ),
-                child: const SizedBox.expand(),
+          Positioned.fill(
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (e) => onPedalDown(
+                e,
+                e.localPosition.dx >= size.width / 2,
+                tapKey: e.localPosition.dx >= size.width / 2 ? s.gasTap : s.brakeTap,
+              ),
+              onPointerMove: (e) => onPedalMove(e, s),
+              onPointerUp: onPedalUp,
+              onPointerCancel: onPedalUp,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CustomizablePedalBar(
+                      fillPercentage: leftPct,
+                      baseColor: s.brakeColor,
+                      bgColor: s.separatePedalBg ? s.leftPedalBgColor : s.pedalBgColor,
+                      yetsoreColor: s.yetsoreColor,
+                      fillMediaPath: s.brakeBarMediaPath,
+                      bgMediaPath: s.separatePedalBg
+                          ? s.leftPedalBgMediaPath
+                          : s.pedalBarBgMediaPath,
+                      yetsoreMediaPath: s.yetsoreMediaPath,
+                    ),
+                  ),
+                  Expanded(
+                    child: CustomizablePedalBar(
+                      fillPercentage: rightPct,
+                      baseColor: s.gasColor,
+                      bgColor: s.separatePedalBg ? s.rightPedalBgColor : s.pedalBgColor,
+                      yetsoreColor: s.yetsoreColor,
+                      fillMediaPath: s.gasBarMediaPath,
+                      bgMediaPath: s.separatePedalBg
+                          ? s.rightPedalBgMediaPath
+                          : s.pedalBarBgMediaPath,
+                      yetsoreMediaPath: s.yetsoreMediaPath,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ),
 
-        // Center divider line
-        Positioned(
-          left: size.width / 2 - 1,
-          top: 0,
-          bottom: 0,
-          width: 2,
-          child: Container(color: Colors.white12),
-        ),
-      ],
-    ),
-    mode: 0,
-  );
+          // Center divider line
+          Positioned(
+            left: size.width / 2 - 1,
+            top: 0,
+            bottom: 0,
+            width: 2,
+            child: Container(color: Colors.white12),
+          ),
+        ],
+      ),
+      mode: 0,
+    );
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -61,65 +78,17 @@ extension _Mode0To4BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin
       s,
       size,
       Row(
-      children: [
-        // Left side - Brake
-        Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Listener(
-                  behavior: HitTestBehavior.opaque,
-                  onPointerDown: (e) => onPedalDown(e, false, tapKey: s.brakeTap),
-                  onPointerMove: (e) => onPedalMove(e, s),
-                  onPointerUp: onPedalUp,
-                  onPointerCancel: onPedalUp,
-                  child: RepaintBoundary(
-                    child: CustomPaint(
-                      painter: PedalPainter(
-                        fillPercentage: brakePercentage,
-                        baseColor: s.brakeColor,
-                        bgColor: s.pedalBgColor,
-                        yetsoreColor: s.yetsoreColor,
-                      ),
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+        children: [
+          Expanded(
+            child: buildPedalColumn(s, isBrake: true, tapKey: s.brakeTap),
           ),
-        ),
-        // Right side - Gas
-        Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Listener(
-                  behavior: HitTestBehavior.opaque,
-                  onPointerDown: (e) => onPedalDown(e, true, tapKey: s.gasTap),
-                  onPointerMove: (e) => onPedalMove(e, s),
-                  onPointerUp: onPedalUp,
-                  onPointerCancel: onPedalUp,
-                  child: RepaintBoundary(
-                    child: CustomPaint(
-                      painter: PedalPainter(
-                        fillPercentage: gasPercentage,
-                        baseColor: s.gasColor,
-                        bgColor: s.pedalBgColor,
-                        yetsoreColor: s.yetsoreColor,
-                      ),
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          Expanded(
+            child: buildPedalColumn(s, isBrake: false, tapKey: s.gasTap),
           ),
-        ),
-      ],
-    ),
-    mode: 1,
-  );
+        ],
+      ),
+      mode: 1,
+    );
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -231,7 +200,11 @@ extension _Mode0To4BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin
             height: size.height * 0.18,
             child: TapZone(
               label: '${AppTranslations.getText('key_prefix')} ${s.m4KeyBottom}',
-              color: s.detailColor,
+              color: s.mode234ButtonColor,
+              mediaPath: (s.mode234ButtonMediaPath != null && s.mode234ButtonMediaPath!.isNotEmpty)
+                  ? s.mode234ButtonMediaPath
+                  : s.generalButtonMediaPath,
+              blurLabel: s.modeBackgroundMedia(4)?.isNotEmpty == true,
               isActive: pressedKeys.contains(s.m4KeyBottom),
               onDown: () => handleButtonDown(s.m4KeyBottom),
               onUp: () => handleButtonUp(s.m4KeyBottom),

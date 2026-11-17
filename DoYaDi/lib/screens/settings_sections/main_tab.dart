@@ -8,27 +8,31 @@ extension _SettingsMainTabExt on _SettingsScreenState {
     AppSettings s,
     Color ac,
   ) {
+    final hasBgMedia = AppMediaHelper.hasMedia(s.bgMediaPath);
+    final txt = hasBgMedia ? Colors.white : s.textColor;
+    final sub = hasBgMedia ? Colors.white70 : s.textDisabledColor;
+    final div = hasBgMedia ? Colors.white24 : s.dividerColor;
+    final allowedModes = AppConfig.instance.allowedModes;
+    final activeMode = AppConfig.instance.sanitizeMode(s.defaultDrivingMode);
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
         settingsHeader(AppTranslations.getText('driving_mode')),
         settingsTile(
           title: AppTranslations.getText('default_driving_mode'),
+          subtitle: AppTranslations.getText('mode_name_$activeMode'),
           trailing: Text(
-            'Mod ${s.defaultDrivingMode}',
+            'Mod $activeMode',
             style: TextStyle(color: ac, fontWeight: FontWeight.bold),
           ),
           onTap: () async {
             final val = await radioDialog<int>(
               ctx: ctx,
               title: AppTranslations.getText('default_driving_mode'),
-              current: s.defaultDrivingMode,
+              current: activeMode,
               options: {
-                for (var i = 0; i <= 6; i++) 'Mod $i': i,
-                'Mod 7 — F1 Telemetri HUD': 7,
-                'Mod 8 — Rahat Sürüş': 8,
-                'Mod 9 — Uçuş Kontrolü': 9,
-                'Mod 10 — Uçuş MFD': 10,
+                for (final i in allowedModes)
+                  AppTranslations.getText('mode_name_$i'): i,
               },
             );
             if (val != null) {
@@ -43,40 +47,40 @@ extension _SettingsMainTabExt on _SettingsScreenState {
           child: ElevatedButton.icon(
             icon: const Icon(Icons.edit),
             label: Text(
-              s.defaultDrivingMode == 5
+              activeMode == 5
                   ? AppTranslations.getText('edit_custom_layout')
-                  : '${AppTranslations.getText('edit_keys')} (Mod ${s.defaultDrivingMode})',
+                  : '${AppTranslations.getText('edit_keys')} (Mod $activeMode)',
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: ac,
-              foregroundColor: Colors.black,
+              foregroundColor: s.contrastTextFor(ac),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
             onPressed: () {
-              if (s.defaultDrivingMode == 5) {
+              if (activeMode == 5) {
                 Navigator.push(
                   ctx,
                   MaterialPageRoute(
                     builder: (_) => const CustomLayout5EditorScreen(),
                   ),
                 );
-              } else if (s.defaultDrivingMode == 6) {
+              } else if (activeMode == 6) {
                 showMod6KeyAssignmentsDialog(ctx, prov, s, setState);
               } else {
                 showModeKeyAssignmentsDialog(
                   ctx,
                   prov,
                   s,
-                  s.defaultDrivingMode,
+                  activeMode,
                 );
               }
             },
           ),
         ),
         // Mod 6 pedal stili ve konum ayarları (sadece Mod 6 aktifken)
-        if (s.defaultDrivingMode == 6) ...[
+        if (activeMode == 6 && AppConfig.instance.isModeAllowed(6)) ...[
           settingsTile(
             title: AppTranslations.getText('mod6_pedal_style'),
             trailing: Text(
@@ -111,21 +115,21 @@ extension _SettingsMainTabExt on _SettingsScreenState {
             },
           ),
         ],
-        const Divider(color: Colors.white12, height: 24),
+        Divider(color: div, height: 24),
         settingsHeader(AppTranslations.getText('pedal')),
         settingsTile(
           title: AppTranslations.getText('right_pedal_button'),
           subtitle: AppTranslations.getText('right_pedal_desc'),
-          trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+          trailing: Icon(Icons.chevron_right, color: sub),
           onTap: () => showModeKeyAssignmentsDialog(ctx, prov, s, -1),
         ),
         settingsTile(
           title: AppTranslations.getText('left_pedal_button'),
           subtitle: AppTranslations.getText('left_pedal_desc'),
-          trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+          trailing: Icon(Icons.chevron_right, color: sub),
           onTap: () => showModeKeyAssignmentsDialog(ctx, prov, s, -2),
         ),
-        const Divider(color: Colors.white12, height: 8),
+        Divider(color: div, height: 8),
         settingsTile(
           title: AppTranslations.getText('accel_brake_dist'),
           subtitle: AppTranslations.getText('100_percent_dist'),
@@ -216,20 +220,13 @@ extension _SettingsMainTabExt on _SettingsScreenState {
             }
           },
         ),
-        const Divider(color: Colors.white12, height: 24),
+        Divider(color: div, height: 24),
         // Simüle Edilmiş Haptik
         settingsHeader(AppTranslations.getText('haptic_header')),
-        SwitchListTile(
-          title: Text(
-            AppTranslations.getText('simulated_haptic'),
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          subtitle: Text(
-            AppTranslations.getText('simulated_haptic_desc'),
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
-          ),
+        settingsSwitchTile(
+          title: AppTranslations.getText('simulated_haptic'),
+          subtitle: AppTranslations.getText('simulated_haptic_desc'),
           value: s.simulatedHapticEnabled,
-          activeThumbColor: ac,
           onChanged: (val) async {
             if (val) {
               await HapticManager().checkAndRequestHapticPermission();
@@ -238,6 +235,7 @@ extension _SettingsMainTabExt on _SettingsScreenState {
             prov.updateSettings(s);
             setState(() {});
           },
+          s: s,
         ),
         if (s.simulatedHapticEnabled) ...[
           Padding(
@@ -314,7 +312,7 @@ extension _SettingsMainTabExt on _SettingsScreenState {
               }
             },
           ),
-          const Divider(color: Colors.white12, height: 16),
+          Divider(color: div, height: 16),
           Padding(
             padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
             child: Text(
@@ -339,7 +337,7 @@ extension _SettingsMainTabExt on _SettingsScreenState {
             ),
           ),
         ],
-        const Divider(color: Colors.white12, height: 24),
+        Divider(color: div, height: 24),
         settingsHeader(AppTranslations.getText('hw_keys')),
         settingsTile(
           title: AppTranslations.getText('vol_up_action'),
@@ -379,15 +377,18 @@ extension _SettingsMainTabExt on _SettingsScreenState {
             }
           },
         ),
-        const Divider(color: Colors.white12, height: 24),
+        Divider(color: div, height: 24),
         settingsHeader(AppTranslations.getText('language')),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white12),
+          child: GlassContainer(
+            isGlassActive: hasBgMedia,
+            solidBackgroundColor: txt.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: hasBgMedia
+                  ? Colors.white.withValues(alpha: 0.22)
+                  : div,
             ),
             child: Column(
               children: [
@@ -398,8 +399,10 @@ extension _SettingsMainTabExt on _SettingsScreenState {
                   label: 'Türkçe',
                   flag: '🇹🇷',
                   ac: ac,
+                  txt: txt,
+                  sub: sub,
                 ),
-                const Divider(color: Colors.white12, height: 1, indent: 16),
+                Divider(color: div, height: 1, indent: 16),
                 _langTile(
                   ctx: ctx,
                   prov: prov,
@@ -407,6 +410,8 @@ extension _SettingsMainTabExt on _SettingsScreenState {
                   label: 'English',
                   flag: '🇬🇧',
                   ac: ac,
+                  txt: txt,
+                  sub: sub,
                 ),
               ],
             ),
@@ -424,6 +429,8 @@ extension _SettingsMainTabExt on _SettingsScreenState {
     required String label,
     required String flag,
     required Color ac,
+    required Color txt,
+    required Color sub,
   }) {
     final isSelected = prov.currentLanguage == langCode;
     return InkWell(
@@ -442,7 +449,7 @@ extension _SettingsMainTabExt on _SettingsScreenState {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? ac : Colors.white70,
+                  color: isSelected ? ac : txt.withValues(alpha: 0.78),
                   fontSize: 15,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
@@ -451,9 +458,9 @@ extension _SettingsMainTabExt on _SettingsScreenState {
             if (isSelected)
               Icon(Icons.check_circle, color: ac, size: 20)
             else
-              const Icon(
+              Icon(
                 Icons.radio_button_unchecked,
-                color: Colors.white24,
+                color: sub.withValues(alpha: 0.6),
                 size: 20,
               ),
           ],
