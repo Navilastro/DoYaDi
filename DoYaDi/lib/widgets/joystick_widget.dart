@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/joystick_mode.dart';
 import 'joystick/joystick_interactive.dart';
 import 'joystick/joystick_painter.dart';
+import 'looping_media_widget.dart';
 
 /// Xbox-tarzı analog joystick widget'ı — mode dispatcher (facade).
 ///
@@ -43,17 +44,89 @@ class JoystickWidget extends StatelessWidget {
     // Spawn tabanlı modlarda joystick sadece ghost görüntü gösterir.
     // Etkileşim JoystickSpawnLayer tarafından yönetilir.
     if (mode.isSpawnLike) {
+      final hasBaseMedia = AppMediaHelper.hasMedia(baseMediaPath);
+      final hasThumbMedia = AppMediaHelper.hasMedia(thumbMediaPath);
+      final double diameter = radius * 2;
+      final double thumbRadius = radius * 0.35;
+
+      if (hasBaseMedia || hasThumbMedia) {
+        return IgnorePointer(
+          child: Opacity(
+            opacity: ghostOpacity.clamp(0.0, 1.0),
+            child: SizedBox(
+              width: diameter,
+              height: diameter,
+              child: Stack(
+                children: [
+                  if (hasBaseMedia)
+                    ClipOval(
+                      child: SizedBox(
+                        width: diameter,
+                        height: diameter,
+                        child: LoopingMediaWidget(
+                          mediaPath: baseMediaPath,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    )
+                  else
+                    CustomPaint(
+                      size: Size(diameter, diameter),
+                      painter: JoystickPainter(
+                        thumbPos: Offset.zero,
+                        radius: radius,
+                        baseColor: baseColor,
+                        thumbColor: Colors.transparent,
+                        thumbRadius: 0,
+                        ghostOpacity: 1.0,
+                      ),
+                    ),
+                  Positioned(
+                    left: radius - thumbRadius,
+                    top: radius - thumbRadius,
+                    width: thumbRadius * 2,
+                    height: thumbRadius * 2,
+                    child: hasThumbMedia
+                        ? ClipOval(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white30,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: LoopingMediaWidget(
+                                mediaPath: thumbMediaPath,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: thumbColor,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
       return IgnorePointer(
         child: SizedBox(
-          width: radius * 2,
-          height: radius * 2,
+          width: diameter,
+          height: diameter,
           child: CustomPaint(
             painter: JoystickPainter(
               thumbPos: Offset.zero,
               radius: radius,
               baseColor: baseColor,
               thumbColor: thumbColor,
-              thumbRadius: radius * 0.35,
+              thumbRadius: thumbRadius,
               ghostOpacity: ghostOpacity,
             ),
           ),

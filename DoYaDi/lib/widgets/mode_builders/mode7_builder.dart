@@ -79,25 +79,25 @@ extension _Mode7BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         Positioned(
           left: centerX - 80,
           top: bottomY,
-          child: _buildM7StylizedButton(s, s.m7Key1, 'X'),
+          child: _buildM7StylizedButton(s, s.m7Key1, KeyboardKeys.getKeyLabel(s.m7Key1)),
         ),
         // Üst Buton
         Positioned(
           left: centerX - 25,
           top: bottomY - 55,
-          child: _buildM7StylizedButton(s, s.m7Key2, 'Y'),
+          child: _buildM7StylizedButton(s, s.m7Key2, KeyboardKeys.getKeyLabel(s.m7Key2)),
         ),
         // Sağ Buton
         Positioned(
           left: centerX + 30,
           top: bottomY,
-          child: _buildM7StylizedButton(s, s.m7Key3, 'B'),
+          child: _buildM7StylizedButton(s, s.m7Key3, KeyboardKeys.getKeyLabel(s.m7Key3)),
         ),
         // Alt Buton
         Positioned(
           left: centerX - 25,
           top: bottomY + 55,
-          child: _buildM7StylizedButton(s, s.m7Key4, 'A'),
+          child: _buildM7StylizedButton(s, s.m7Key4, KeyboardKeys.getKeyLabel(s.m7Key4)),
         ),
       ],
     );
@@ -135,12 +135,18 @@ extension _Mode7BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           ],
         ),
         alignment: Alignment.center,
-        child: Text(
-          defaultLabel,
-          style: TextStyle(
-            color: btnColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            defaultLabel,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: btnColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
         ),
       ),

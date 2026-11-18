@@ -122,28 +122,9 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
-  String keyName(int v) {
-    if (v >= 2000) return 'Makro ${v - 1999}';
-    return KeyboardKeys.appKeyMap.entries
-        .firstWhere((e) => e.value == v, orElse: () => const MapEntry('?', 0))
-        .key;
-  }
+  String keyName(int v) => KeyboardKeys.getKeyLabel(v);
 
-  String swipeName(int v) {
-    if (v == -1) {
-      return AppTranslations.getText('paired').isEmpty
-          ? 'Gaz'
-          : AppTranslations.currentLanguage == 'en'
-          ? 'Gas'
-          : 'Gaz';
-    }
-    if (v == -2) {
-      return AppTranslations.currentLanguage == 'en' ? 'Brake' : 'Fren';
-    }
-    return KeyboardKeys.appKeyMap.entries
-        .firstWhere((e) => e.value == v, orElse: () => const MapEntry('Yok', 0))
-        .key;
-  }
+  String swipeName(int v) => KeyboardKeys.getKeyLabel(v);
 
   Future<R?> radioDialog<R>({
     required BuildContext ctx,
@@ -233,13 +214,28 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  Future<int?> swipeDialog(BuildContext ctx, String title, int current) =>
-      radioDialog<int>(
-        ctx: ctx,
-        title: title,
-        current: current,
-        options: swipeDirLabels,
-      );
+  Future<int?> swipeDialog(BuildContext ctx, String title, int current) {
+    final int effectiveCurrent =
+        current == 19 ? -1 : (current == 20 ? -2 : current);
+    final options = <String, int>{
+      AppTranslations.getText('btn_rt_analog'): -1,
+      AppTranslations.getText('btn_lt_analog'): -2,
+      for (final entry in KeyboardKeys.appKeyMap.entries)
+        if (entry.value >= 0 &&
+            entry.value < 1000 &&
+            entry.value != 19 &&
+            entry.value != 20)
+          entry.key: entry.value,
+      if (effectiveCurrent >= 1000)
+        KeyboardKeys.getKeyLabel(effectiveCurrent): effectiveCurrent,
+    };
+    return radioDialog<int>(
+      ctx: ctx,
+      title: title,
+      current: effectiveCurrent,
+      options: options,
+    );
+  }
 
   Future<int?> keyDialog(BuildContext ctx, String title, int current) =>
       showSearchableKeyPicker(ctx, current, hideKeyboard: true);
@@ -1254,7 +1250,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
 
                     return ListTile(
                       title: Text(
-                        '${AppTranslations.getText('key_prefix')} $keyIndex',
+                        KeyboardKeys.getKeyLabel(keyIndex),
                         style: const TextStyle(color: Colors.white),
                       ),
                       subtitle: Text(
@@ -1266,7 +1262,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                         final val = await radioDialog<int?>(
                           ctx: context,
                           title:
-                              '${AppTranslations.getText('key_prefix')} $keyIndex ${AppTranslations.currentLanguage == 'en' ? 'Mode' : 'Modu'}',
+                              '${KeyboardKeys.getKeyLabel(keyIndex)} ${AppTranslations.currentLanguage == 'en' ? 'Mode' : 'Modu'}',
                           current: s.customButtonPressModes[keyIndex],
                           options: {
                             AppTranslations.getText('press_mode_global'): -1,
@@ -1295,7 +1291,7 @@ mixin SettingsDialogMixin<T extends StatefulWidget> on State<T> {
                               final duration = await radioDialog<int>(
                                 ctx: dctx,
                                 title:
-                                    '${AppTranslations.getText('timed_press_duration')} (${AppTranslations.getText('key_prefix')} $keyIndex)',
+                                    '${AppTranslations.getText('timed_press_duration')} (${KeyboardKeys.getKeyLabel(keyIndex)})',
                                 current:
                                     s.customButtonPressDurationsMs[keyIndex] ??
                                     s.globalButtonPressDurationMs,

@@ -37,23 +37,25 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/
 
 # --- İKON AYARLARI ---
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icon.png"
+  image_path: "assets/icons/oyuku_logo.png"
   adaptive_icon_background: "#09090B"
-  adaptive_icon_foreground: "assets/icon.png"
+  adaptive_icon_foreground: "assets/icons/oyuku_logo.png"
   windows:
     generate: true
-    image_path: "assets/icon.png"
+    image_path: "assets/icons/oyuku_logo.png"
     icon_size: 48
 
 # --- AÇILIŞ EKRANI AYARLARI ---
 flutter_native_splash:
   color: "#09090B"
-  image: assets/icon.png
+  image: assets/icons/oyuku_logo.png
   android_12: 
-    image: assets/icon.png
+    image: assets/icons/oyuku_logo.png
     icon_background_color: "#09090B"

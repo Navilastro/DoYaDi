@@ -32,6 +32,7 @@ class HapticManager {
   DateTime _lastTelemetryTrigger = DateTime(2000);
 
   bool? _hasVibrator;
+  bool? _hasAmplitudeControl;
 
   Future<bool> _checkVibrator() async {
     _hasVibrator ??= await Vibration.hasVibrator();
@@ -63,7 +64,12 @@ class HapticManager {
       final hasVib = await _checkVibrator();
       if (hasVib) {
         if (amplitude > 0) {
-          Vibration.vibrate(duration: duration, amplitude: amplitude);
+          _hasAmplitudeControl ??= await Vibration.hasAmplitudeControl();
+          if (_hasAmplitudeControl == true) {
+            Vibration.vibrate(duration: duration, amplitude: amplitude);
+          } else {
+            Vibration.vibrate(duration: duration);
+          }
         } else {
           Vibration.vibrate(duration: duration);
         }
@@ -88,15 +94,15 @@ class HapticManager {
   // ── Simüle Edilmiş Haptic ──────────────────────────────────────────────────
 
   /// Simüle edilmiş haptic tetiklenebilir mi kontrolü
-  bool _canTrigger(AppSettings settings) {
+  bool _canTrigger(AppSettings settings, {bool force = false}) {
     if (_dlcHapticActive) return false;
-    if (!settings.simulatedHapticEnabled) return false;
+    if (!force && !settings.simulatedHapticEnabled) return false;
     return true;
   }
 
   /// Hafif titreşim (bar/ikon değer değişimi sırasında)
-  void triggerLight(AppSettings settings) {
-    if (!_canTrigger(settings)) return;
+  void triggerLight(AppSettings settings, {bool force = false}) {
+    if (!_canTrigger(settings, force: force)) return;
     _vibrateCustom(
       duration: 20,
       amplitude: 60,
@@ -105,8 +111,8 @@ class HapticManager {
   }
 
   /// Orta titreşim (buton basımı vb.)
-  void triggerMedium(AppSettings settings) {
-    if (!_canTrigger(settings)) return;
+  void triggerMedium(AppSettings settings, {bool force = false}) {
+    if (!_canTrigger(settings, force: force)) return;
     _vibrateCustom(
       duration: 45,
       amplitude: 140,
@@ -115,8 +121,8 @@ class HapticManager {
   }
 
   /// Ağır titreşim (%100 pedalda vb.)
-  void triggerHeavy(AppSettings settings) {
-    if (!_canTrigger(settings)) return;
+  void triggerHeavy(AppSettings settings, {bool force = false}) {
+    if (!_canTrigger(settings, force: force)) return;
     _vibrateCustom(
       duration: 90,
       amplitude: 255,
@@ -125,8 +131,8 @@ class HapticManager {
   }
 
   /// Seçim titreşimi (switch toggle vb.)
-  void triggerSelection(AppSettings settings) {
-    if (!_canTrigger(settings)) return;
+  void triggerSelection(AppSettings settings, {bool force = false}) {
+    if (!_canTrigger(settings, force: force)) return;
     _vibrateCustom(
       duration: 15,
       amplitude: 80,
@@ -140,20 +146,19 @@ class HapticManager {
     int typeIndex, {
     bool force = false,
   }) {
-    if (_dlcHapticActive) return;
-    if (!force && !settings.simulatedHapticEnabled) return;
+    if (!_canTrigger(settings, force: force)) return;
     switch (typeIndex) {
       case 0:
-        triggerLight(settings);
+        triggerLight(settings, force: force);
         break;
       case 1:
-        triggerMedium(settings);
+        triggerMedium(settings, force: force);
         break;
       case 2:
-        triggerHeavy(settings);
+        triggerHeavy(settings, force: force);
         break;
       case 3:
-        triggerSelection(settings);
+        triggerSelection(settings, force: force);
         break;
       case 4:
         _vibrateCustom(
@@ -163,7 +168,7 @@ class HapticManager {
         );
         break;
       default:
-        triggerMedium(settings);
+        triggerMedium(settings, force: force);
         break;
     }
   }
@@ -175,9 +180,9 @@ class HapticManager {
     int? customType,
     int? customTrigger,
   }) {
-    if (!itemHapticEnabled) return;
+    if (!itemHapticEnabled && !settings.simulatedHapticEnabled) return;
     final type = customType ?? settings.globalHapticType;
-    triggerHapticType(settings, type);
+    triggerHapticType(settings, type, force: itemHapticEnabled);
   }
 
   DateTime _lastSlipTrigger = DateTime(2000);

@@ -35,13 +35,28 @@ android {
     productFlavors {
         create("oyuku") {
             dimension = "app"
-            applicationId = "com.navilastro.oyuku"
+            applicationId = "navilastro.oyuku"
             resValue("string", "app_name", "OyuKu")
         }
         create("doyadi") {
             dimension = "app"
-            applicationId = "com.navilastro.doyadi"
+            applicationId = "navilastro.doyadi"
             resValue("string", "app_name", "DoYaDi")
+        }
+        create("virplelev") {
+            dimension = "app"
+            applicationId = "navilastro.virplelev"
+            resValue("string", "app_name", "VirPleLev")
+        }
+        create("sanrevye") {
+            dimension = "app"
+            applicationId = "navilastro.sanrevye"
+            resValue("string", "app_name", "SanReVye")
+        }
+        create("admin") {
+            dimension = "app"
+            applicationId = "navilastro.admin"
+            resValue("string", "app_name", "DoYaDi Boss")
         }
     }
 

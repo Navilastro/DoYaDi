@@ -78,7 +78,7 @@ For download server setup.exe -> <a href="https://github.com/Navilastro/DoYaDi/r
       Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
       [Files]
-      Source: "..\DoYaDi_Server\x64\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+      Source: "..\OyuKu_Server\x64\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
       [Icons]
       Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

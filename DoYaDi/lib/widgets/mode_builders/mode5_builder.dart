@@ -1,32 +1,52 @@
 part of '../driving_mode_builders.dart';
+
+class _Mode5ParsedLayoutCache {
+  String? rawJson;
+  bool? restricted;
+  List<Layout5Item> items = const [];
+}
+
+final _Mode5ParsedLayoutCache _mode5Cache = _Mode5ParsedLayoutCache();
+
 extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T> {
   // ──────────────────────────────────────────────────────────────────────────
   // MOD 5: Özel Tasarım (JSON'dan)
   // ──────────────────────────────────────────────────────────────────────────
   Widget buildMode5(AppSettings s, Size size) {
-    List<Layout5Item> items = [];
-    if (s.customLayout5Json == null || s.customLayout5Json!.isEmpty) {
-      items = defaultLayout5();
-    } else {
-      try {
-        final list = jsonDecode(s.customLayout5Json!) as List;
-        items = list
-            .map((e) => Layout5Item.fromJson(e as Map<String, dynamic>))
-            .toList();
-      } catch (_) {
-        items = defaultLayout5();
+    final bool restricted = AppConfig.instance.hasRestrictedMod5;
+    if (_mode5Cache.rawJson != s.customLayout5Json ||
+        _mode5Cache.restricted != restricted) {
+      List<Layout5Item> parsed = [];
+      if (s.customLayout5Json == null || s.customLayout5Json!.isEmpty) {
+        parsed = defaultLayout5();
+      } else {
+        try {
+          final list = jsonDecode(s.customLayout5Json!) as List;
+          parsed = list
+              .map((e) => Layout5Item.fromJson(e as Map<String, dynamic>))
+              .toList();
+        } catch (_) {
+          parsed = defaultLayout5();
+        }
       }
+
+      if (restricted) {
+        parsed =
+            parsed.where((e) => isLayout5TypeAllowedForFlavor(e.type)).toList();
+        if (parsed.isEmpty) {
+          parsed = defaultLayout5();
+        }
+      }
+
+      // Katman sırasına (Z-Index) göre küçükten büyüğe sırala
+      parsed.sort((a, b) => a.zIndex.compareTo(b.zIndex));
+
+      _mode5Cache.rawJson = s.customLayout5Json;
+      _mode5Cache.restricted = restricted;
+      _mode5Cache.items = parsed;
     }
 
-    if (AppConfig.instance.hasRestrictedMod5) {
-      items = items.where((e) => isLayout5TypeAllowedForFlavor(e.type)).toList();
-      if (items.isEmpty) {
-        items = defaultLayout5();
-      }
-    }
-    
-    // Katman sırasına (Z-Index) göre küçükten büyüğe sırala
-    items.sort((a, b) => a.zIndex.compareTo(b.zIndex));
+    final List<Layout5Item> items = _mode5Cache.items;
 
     // Detect which advanced items are present — determines whether to use 16-byte payload
     final bool hasLeftJoy = items.any((e) => e.type == Layout5ItemType.leftJoystick);
@@ -57,6 +77,8 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
               e.type == Layout5ItemType.buttonSoft ||
               e.type == Layout5ItemType.buttonCircle) &&
           (e.mode == ButtonMode.macro ||
+              (e.mode == ButtonMode.parallelMacro &&
+                  e.parallelMacroKeys.any((k) => k >= 100 || k >= 2000)) ||
               e.macro.isNotEmpty ||
               e.keyIndex >= 100 ||
               e.keyIndex >= 2000),
@@ -136,12 +158,10 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
       for (final item in items) {
         if (item.type == Layout5ItemType.leftJoystick ||
             item.type == Layout5ItemType.rightJoystick) {
-          final cx = item.left * size.width + item.width * size.width / 2;
-          final cy = item.top * size.height + item.height * size.height / 2;
-          final r = math.min(
-            item.width * size.width,
-            item.height * size.height,
-          ) / 2;
+          final double joySize = item.width * size.width;
+          final double cx = item.left * size.width + joySize / 2;
+          final double cy = item.top * size.height + joySize / 2;
+          final double r = joySize / 2;
           spawnInfos.add(JoystickSpawnInfo(
             originCenter: Offset(cx, cy),
             radius: r,
@@ -193,23 +213,25 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         item.type == Layout5ItemType.gasPedalIcon ||
         item.type == Layout5ItemType.brakePedalIcon;
 
-    final double w = isJoyOrIcon ? (math.min(item.width * size.width, item.height * size.height)) : (item.width * size.width);
+    final double w = item.width * size.width;
     final double h = isJoyOrIcon ? w : (item.height * size.height);
-    
-    // Calculate top-left based on maintaining the center point
-    final double cx = item.left * size.width + item.width * size.width / 2;
-    final double cy = item.top * size.height + item.height * size.height / 2;
-    final double finalLeft = isJoyOrIcon ? (cx - w / 2) : (item.left * size.width);
-    final double finalTop = isJoyOrIcon ? (cy - h / 2) : (item.top * size.height);
+    final double finalLeft = item.left * size.width;
+    final double finalTop = item.top * size.height;
 
     Widget content;
     switch (item.type) {
       case Layout5ItemType.leftJoystick:
         // Spawn tabanlı modlarda: aktif olan joystick spawn layer'da çizilir,
-        // orijinal konumdaki ghost yarı saydam gösterilir
+        // orijinal konumda medya atanmışsa tam görünür, yoksa yarı saydam gösterilir
         final bool isSpawnHidden = joystickMode.isSpawnLike && spawnLeftActive;
+        final String? leftBaseMedia =
+            item.mediaPath ?? s.mod5JoystickBaseMediaPath;
+        final String? leftThumbMedia =
+            item.secondaryMediaPath ?? s.mod5JoystickMediaPath;
+        final bool hasLeftMedia = AppMediaHelper.hasMedia(leftBaseMedia) ||
+            AppMediaHelper.hasMedia(leftThumbMedia);
         final double ghostOpacity = joystickMode.isSpawnLike
-            ? (isSpawnHidden ? 0.0 : 0.2)
+            ? (isSpawnHidden ? 0.0 : (hasLeftMedia ? 1.0 : 0.2))
             : 1.0;
 
         content = JoystickWidget(
@@ -218,8 +240,8 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           thumbColor: item.textColor,
           mode: joystickMode,
           ghostOpacity: ghostOpacity,
-          baseMediaPath: item.mediaPath ?? s.mod5JoystickBaseMediaPath,
-          thumbMediaPath: item.secondaryMediaPath ?? s.mod5JoystickMediaPath,
+          baseMediaPath: leftBaseMedia,
+          thumbMediaPath: leftThumbMedia,
           onChanged: (x, y) {
             setState(() {
               joy0x = x;
@@ -230,8 +252,14 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         break;
       case Layout5ItemType.rightJoystick:
         final bool isSpawnHidden = joystickMode.isSpawnLike && spawnRightActive;
+        final String? rightBaseMedia =
+            item.mediaPath ?? s.mod5JoystickBaseMediaPath;
+        final String? rightThumbMedia =
+            item.secondaryMediaPath ?? s.mod5JoystickMediaPath;
+        final bool hasRightMedia = AppMediaHelper.hasMedia(rightBaseMedia) ||
+            AppMediaHelper.hasMedia(rightThumbMedia);
         final double ghostOpacity = joystickMode.isSpawnLike
-            ? (isSpawnHidden ? 0.0 : 0.2)
+            ? (isSpawnHidden ? 0.0 : (hasRightMedia ? 1.0 : 0.2))
             : 1.0;
 
         content = JoystickWidget(
@@ -240,8 +268,8 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           thumbColor: item.textColor,
           mode: joystickMode,
           ghostOpacity: ghostOpacity,
-          baseMediaPath: item.mediaPath ?? s.mod5JoystickBaseMediaPath,
-          thumbMediaPath: item.secondaryMediaPath ?? s.mod5JoystickMediaPath,
+          baseMediaPath: rightBaseMedia,
+          thumbMediaPath: rightThumbMedia,
           onChanged: (x, y) {
             setState(() {
               joy1x = x;
@@ -252,7 +280,12 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         break;
       case Layout5ItemType.gasBar:
         content = Listener(
-          onPointerDown: (e) => onPedalDown(e, true, tapKey: item.tapKey, customSwipeKeys: item.customSwipeKeys),
+          onPointerDown: (e) => onPedalDown(
+            e,
+            true,
+            tapKey: item.tapKey,
+            customSwipeKeys: {1: -1, 2: -1, ...?item.customSwipeKeys},
+          ),
           onPointerMove: (e) => onPedalMove(e, s),
           onPointerUp: onPedalUp,
           onPointerCancel: onPedalUp,
@@ -268,7 +301,12 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         break;
       case Layout5ItemType.brakeBar:
         content = Listener(
-          onPointerDown: (e) => onPedalDown(e, false, tapKey: item.tapKey, customSwipeKeys: item.customSwipeKeys),
+          onPointerDown: (e) => onPedalDown(
+            e,
+            false,
+            tapKey: item.tapKey,
+            customSwipeKeys: {1: -2, 2: -2, ...?item.customSwipeKeys},
+          ),
           onPointerMove: (e) => onPedalMove(e, s),
           onPointerUp: onPedalUp,
           onPointerCancel: onPedalUp,
@@ -298,6 +336,7 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         content = Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: (_) {
+            setState(() => pressedMod5ButtonIds.add(item.id));
             if (item.mode == ButtonMode.key) {
               if (item.customPressMode != null) {
                 try {
@@ -315,13 +354,13 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                   s.customButtonPressDurationsMs[item.keyIndex] = item.customPressDurationMs!;
                 }
               }
-              try {
-                s.customButtonHapticEnabled[item.keyIndex] = item.enableHaptic;
-              } catch (_) {
-                s.customButtonHapticEnabled = Map<int, bool>.from(s.customButtonHapticEnabled);
-                s.customButtonHapticEnabled[item.keyIndex] = item.enableHaptic;
-              }
               if (item.enableHaptic) {
+                try {
+                  s.customButtonHapticEnabled[item.keyIndex] = true;
+                } catch (_) {
+                  s.customButtonHapticEnabled = Map<int, bool>.from(s.customButtonHapticEnabled);
+                  s.customButtonHapticEnabled[item.keyIndex] = true;
+                }
                 try {
                   s.customButtonHapticTypes[item.keyIndex] = item.customHapticType ?? s.globalHapticType;
                 } catch (_) {
@@ -334,41 +373,82 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                   s.customButtonHapticTriggers = Map<int, int>.from(s.customButtonHapticTriggers);
                   s.customButtonHapticTriggers[item.keyIndex] = item.customHapticTrigger ?? s.globalHapticTrigger;
                 }
+              } else {
+                try {
+                  s.customButtonHapticEnabled.remove(item.keyIndex);
+                } catch (_) {
+                  s.customButtonHapticEnabled = Map<int, bool>.from(s.customButtonHapticEnabled);
+                  s.customButtonHapticEnabled.remove(item.keyIndex);
+                }
               }
               handleButtonDown(item.keyIndex);
+            } else if (item.mode == ButtonMode.parallelMacro) {
+              HapticManager().triggerForItem(
+                s,
+                item.enableHaptic,
+                customType: item.customHapticType,
+                customTrigger: item.customHapticTrigger,
+              );
+              setState(() {
+                for (final k in item.parallelMacroKeys) {
+                  if (k > 0) pressedKeys.add(k);
+                }
+              });
             } else if (item.mode == ButtonMode.gasPct) {
-              if (item.enableHaptic || s.simulatedHapticEnabled) {
-                HapticManager().triggerHapticType(s, item.customHapticType ?? s.globalHapticType, force: true);
-              }
+              HapticManager().triggerForItem(
+                s,
+                item.enableHaptic,
+                customType: item.customHapticType,
+                customTrigger: item.customHapticTrigger,
+              );
               setState(() => gasPercentage = item.modeValue);
             } else if (item.mode == ButtonMode.brakePct) {
-              if (item.enableHaptic || s.simulatedHapticEnabled) {
-                HapticManager().triggerHapticType(s, item.customHapticType ?? s.globalHapticType, force: true);
-              }
+              HapticManager().triggerForItem(
+                s,
+                item.enableHaptic,
+                customType: item.customHapticType,
+                customTrigger: item.customHapticTrigger,
+              );
               setState(() => brakePercentage = item.modeValue);
             } else if (item.mode == ButtonMode.handbrakePct) {
-              if (item.enableHaptic || s.simulatedHapticEnabled) {
-                HapticManager().triggerHapticType(s, item.customHapticType ?? s.globalHapticType, force: true);
-              }
+              HapticManager().triggerForItem(
+                s,
+                item.enableHaptic,
+                customType: item.customHapticType,
+                customTrigger: item.customHapticTrigger,
+              );
               setState(() {
                 handbrakePressed = true;
                 handbrakePercentage = item.modeValue;
               });
             } else if (item.mode == ButtonMode.clutchPct) {
-              if (item.enableHaptic || s.simulatedHapticEnabled) {
-                HapticManager().triggerHapticType(s, item.customHapticType ?? s.globalHapticType, force: true);
-              }
+              HapticManager().triggerForItem(
+                s,
+                item.enableHaptic,
+                customType: item.customHapticType,
+                customTrigger: item.customHapticTrigger,
+              );
               setState(() => clutchPercentage = item.modeValue);
             } else if (item.mode == ButtonMode.macro) {
-              if (item.enableHaptic || s.simulatedHapticEnabled) {
-                HapticManager().triggerHapticType(s, item.customHapticType ?? s.globalHapticType, force: true);
-              }
+              HapticManager().triggerForItem(
+                s,
+                item.enableHaptic,
+                customType: item.customHapticType,
+                customTrigger: item.customHapticTrigger,
+              );
               executeMacro(item.macro);
             }
           },
           onPointerUp: (_) {
+            setState(() => pressedMod5ButtonIds.remove(item.id));
             if (item.mode == ButtonMode.key) {
               handleButtonUp(item.keyIndex);
+            } else if (item.mode == ButtonMode.parallelMacro) {
+              setState(() {
+                for (final k in item.parallelMacroKeys) {
+                  pressedKeys.remove(k);
+                }
+              });
             } else if (item.mode == ButtonMode.gasPct) {
               setState(() => gasPercentage = 0.0);
             } else if (item.mode == ButtonMode.brakePct) {
@@ -383,8 +463,15 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
             }
           },
           onPointerCancel: (_) {
+            setState(() => pressedMod5ButtonIds.remove(item.id));
             if (item.mode == ButtonMode.key) {
               handleButtonUp(item.keyIndex);
+            } else if (item.mode == ButtonMode.parallelMacro) {
+              setState(() {
+                for (final k in item.parallelMacroKeys) {
+                  pressedKeys.remove(k);
+                }
+              });
             } else if (item.mode == ButtonMode.gasPct) {
               setState(() => gasPercentage = 0.0);
             } else if (item.mode == ButtonMode.brakePct) {
@@ -405,38 +492,78 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                   : s.mod5ButtonMediaPath;
               final hasMedia = AppMediaHelper.hasMedia(btnMedia);
               final needsBlur = hasMedia || AppMediaHelper.hasMedia(s.modeBackgroundMedia(5));
-              return Container(
-                decoration: BoxDecoration(
-                  color: item.bgColor,
-                  borderRadius: radius,
-                  border: Border.all(color: item.textColor.withValues(alpha: 0.3)),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    if (hasMedia)
-                      Positioned.fill(
-                        child: LoopingMediaWidget(
-                          mediaPath: btnMedia,
-                          fit: BoxFit.cover,
-                        ),
+              final bool isPressed =
+                  pressedMod5ButtonIds.contains(item.id) ||
+                  (item.mode == ButtonMode.key &&
+                      pressedKeys.contains(item.keyIndex)) ||
+                  (item.mode == ButtonMode.parallelMacro &&
+                      item.parallelMacroKeys.isNotEmpty &&
+                      item.parallelMacroKeys.every(
+                        (k) => pressedKeys.contains(k),
+                      ));
+              return AnimatedScale(
+                scale: isPressed ? 0.93 : 1.0,
+                duration: const Duration(milliseconds: 60),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isPressed
+                        ? Color.lerp(item.bgColor, item.textColor, 0.25)
+                        : item.bgColor,
+                    borderRadius: radius,
+                    border: Border.all(
+                      color: item.textColor.withValues(
+                        alpha: isPressed ? 0.95 : 0.3,
                       ),
-                    Center(
-                      child: BlurredTextChip(
-                        enabled: needsBlur,
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            color: hasMedia ? Colors.white : item.textColor,
-                            fontSize: math.min(w, h) * 0.18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                      width: isPressed ? 2.2 : 1.0,
                     ),
-                  ],
+                    boxShadow: isPressed
+                        ? [
+                            BoxShadow(
+                              color: item.textColor.withValues(alpha: 0.4),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (hasMedia)
+                        Positioned.fill(
+                          child: RepaintBoundary(
+                            child: LoopingMediaWidget(
+                              key: ValueKey('mod5_media_${item.id}_$btnMedia'),
+                              mediaPath: btnMedia,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      if (isPressed)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: ColoredBox(
+                              color: item.textColor.withValues(alpha: 0.18),
+                            ),
+                          ),
+                        ),
+                      Center(
+                        child: BlurredTextChip(
+                          enabled: needsBlur,
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: hasMedia ? Colors.white : item.textColor,
+                              fontSize: math.min(w, h) * 0.18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -606,9 +733,11 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
               brakePedalIconPressed = true;
               _startPedalIconAcceleration(false, s);
             }
-            if (item.enableHaptic) {
-              HapticManager().triggerForItem(s, item.enableHaptic);
-            }
+            HapticManager().triggerForItem(
+              s,
+              item.enableHaptic,
+              customType: item.customHapticType,
+            );
           },
           onPointerMove: (_) {
             // Sürükleme hareketi pedal ivmelenmesini kesmez.
@@ -665,7 +794,11 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                   final pct = (1.0 - (localPos.dy / box.size.height)).clamp(0.0, 1.0);
                   setState(() => clutchPercentage = pct);
                 }
-                HapticManager().triggerLight(s);
+                HapticManager().triggerForItem(
+                  s,
+                  item.enableHaptic,
+                  customType: item.customHapticType,
+                );
               },
               onPointerMove: (e) {
                 final box = bctx.findRenderObject() as RenderBox?;
@@ -695,7 +828,11 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
           onPointerDown: (_) {
             clutchIconPressed = true;
             startClutchIconAcceleration(s);
-            HapticManager().triggerLight(s);
+            HapticManager().triggerForItem(
+              s,
+              item.enableHaptic,
+              customType: item.customHapticType,
+            );
           },
           onPointerUp: (_) {
             clutchIconPressed = false;
@@ -732,7 +869,11 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
                   final pct = (1.0 - (localPos.dy / box.size.height)).clamp(0.0, 1.0);
                   setState(() => handbrakePercentage = pct);
                 }
-                HapticManager().triggerLight(s);
+                HapticManager().triggerForItem(
+                  s,
+                  item.enableHaptic,
+                  customType: item.customHapticType,
+                );
               },
               onPointerMove: (e) {
                 final box = bctx.findRenderObject() as RenderBox?;
@@ -901,6 +1042,7 @@ extension _Mode5BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
         : Transform.rotate(angle: item.rotation, child: content);
 
     return Positioned(
+      key: ValueKey('mod5_item_${item.id}'),
       left: finalLeft,
       top: finalTop,
       width: w,

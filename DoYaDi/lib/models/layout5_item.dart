@@ -12,15 +12,15 @@ enum Layout5ItemType {
   buttonCircle,
   rightJoystick,
   touchpad,
-  gasPedalIcon,   // Gaz pedal ikonu (en fazla 1 adet)
+  gasPedalIcon, // Gaz pedal ikonu (en fazla 1 adet)
   brakePedalIcon, // Fren pedal ikonu (en fazla 1 adet)
-  clutchBar,      // Debriyaj barı (en fazla 1 adet)
-  clutchIcon,     // Debriyaj ikonu (en fazla 1 adet)
-  handbrakeButton,// El freni butonu (en fazla 1 adet) - Eski Sürüm Uyumluluğu
-  handbrakeBar,   // El freni barı (en fazla 1 adet)
-  handbrakeIcon,  // El freni ikonu (en fazla 1 adet)
+  clutchBar, // Debriyaj barı (en fazla 1 adet)
+  clutchIcon, // Debriyaj ikonu (en fazla 1 adet)
+  handbrakeButton, // El freni butonu (en fazla 1 adet) - Eski Sürüm Uyumluluğu
+  handbrakeBar, // El freni barı (en fazla 1 adet)
+  handbrakeIcon, // El freni ikonu (en fazla 1 adet)
   steeringWheelIcon, // Direksiyon ikonu (sadece görsel, en fazla 1 adet)
-  steeringBar,    // Direksiyon barı (alt kısımda çevrimi gösterir)
+  steeringBar, // Direksiyon barı (alt kısımda çevrimi gösterir)
 }
 
 enum ButtonMode {
@@ -30,6 +30,7 @@ enum ButtonMode {
   macro, // Makro
   handbrakePct, // Belirli bir el freni yüzdesi
   clutchPct, // Belirli bir debriyaj yüzdesi
+  parallelMacro, // Paralel Makro (en fazla 4 tuş aynı anda basılır)
 }
 
 enum MacroActionType { key, gasPct, brakePct, delay }
@@ -67,7 +68,7 @@ class Layout5Item {
   String? label; // null → varsayılan "{N} Buton"
   String? mediaPath; // Buton/Bar/Taban için resim, GIF veya video
   String? secondaryMediaPath; // Joystick yuvarlağı (thumb) için medya
-  
+
   // Z-Index (Katman Sırası)
   int zIndex;
 
@@ -76,6 +77,7 @@ class Layout5Item {
   int keyIndex; // mode == key için (1-25)
   double modeValue; // mode == gasPct/brakePct için (0.0 - 1.0)
   List<MacroAction> macro; // mode == macro için aksiyon listesi
+  List<int> parallelMacroKeys; // mode == parallelMacro için paralel tuş listesi
 
   // Hassasiyet (Joystick için)
   double sensitivity; // 0.5 - 3.0, varsayılan 1.0
@@ -87,11 +89,14 @@ class Layout5Item {
 
   // Haptik geri bildirim
   bool enableHaptic; // true ise dokunulduğunda titreşim tetiklenir
-  int? customHapticType; // 0: Hafif, 1: Orta, 2: Ağır, 3: Seçim, 4: Titreşim | null: Global
-  int? customHapticTrigger; // 0: Basılınca, 1: Bırakılınca, 2: Basıldığı Süre, 3: Aktif Süre | null: Global
-  
+  int?
+  customHapticType; // 0: Hafif, 1: Orta, 2: Ağır, 3: Seçim, 4: Titreşim | null: Global
+  int?
+  customHapticTrigger; // 0: Basılınca, 1: Bırakılınca, 2: Basıldığı Süre, 3: Aktif Süre | null: Global
+
   // Gyro-to-Right Analog (Joystick üzerinden)
-  int gyroToRightAnalogMode; // 0: Kapalı, 1: Pilot (Mutlak), 2: FPS (Hassas/Sürüklenmeli)
+  int
+  gyroToRightAnalogMode; // 0: Kapalı, 1: Pilot (Mutlak), 2: FPS (Hassas/Sürüklenmeli)
   double gyroRightAnalogSensitivity;
   double gyroRightAnalogDeadzone; // Ölü alan (derece)
 
@@ -120,6 +125,7 @@ class Layout5Item {
     this.keyIndex = 3,
     this.modeValue = 1.0,
     this.macro = const [],
+    this.parallelMacroKeys = const [],
     this.sensitivity = 1.0,
     this.customPressMode,
     this.customPressDurationMs,
@@ -154,6 +160,7 @@ class Layout5Item {
     'keyIndex': keyIndex,
     'modeValue': modeValue,
     'macro': macro.map((e) => e.toJson()).toList(),
+    if (parallelMacroKeys.isNotEmpty) 'parallelMacroKeys': parallelMacroKeys,
     'sensitivity': sensitivity,
     'customPressMode': customPressMode,
     'customPressDurationMs': customPressDurationMs,
@@ -167,7 +174,9 @@ class Layout5Item {
     'gyroMouseSensitivity': gyroMouseSensitivity,
     'gyroMouseDeadzone': gyroMouseDeadzone,
     'tapKey': tapKey,
-    'customSwipeKeys': customSwipeKeys?.map((k, v) => MapEntry(k.toString(), v)),
+    'customSwipeKeys': customSwipeKeys?.map(
+      (k, v) => MapEntry(k.toString(), v),
+    ),
   };
 
   factory Layout5Item.fromJson(Map<String, dynamic> json) {
@@ -208,10 +217,19 @@ class Layout5Item {
       mediaPath: json['mediaPath'] as String?,
       secondaryMediaPath: json['secondaryMediaPath'] as String?,
       zIndex: json['zIndex'] as int? ?? 1,
-      mode: ButtonMode.values[json['mode'] as int],
+      mode:
+          ButtonMode.values[(json['mode'] as int? ?? 0).clamp(
+            0,
+            ButtonMode.values.length - 1,
+          )],
       keyIndex: json['keyIndex'] as int,
       modeValue: (json['modeValue'] as num).toDouble(),
       macro: parsedMacro,
+      parallelMacroKeys:
+          (json['parallelMacroKeys'] as List?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const [],
       sensitivity: json['sensitivity'] != null
           ? (json['sensitivity'] as num).toDouble()
           : 1.0,
@@ -220,15 +238,29 @@ class Layout5Item {
       enableHaptic: json['enableHaptic'] as bool? ?? false,
       customHapticType: json['customHapticType'] as int?,
       customHapticTrigger: json['customHapticTrigger'] as int?,
-      gyroToRightAnalogMode: json['gyroToRightAnalogMode'] as int? ?? (json['gyroToRightAnalog'] == true ? 2 : 0), // Geriye dönük uyumluluk
-      gyroRightAnalogSensitivity: json['gyroRightAnalogSensitivity'] != null ? (json['gyroRightAnalogSensitivity'] as num).toDouble() : (json['gyroSensitivity'] != null ? (json['gyroSensitivity'] as num).toDouble() : 1.0),
-      gyroRightAnalogDeadzone: json['gyroRightAnalogDeadzone'] != null ? (json['gyroRightAnalogDeadzone'] as num).toDouble() : 7.0,
+      gyroToRightAnalogMode:
+          json['gyroToRightAnalogMode'] as int? ??
+          (json['gyroToRightAnalog'] == true ? 2 : 0), // Geriye dönük uyumluluk
+      gyroRightAnalogSensitivity: json['gyroRightAnalogSensitivity'] != null
+          ? (json['gyroRightAnalogSensitivity'] as num).toDouble()
+          : (json['gyroSensitivity'] != null
+                ? (json['gyroSensitivity'] as num).toDouble()
+                : 1.0),
+      gyroRightAnalogDeadzone: json['gyroRightAnalogDeadzone'] != null
+          ? (json['gyroRightAnalogDeadzone'] as num).toDouble()
+          : 7.0,
       gyroToMouseMode: json['gyroToMouseMode'] as int? ?? 0,
-      gyroMouseSensitivity: json['gyroMouseSensitivity'] != null ? (json['gyroMouseSensitivity'] as num).toDouble() : 1.0,
-      gyroMouseDeadzone: json['gyroMouseDeadzone'] != null ? (json['gyroMouseDeadzone'] as num).toDouble() : 7.0,
+      gyroMouseSensitivity: json['gyroMouseSensitivity'] != null
+          ? (json['gyroMouseSensitivity'] as num).toDouble()
+          : 1.0,
+      gyroMouseDeadzone: json['gyroMouseDeadzone'] != null
+          ? (json['gyroMouseDeadzone'] as num).toDouble()
+          : 7.0,
       tapKey: json['tapKey'],
       customSwipeKeys: json['customSwipeKeys'] != null
-          ? (json['customSwipeKeys'] as Map<String, dynamic>).map((k, v) => MapEntry(int.parse(k), v as int))
+          ? (json['customSwipeKeys'] as Map<String, dynamic>).map(
+              (k, v) => MapEntry(int.parse(k), v as int),
+            )
           : null,
     );
   }
@@ -254,6 +286,7 @@ class Layout5Item {
     int? keyIndex,
     double? modeValue,
     List<MacroAction>? macro,
+    List<int>? parallelMacroKeys,
     double? sensitivity,
     int? customPressMode,
     bool clearCustomPressMode = false,
@@ -291,6 +324,7 @@ class Layout5Item {
       keyIndex: keyIndex ?? this.keyIndex,
       modeValue: modeValue ?? this.modeValue,
       macro: macro ?? this.macro,
+      parallelMacroKeys: parallelMacroKeys ?? this.parallelMacroKeys,
       sensitivity: sensitivity ?? this.sensitivity,
       customPressMode: clearCustomPressMode
           ? null
@@ -305,9 +339,12 @@ class Layout5Item {
       customHapticTrigger: clearCustomHapticTrigger
           ? null
           : (customHapticTrigger ?? this.customHapticTrigger),
-      gyroToRightAnalogMode: gyroToRightAnalogMode ?? this.gyroToRightAnalogMode,
-      gyroRightAnalogSensitivity: gyroRightAnalogSensitivity ?? this.gyroRightAnalogSensitivity,
-      gyroRightAnalogDeadzone: gyroRightAnalogDeadzone ?? this.gyroRightAnalogDeadzone,
+      gyroToRightAnalogMode:
+          gyroToRightAnalogMode ?? this.gyroToRightAnalogMode,
+      gyroRightAnalogSensitivity:
+          gyroRightAnalogSensitivity ?? this.gyroRightAnalogSensitivity,
+      gyroRightAnalogDeadzone:
+          gyroRightAnalogDeadzone ?? this.gyroRightAnalogDeadzone,
       gyroToMouseMode: gyroToMouseMode ?? this.gyroToMouseMode,
       gyroMouseSensitivity: gyroMouseSensitivity ?? this.gyroMouseSensitivity,
       gyroMouseDeadzone: gyroMouseDeadzone ?? this.gyroMouseDeadzone,

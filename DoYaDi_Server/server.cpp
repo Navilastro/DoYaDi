@@ -33,7 +33,7 @@ std::atomic<bool> isRunning{true}; // FAZ 0: Data race güvenliği
 std::mutex serverMutex;
 PVIGEM_CLIENT client = nullptr;
 std::string appLang = "tr";
-int maxClients = 1;
+int maxClients = 8; // Dinamik Tak & Çalıştır: 1-8 Oyuncu Desteği
 PluginManager pluginManager;
 
 // FAZ 0: Fire-and-forget thread sızıntısını önlemek için
@@ -64,6 +64,14 @@ int GetOrAllocateSlot(const std::string& endpointId) {
     // 1. Zaten kayıtlı bir cihaz mı?
     for (int i = 0; i < maxClients; i++) {
         if (slots[i].isActive && slots[i].endpointId == endpointId) {
+            if (!slots[i].inputActive) {
+                if (appLang == "english" || appLang == "en") {
+                    std::cout << "[SYSTEM] Player " << (i + 1) << " reconnected! (" << endpointId << ")" << std::endl;
+                }
+                else {
+                    std::cout << "[SISTEM] Oyuncu " << (i + 1) << " yeniden baglandi! (" << endpointId << ")" << std::endl;
+                }
+            }
             slots[i].lastActiveTime = std::chrono::steady_clock::now();
             slots[i].inputActive = true;
             return i;
@@ -99,65 +107,110 @@ int GetOrAllocateSlot(const std::string& endpointId) {
     return -1; // Slotlar dolu
 }
 
+#ifndef SIO_UDP_CONNRESET
+#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
+#endif
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unicode Klavye Karakter Haritalaması
+// ─────────────────────────────────────────────────────────────────────────────
+// Windows'ta bazı tuşlar (/, [, ], ;, \, ', -, =, ,, .) ve Türkçe harfler
+// (ğ, ü, ş, İ, ö, ç, ı) sanal tuş (VK_OEM_...) koduyla gönderildiğinde, hedef PC'nin
+// aktif klavye düzenine (TR-Q, US, vb.) göre farklı harflere dönüşür (Örn: '/' tuşu
+// VK_OEM_2 olarak gönderildiğinde Türkçe klavyede 'ü' harfine dönüşür).
+// KEYEVENTF_UNICODE kullanılarak karakter doğrudan hedef dilden bağımsız olarak iletilir.
+WORD GetUnicodeSymbol(int key) {
+    // Özel Shift ve Noktalama Karakterleri (193-218)
+    if (key == 193) return '@';
+    if (key == 194) return '#';
+    if (key == 195) return '$';
+    if (key == 196) return '%';
+    if (key == 197) return '^';
+    if (key == 198) return '&';
+    if (key == 199) return '(';
+    if (key == 200) return ')';
+    if (key == 201) return '?';
+    if (key == 202) return '{';
+    if (key == 203) return '}';
+    if (key == 204) return '_';
+    if (key == 205) return 0x00E6; // æ
+    if (key == 206) return 0x00C6; // Æ
+    if (key == 207) return '!';
+    if (key == 208) return '<';
+    if (key == 209) return '>';
+    if (key == 210) return ':';
+    if (key == 211) return '"';
+    if (key == 212) return '|';
+    if (key == 213) return 0x0131; // ı
+    if (key == 214) return 0x011F; // ğ
+    if (key == 215) return 0x00FC; // ü
+    if (key == 216) return 0x015F; // ş
+    if (key == 217) return 0x0130; // İ
+    if (key == 218) return 0x00F6; // ö
+
+    // Temel Semboller (136-147)
+    if (key == 136) return 0x00E7; // ç
+    if (key == 137) return '+';
+    if (key == 138) return '\'';
+    if (key == 139) return '-';
+    if (key == 140) return '/';
+    if (key == 141) return '[';
+    if (key == 142) return ']';
+    if (key == 143) return ';';
+    if (key == 144) return '\\';
+    if (key == 145) return ',';
+    if (key == 146) return '.';
+    if (key == 147) return '=';
+
+    // Geriye Dönük Uyumluluk (Eski OEM Kodları):
+    // Kullanıcının kayıtlı ayarlarında eski VK kodları kaldıysa bile
+    // sunucu bunları otomatik olarak doğru Unicode karakterine dönüştürür.
+    if (key == 191) return '/';   // Eski OEM_2 (Türkçe klavyede 'ü' çıkmasını önler!)
+    if (key == 219) return '[';   // Eski OEM_4 (Türkçe klavyede 'ğ' çıkmasını önler!)
+    if (key == 221) return ']';   // Eski OEM_6
+    if (key == 186) return ';';   // Eski OEM_1 (Türkçe klavyede 'ş' çıkmasını önler!)
+    if (key == 220) return '\\';  // Eski OEM_5 (Türkçe klavyede 'ç' çıkmasını önler!)
+    if (key == 222) return '\'';  // Eski OEM_7 (Türkçe klavyede 'i' çıkmasını önler!)
+    if (key == 189) return '-';   // Eski OEM_MINUS
+    if (key == 187) return '=';   // Eski OEM_PLUS
+    if (key == 188) return ',';   // Eski OEM_COMMA
+    if (key == 190) return '.';   // Eski OEM_PERIOD
+
+    return 0; // Standart Sanal Tuş (VK)
+}
+
+void SendKeyInput(int key, bool isDown) {
+    INPUT input = { 0 };
+    input.type = INPUT_KEYBOARD;
+    WORD symbol = GetUnicodeSymbol(key);
+    if (symbol != 0) {
+        input.ki.wScan = symbol;
+        input.ki.wVk = 0;
+        input.ki.dwFlags = KEYEVENTF_UNICODE | (isDown ? 0 : KEYEVENTF_KEYUP);
+    } else {
+        input.ki.wVk = (WORD)key;
+        input.ki.wScan = (WORD)MapVirtualKeyA(key, MAPVK_VK_TO_VSC);
+        input.ki.dwFlags = isDown ? 0 : KEYEVENTF_KEYUP;
+        if (key == VK_LEFT || key == VK_RIGHT || key == VK_UP || key == VK_DOWN ||
+            key == VK_HOME || key == VK_END || key == VK_PRIOR || key == VK_NEXT ||
+            key == VK_INSERT || key == VK_DELETE) {
+            input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+        }
+    }
+    SendInput(1, &input, sizeof(INPUT));
+}
+
 // Güvenlik Freni: İletişim koptuğunda kontrolcüyü merkeze çeker
 void ResetSlotInputs(int slotIndex) {
-    XUSB_REPORT report;
-    XUSB_REPORT_INIT(&report);
-    vigem_target_x360_update(client, slots[slotIndex].pad, report);
+    if (slots[slotIndex].isConnectedToVigem && slots[slotIndex].pad != nullptr) {
+        XUSB_REPORT report;
+        XUSB_REPORT_INIT(&report);
+        vigem_target_x360_update(client, slots[slotIndex].pad, report);
+    }
 
     // Basılı kalan tuşları bırak
     for (int oldKey : slots[slotIndex].lastKeys) {
-        INPUT keyUpInput = { 0 };
-        keyUpInput.type = INPUT_KEYBOARD;
-        if ((oldKey >= 193 && oldKey <= 218) || (oldKey >= 136 && oldKey <= 147)) {
-            WORD symbol = 0;
-            if (oldKey == 193) symbol = '@';
-            else if (oldKey == 194) symbol = '#';
-            else if (oldKey == 195) symbol = '$';
-            else if (oldKey == 196) symbol = '%';
-            else if (oldKey == 197) symbol = '^';
-            else if (oldKey == 198) symbol = '&';
-            else if (oldKey == 199) symbol = '(';
-            else if (oldKey == 200) symbol = ')';
-            else if (oldKey == 201) symbol = '?';
-            else if (oldKey == 202) symbol = '{';
-            else if (oldKey == 203) symbol = '}';
-            else if (oldKey == 204) symbol = '_';
-            else if (oldKey == 205) symbol = 0x00E6; // æ
-            else if (oldKey == 206) symbol = 0x00C6; // Æ
-            else if (oldKey == 207) symbol = '!';
-            else if (oldKey == 208) symbol = '<';
-            else if (oldKey == 209) symbol = '>';
-            else if (oldKey == 210) symbol = ':';
-            else if (oldKey == 211) symbol = '"';
-            else if (oldKey == 212) symbol = '|';
-            else if (oldKey == 213) symbol = 0x0131; // ı
-            else if (oldKey == 214) symbol = 0x011F; // ğ
-            else if (oldKey == 215) symbol = 0x00FC; // ü
-            else if (oldKey == 216) symbol = 0x015F; // ş
-            else if (oldKey == 217) symbol = 0x0130; // İ
-            else if (oldKey == 218) symbol = 0x00F6; // ö
-            else if (oldKey == 136) symbol = 0x00E7; // ç
-            else if (oldKey == 137) symbol = '+'; // +
-            else if (oldKey == 138) symbol = '\'';
-            else if (oldKey == 139) symbol = '-';
-            else if (oldKey == 140) symbol = '/';
-            else if (oldKey == 141) symbol = '[';
-            else if (oldKey == 142) symbol = ']';
-            else if (oldKey == 143) symbol = ';';
-            else if (oldKey == 144) symbol = '\\';
-            else if (oldKey == 145) symbol = ',';
-            else if (oldKey == 146) symbol = '.';
-            else if (oldKey == 147) symbol = '=';
-            
-            keyUpInput.ki.wScan = symbol;
-            keyUpInput.ki.wVk = 0;
-            keyUpInput.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-        } else {
-            keyUpInput.ki.wVk = oldKey;
-            keyUpInput.ki.dwFlags = KEYEVENTF_KEYUP;
-        }
-        SendInput(1, &keyUpInput, sizeof(INPUT));
+        SendKeyInput(oldKey, false);
     }
     slots[slotIndex].lastKeys.clear();
 
@@ -200,15 +253,19 @@ void WatchdogThread(std::stop_token stoken) {
                     }
                 }
 
-                // 10 saniye boyunca hiç geri dönmediyse -> Slotu boşa çıkar
+                // 10 saniye boyunca hiç geri dönmediyse -> Kolu Windows'tan çıkar ve slotu boşa çıkar
                 if (ms > 10000) {
                     slots[i].isActive = false;
                     slots[i].endpointId = "";
+                    if (slots[i].isConnectedToVigem) {
+                        vigem_target_remove(client, slots[i].pad);
+                        slots[i].isConnectedToVigem = false;
+                    }
                     if (appLang == "english" || appLang == "en") {
-                        std::cout << "[SYSTEM] Player " << (i + 1) << " slot freed." << std::endl;
+                        std::cout << "[SYSTEM] Player " << (i + 1) << " disconnected. Virtual controller unplugged." << std::endl;
                     }
                     else {
-                        std::cout << "[SISTEM] Oyuncu " << (i + 1) << " slotu bosa cikarildi." << std::endl;
+                        std::cout << "[SISTEM] Oyuncu " << (i + 1) << " ayrildi. Sanal kontrolcu cikarildi." << std::endl;
                     }
                 }
             }
@@ -331,121 +388,23 @@ void UpdateGamepad(int slotIndex, unsigned char* buffer, int bytesReceived) {
         // Bırakılan Tuşları Bul
         for (int oldKey : slot.lastKeys) {
             if (std::find(currentKeys.begin(), currentKeys.end(), oldKey) == currentKeys.end()) {
-                INPUT keyUpInput = { 0 };
-                keyUpInput.type = INPUT_KEYBOARD;
-                if ((oldKey >= 193 && oldKey <= 218) || (oldKey >= 136 && oldKey <= 147)) {
-                    WORD symbol = 0;
-                    if (oldKey == 193) symbol = '@';
-                    else if (oldKey == 194) symbol = '#';
-                    else if (oldKey == 195) symbol = '$';
-                    else if (oldKey == 196) symbol = '%';
-                    else if (oldKey == 197) symbol = '^';
-                    else if (oldKey == 198) symbol = '&';
-                    else if (oldKey == 199) symbol = '(';
-                    else if (oldKey == 200) symbol = ')';
-                    else if (oldKey == 201) symbol = '?';
-                    else if (oldKey == 202) symbol = '{';
-                    else if (oldKey == 203) symbol = '}';
-                    else if (oldKey == 204) symbol = '_';
-                    else if (oldKey == 205) symbol = 0x00E6; // æ
-                    else if (oldKey == 206) symbol = 0x00C6; // Æ
-                    else if (oldKey == 207) symbol = '!';
-                    else if (oldKey == 208) symbol = '<';
-                    else if (oldKey == 209) symbol = '>';
-                    else if (oldKey == 210) symbol = ':';
-                    else if (oldKey == 211) symbol = '"';
-                    else if (oldKey == 212) symbol = '|';
-                    else if (oldKey == 213) symbol = 0x0131; // ı
-                    else if (oldKey == 214) symbol = 0x011F; // ğ
-                    else if (oldKey == 215) symbol = 0x00FC; // ü
-                    else if (oldKey == 216) symbol = 0x015F; // ş
-                    else if (oldKey == 217) symbol = 0x0130; // İ
-                    else if (oldKey == 218) symbol = 0x00F6; // ö
-                    else if (oldKey == 136) symbol = 0x00E7; // ç
-                    else if (oldKey == 137) symbol = '+'; // +
-                    else if (oldKey == 138) symbol = '\'';
-                    else if (oldKey == 139) symbol = '-';
-                    else if (oldKey == 140) symbol = '/';
-                    else if (oldKey == 141) symbol = '[';
-                    else if (oldKey == 142) symbol = ']';
-                    else if (oldKey == 143) symbol = ';';
-                    else if (oldKey == 144) symbol = '\\';
-                    else if (oldKey == 145) symbol = ',';
-                    else if (oldKey == 146) symbol = '.';
-                    else if (oldKey == 147) symbol = '=';
-                    
-                    keyUpInput.ki.wScan = symbol;
-                    keyUpInput.ki.wVk = 0;
-                    keyUpInput.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-                } else {
-                    keyUpInput.ki.wVk = oldKey;
-                    keyUpInput.ki.dwFlags = KEYEVENTF_KEYUP;
-                }
-                SendInput(1, &keyUpInput, sizeof(INPUT));
+                SendKeyInput(oldKey, false);
             }
         }
 
         // Yeni Basılan Tuşları Bul
         for (int newKey : currentKeys) {
             if (std::find(slot.lastKeys.begin(), slot.lastKeys.end(), newKey) == slot.lastKeys.end()) {
-                INPUT keyDownInput = { 0 };
-                keyDownInput.type = INPUT_KEYBOARD;
-                if ((newKey >= 193 && newKey <= 218) || (newKey >= 136 && newKey <= 147)) {
-                    WORD symbol = 0;
-                    if (newKey == 193) symbol = '@';
-                    else if (newKey == 194) symbol = '#';
-                    else if (newKey == 195) symbol = '$';
-                    else if (newKey == 196) symbol = '%';
-                    else if (newKey == 197) symbol = '^';
-                    else if (newKey == 198) symbol = '&';
-                    else if (newKey == 199) symbol = '(';
-                    else if (newKey == 200) symbol = ')';
-                    else if (newKey == 201) symbol = '?';
-                    else if (newKey == 202) symbol = '{';
-                    else if (newKey == 203) symbol = '}';
-                    else if (newKey == 204) symbol = '_';
-                    else if (newKey == 205) symbol = 0x00E6; // æ
-                    else if (newKey == 206) symbol = 0x00C6; // Æ
-                    else if (newKey == 207) symbol = '!';
-                    else if (newKey == 208) symbol = '<';
-                    else if (newKey == 209) symbol = '>';
-                    else if (newKey == 210) symbol = ':';
-                    else if (newKey == 211) symbol = '"';
-                    else if (newKey == 212) symbol = '|';
-                    else if (newKey == 213) symbol = 0x0131; // ı
-                    else if (newKey == 214) symbol = 0x011F; // ğ
-                    else if (newKey == 215) symbol = 0x00FC; // ü
-                    else if (newKey == 216) symbol = 0x015F; // ş
-                    else if (newKey == 217) symbol = 0x0130; // İ
-                    else if (newKey == 218) symbol = 0x00F6; // ö
-                    else if (newKey == 136) symbol = 0x00E7; // ç
-                    else if (newKey == 137) symbol = '+'; // +
-                    else if (newKey == 138) symbol = '\'';
-                    else if (newKey == 139) symbol = '-';
-                    else if (newKey == 140) symbol = '/';
-                    else if (newKey == 141) symbol = '[';
-                    else if (newKey == 142) symbol = ']';
-                    else if (newKey == 143) symbol = ';';
-                    else if (newKey == 144) symbol = '\\';
-                    else if (newKey == 145) symbol = ',';
-                    else if (newKey == 146) symbol = '.';
-                    else if (newKey == 147) symbol = '=';
-                    
-                    keyDownInput.ki.wScan = symbol;
-                    keyDownInput.ki.wVk = 0;
-                    keyDownInput.ki.dwFlags = KEYEVENTF_UNICODE;
-                } else {
-                    keyDownInput.ki.wVk = newKey;
-                    keyDownInput.ki.dwFlags = 0; // 0 = Basılı tut
-                }
-                SendInput(1, &keyDownInput, sizeof(INPUT));
+                SendKeyInput(newKey, true);
             }
         }
 
         slot.lastKeys = currentKeys;
     }
 
-    vigem_target_x360_update(client, slot.pad, report);
+    if (slot.isConnectedToVigem && slot.pad != nullptr) {
+        vigem_target_x360_update(client, slot.pad, report);
+    }
 }
 
 // 1. THREAD: Cihaz Keşfi 
@@ -459,14 +418,20 @@ void DiscoveryListener(std::stop_token stoken) {
 
     if (bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         if (appLang == "english" || appLang == "en") {
-            std::cerr << "\n[ERROR] Port 8889 is busy! Please close old DoYaDi instances." << std::endl;
+            std::cerr << "\n[ERROR] Port 8889 is busy! Please close old OyuKu_Server instances." << std::endl;
         }
         else {
-            std::cerr << "\n[HATA] 8889 Portu mesgul! Eski DoYaDi'leri kapatin." << std::endl;
+            std::cerr << "\n[HATA] 8889 Portu mesgul! Eski OyuKu_Server orneklerini kapatin." << std::endl;
         }
         closesocket(sock);
         return;
     }
+
+    // SIO_UDP_CONNRESET kapatılarak ICMP Port Unreachable hatalarının (10054)
+    // WSAPoll ve recvfrom'u bozması engellenir
+    DWORD dwBytesReturned = 0;
+    BOOL bNewBehavior = FALSE;
+    WSAIoctl(sock, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), NULL, 0, &dwBytesReturned, NULL, NULL);
 
     // FAZ 0: WSAPoll ile non-blocking — veri kaybı sıfır, hızlı stop tepkisi
     WSAPOLLFD pfd = {};
@@ -508,14 +473,20 @@ void UdpDataListener(std::stop_token stoken) {
 
     if (bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         if (appLang == "english" || appLang == "en") {
-            std::cerr << "\n[ERROR] Port 8888 is busy! Please close old DoYaDi instances." << std::endl;
+            std::cerr << "\n[ERROR] Port 8888 is busy! Please close old OyuKu_Server instances." << std::endl;
         }
         else {
-            std::cerr << "\n[HATA] 8888 Portu mesgul! Eski DoYaDi'leri kapatin." << std::endl;
+            std::cerr << "\n[HATA] 8888 Portu mesgul! Eski OyuKu_Server orneklerini kapatin." << std::endl;
         }
         closesocket(sock);
         return;
     }
+
+    // SIO_UDP_CONNRESET kapatılarak ICMP Port Unreachable hatalarının (10054)
+    // WSAPoll ve recvfrom'u bozması engellenir
+    DWORD dwBytesReturned = 0;
+    BOOL bNewBehavior = FALSE;
+    WSAIoctl(sock, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), NULL, 0, &dwBytesReturned, NULL, NULL);
 
     // FAZ 0: WSAPoll ile non-blocking — SO_RCVTIMEO kaldırıldı
     // 100ms poll timeout: sürüş verisi ~16ms (60 FPS) aralıklarla geldiğinden
@@ -529,10 +500,10 @@ void UdpDataListener(std::stop_token stoken) {
     int clientAddrLen = sizeof(clientAddr);
 
     if (appLang == "english" || appLang == "en") {
-        std::cout << "[WIFI/USB] Searching for DoYaDi app (Port: 8889)..." << std::endl;
+        std::cout << "[WIFI/USB] Searching for OyuKu app (Port: 8889)..." << std::endl;
     }
     else {
-        std::cout << "[WIFI/USB] Agda DoYaDi uygulamasi araniyor (Port: 8889)..." << std::endl;
+        std::cout << "[WIFI/USB] Agda OyuKu uygulamasi araniyor (Port: 8889)..." << std::endl;
     }
 
     while (!stoken.stop_requested()) {
@@ -596,7 +567,7 @@ void BluetoothListener(std::stop_token stoken) {
 
         WSAQUERYSET qs = { 0 };
         qs.dwSize = sizeof(qs);
-        qs.lpszServiceInstanceName = (LPWSTR)L"DoYaDi Server";
+        qs.lpszServiceInstanceName = (LPWSTR)L"OyuKu_Server";
         qs.lpServiceClassId = (LPGUID)&DoYaDi_SPP_UUID;
         qs.dwNameSpace = NS_BTH;
         qs.dwNumberOfCsAddrs = 1;
@@ -762,29 +733,27 @@ void BluetoothListener(std::stop_token stoken) {
 }
 
 int main() {
+    SetConsoleTitleA("OyuKu_Server");
     char langBuffer[10];
     GetPrivateProfileStringA("Settings", "Language", "tr", langBuffer, 10, ".\\config.ini");
     appLang = std::string(langBuffer);
 
+    maxClients = GetPrivateProfileIntA("Settings", "MaxClients", 8, ".\\config.ini");
+    if (maxClients < 1) maxClients = 1;
+    if (maxClients > 8) maxClients = 8;
+
     if (appLang == "english" || appLang == "en") {
         std::cout << "========================================" << std::endl;
-        std::cout << "          DoYaDi - PC SERVER            " << std::endl;
+        std::cout << "           OyuKu - PC SERVER            " << std::endl;
         std::cout << "========================================\n" << std::endl;
-        std::cout << "Enter max number of devices (1-4): ";
+        std::cout << "[INFO] Dynamic Plug & Play Active (Max: " << maxClients << " Players)" << std::endl;
     }
     else {
         std::cout << "========================================" << std::endl;
-        std::cout << "         DoYaDi - PC SUNUCUSU           " << std::endl;
+        std::cout << "          OyuKu - PC SUNUCUSU           " << std::endl;
         std::cout << "========================================\n" << std::endl;
-        std::cout << "Baglanacak maksimum cihaz sayisini girin (1-4): ";
+        std::cout << "[BILGI] Dinamik Tak-Calistir Aktif (Maksimum: " << maxClients << " Oyuncu)" << std::endl;
     }
-
-    std::cin >> maxClients;
-    if (maxClients < 1) maxClients = 1;
-    if (maxClients > 4) maxClients = 4;
-
-    // Klavyede girilen \n (Enter) karakterini temizle ki sonda hemen kapanmasın
-    std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
 
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -803,16 +772,15 @@ int main() {
         return -1;
     }
 
-    // Seçilen sayı kadar boş slot oluştur ve ViGEm'e HEMEN bağla ki Windows ve Oyunlar açılışta kontrolcüyü hazır görsün!
+    // Seçilen sayı kadar boş slot hazırla (Kollar telefon bağlandıkça dinamik olarak Windows'a takılır)
     for (int i = 0; i < maxClients; i++) {
         ControllerSlot s;
         s.pad = vigem_target_x360_alloc();
-        vigem_target_add(client, s.pad);
-        s.isConnectedToVigem = true;
+        s.isConnectedToVigem = false;
         slots.push_back(s);
     }
 
-    pluginManager.Init(".\\DoYaDi_Ek");
+    pluginManager.Init(".\\OyuKu_Ek");
 
     // FAZ 0: std::jthread — scope sonunda otomatik request_stop() + join()
     // detach() tamamen kaldırıldı, thread sızıntısı artık imkansız
@@ -832,16 +800,28 @@ int main() {
     isRunning.store(false); // FAZ 0: atomic store
 
     // FAZ 0: Güvenli Kapanış Sırası
-    // 1. Plugin'leri kapat
+    // 1. Önce dinleyici thread'leri güvenle durdur ve kapanmalarını bekle
+    // (Böylece gelen yeni paketler işlenmez ve ViGEm/Slot erişimi tamamen durur)
+    btData.request_stop();
+    udpData.request_stop();
+    udpDiscovery.request_stop();
+    watchdog.request_stop();
+
+    if (btData.joinable()) btData.join();
+    if (udpData.joinable()) udpData.join();
+    if (udpDiscovery.joinable()) udpDiscovery.join();
+    if (watchdog.joinable()) watchdog.join();
+
+    // 2. Plugin'leri kapat
     pluginManager.Shutdown();
 
-    // 2. Pending BT ProcessCommand task'lerini bekle
+    // 3. Pending BT ProcessCommand task'lerini bekle
     {
         std::lock_guard<std::mutex> lock(pendingTasksMutex);
-        pendingTasks.clear(); // jthread destructor → request_stop() + join()
+        pendingTasks.clear();
     }
 
-    // 3. ViGEm temizliği
+    // 4. ViGEm temizliği (Artık hiçbir thread ViGEm'e erişmiyor!)
     for (int i = 0; i < maxClients; i++) {
         if (slots[i].isConnectedToVigem) {
             vigem_target_remove(client, slots[i].pad);
@@ -852,13 +832,7 @@ int main() {
     vigem_disconnect(client);
     vigem_free(client);
 
-    // 4. jthread nesneleri scope'dan çıkınca otomatik kapanır:
-    //    btData  → request_stop() → BluetoothListener WSAPoll timeout → join()
-    //    udpData → request_stop() → UdpDataListener WSAPoll timeout → join()
-    //    udpDiscovery → request_stop() → DiscoveryListener WSAPoll timeout → join()
-    //    watchdog → request_stop() → WatchdogThread Sleep döngüsü → join()
-    //    (Ters sırada: btData, udpData, udpDiscovery, watchdog)
-
+    // 5. Winsock temizliği (Artık hiçbir socket açık değil!)
     WSACleanup();
     return 0;
 }

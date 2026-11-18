@@ -35,6 +35,20 @@ class _DrivingScreenState extends State<DrivingScreen>
   Timer? _mod8BgTimer;
   bool _isInBackground = false;
   bool _mod8NativeBgActive = false;
+  bool _enteredPortrait = false;
+
+  DateTime _lastUiRefresh = DateTime(2000);
+  double _uiLastSteer = -999;
+  double _uiLastGas = -999;
+  double _uiLastBrake = -999;
+  double _uiLastClutch = -999;
+  double _uiLastHandbrake = -999;
+  double _uiLastPitch = -999;
+  double _uiLastJoy0x = -999;
+  double _uiLastJoy0y = -999;
+  double _uiLastJoy1x = -999;
+  double _uiLastJoy1y = -999;
+  int _uiLastKeysCount = -1;
 
   final SensorManager _sensorManager = SensorManager();
 
@@ -67,6 +81,7 @@ class _DrivingScreenState extends State<DrivingScreen>
       'overlayGasColor': settings.mod8OverlayGasColor.toARGB32(),
       'overlayBrakeColor': settings.mod8OverlayBrakeColor.toARGB32(),
       'overlayGearBtnColor': settings.mod8OverlayGearBtnColor.toARGB32(),
+      'lang': AppTranslations.currentLanguage,
     };
   }
 
@@ -172,18 +187,21 @@ class _DrivingScreenState extends State<DrivingScreen>
       );
       _syncMod8BackgroundService(settings);
       if (activeMode == 8) {
+        _enteredPortrait = true;
         SystemChrome.setPreferredOrientations([
           DeviceOrientation.portraitUp,
           DeviceOrientation.portraitDown,
         ]);
         _checkMod8OverlayPermissionOnEnter();
-      } else {
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]);
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final settings = Provider.of<SettingsProvider>(context, listen: false).settings;
+    _syncMod8BackgroundService(settings);
   }
 
   Future<void> _checkMod8OverlayPermissionOnEnter() async {
@@ -208,26 +226,29 @@ class _DrivingScreenState extends State<DrivingScreen>
             borderRadius: BorderRadius.circular(20),
             side: const BorderSide(color: Color(0xFF40E0D0), width: 1.2),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.picture_in_picture_alt, color: Color(0xFF40E0D0), size: 24),
-              SizedBox(width: 10),
+              const Icon(Icons.picture_in_picture_alt, color: Color(0xFF40E0D0), size: 24),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Mod 8 Yüzen Baloncuk İzni',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  AppTranslations.getText('mod8_overlay_perm_title'),
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           ),
-          content: const Text(
-            'Mod 8 (Rahat Sürüş) arka planda çalışırken ekranınızda yüzen kontrol baloncuğunun (direksiyon çubuğu, gaz, fren ve vites tuşları) çıkabilmesi için "Diğer uygulamaların üzerinde göster" izni gereklidir.',
-            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.45),
+          content: Text(
+            AppTranslations.getText('mod8_overlay_perm_desc'),
+            style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.45),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Daha Sonra', style: TextStyle(color: Colors.white54)),
+              child: Text(
+                AppTranslations.getText('later'),
+                style: const TextStyle(color: Colors.white54),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -239,7 +260,10 @@ class _DrivingScreenState extends State<DrivingScreen>
                 Navigator.pop(ctx);
                 _volumeChannel.invokeMethod('request_overlay_permission').catchError((_) {});
               },
-              child: const Text('İzin Ver', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                AppTranslations.getText('allow_permission'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -280,6 +304,8 @@ class _DrivingScreenState extends State<DrivingScreen>
     final bool isMod6 = currentMode == 6;
     final bool isMod8 = currentMode == 8;
     final bool isMod9 = currentMode == 9;
+    final bool isMod10 = currentMode == 10;
+    final bool isFlightMode = isMod9 || isMod10;
 
     // Arka planda çalışma özelliği SADECE Mod 8 için ve ilgili ayar açıkken geçerlidir.
     if (_isInBackground && (!isMod8 || !settings.chillOverlayEnabled)) {
@@ -311,10 +337,21 @@ class _DrivingScreenState extends State<DrivingScreen>
           brakePercentage = _sensorManager.chillBrake;
         }
       }
-    } else if (isMod9) {
-      // Mod 9 (Arcade Flight / HOTAS): Roll -> Sol Analog X, Pitch -> Sol Analog Y
-      steeringAngle = flightTouchStickActive ? flightTouchRoll : _sensorManager.flightRoll;
-      pitchDeg = _sensorManager.flightPitchDeg;
+    } else if (isFlightMode) {
+      // Mod 9 & Mod 10 (Uçuş Kontrolü & MFD Kokpiti): Roll -> Sol Analog X, Pitch -> Sol Analog Y
+      double rollCmd = flightTouchStickActive
+          ? flightTouchRoll
+          : _sensorManager.flightRoll;
+      if (isMod10 && flightApWingLevel && !flightTouchStickActive) {
+        final telemetry = TelemetryListenerService().telemetryNotifier.value;
+        rollCmd = telemetry.isFlightLive
+            ? (-telemetry.rollDeg / 35.0).clamp(-0.6, 0.6)
+            : 0.0;
+      }
+      steeringAngle = rollCmd;
+      pitchDeg = (isMod10 && flightApAltHold && !flightTouchStickActive)
+          ? 0.0
+          : _sensorManager.flightPitchDeg;
     } else {
       steeringAngle = _sensorManager.steeringAngle;
       pitchDeg = _sensorManager.pitchDeg;
@@ -358,6 +395,38 @@ class _DrivingScreenState extends State<DrivingScreen>
       steerByte = 128;
     } else {
       steerByte = ((steeringAngle + 1.0) / 2.0 * 255).clamp(0, 255).toInt();
+    }
+
+    // R2 (19) veya L2 (20) tuş ataması herhangi bir butonda aktifse %0 -> %100 etki uygula
+    final bool r2Pressed = pressedKeys.contains(19);
+    if (r2Pressed) {
+      r2TriggerButtonActive = true;
+      gasPercentage = 1.0;
+    } else if (r2TriggerButtonActive) {
+      r2TriggerButtonActive = false;
+      final bool hasActiveGasSource =
+          gasPedalIconPressed ||
+          chillTouchGasActive ||
+          (isMod8 && chillCruiseControlLocked) ||
+          activePedals.values.any((p) => p.isBarAction && p.isGas);
+      if (!hasActiveGasSource) {
+        gasPercentage = 0.0;
+      }
+    }
+
+    final bool l2Pressed = pressedKeys.contains(20);
+    if (l2Pressed) {
+      l2TriggerButtonActive = true;
+      brakePercentage = 1.0;
+    } else if (l2TriggerButtonActive) {
+      l2TriggerButtonActive = false;
+      final bool hasActiveBrakeSource =
+          brakePedalIconPressed ||
+          chillTouchBrakeActive ||
+          activePedals.values.any((p) => p.isBarAction && !p.isGas);
+      if (!hasActiveBrakeSource) {
+        brakePercentage = 0.0;
+      }
     }
 
     // Byte 1: Gas (0.0 to 1.0) mapped to 0-255
@@ -445,17 +514,18 @@ class _DrivingScreenState extends State<DrivingScreen>
     if (useExtended) {
       // Bytes 5-8: Joystick axes (128 = neutral when no joystick present)
       // Deadzone filtresi
-      final double activeFlightPitch =
-          flightTouchStickActive ? flightTouchPitch : _sensorManager.flightPitch;
-      final double j0x = isMod9
+      final double activeFlightPitch = flightTouchStickActive
+          ? flightTouchPitch
+          : ((isMod10 && flightApAltHold) ? 0.0 : _sensorManager.flightPitch);
+      final double j0x = isFlightMode
           ? steeringAngle
           : ((isMod5 && leftJoystickPresent && joy0x.abs() >= 0.05) ? joy0x : 0.0);
-      final double j0y = isMod9
+      final double j0y = isFlightMode
           ? activeFlightPitch
           : ((isMod5 && leftJoystickPresent && joy0y.abs() >= 0.05) ? joy0y : 0.0);
       final bool allowRightTouchJoy =
           (isMod5 && rightJoystickPresent) ||
-          (isMod9 && flightFreeLookTouchActive) ||
+          (isFlightMode && flightFreeLookTouchActive) ||
           (isGlobalGyroLookEnabled && settings.gyroLookStyle == 1);
       final double j1x = (allowRightTouchJoy && joy1x.abs() >= 0.05) ? joy1x : 0.0;
       final double j1y = (allowRightTouchJoy && joy1y.abs() >= 0.05) ? joy1y : 0.0;
@@ -464,8 +534,8 @@ class _DrivingScreenState extends State<DrivingScreen>
       // Item bazlı hassasiyet (sol/sağ ayrı), yoksa global fallback
       final double leftSens = leftJoySensitivity ?? settings.joystickSensitivity;
       final double rightSens = rightJoySensitivity ?? settings.joystickSensitivity;
-      final double curve0x = isMod9 ? j0x : (j0x.sign * math.pow(j0x.abs(), leftSens));
-      final double curve0y = isMod9 ? j0y : (j0y.sign * math.pow(j0y.abs(), leftSens));
+      final double curve0x = isFlightMode ? j0x : (j0x.sign * math.pow(j0x.abs(), leftSens));
+      final double curve0y = isFlightMode ? j0y : (j0y.sign * math.pow(j0y.abs(), leftSens));
       double curve1x = j1x.sign * math.pow(j1x.abs(), rightSens);
       double curve1y = j1y.sign * math.pow(j1y.abs(), rightSens);
       
@@ -476,7 +546,7 @@ class _DrivingScreenState extends State<DrivingScreen>
       if (useSensorRightAnalog) {
         curve1x = _sensorManager.rightAnalogX;
         curve1y = (settings.gyroLookStyle == 0) ? 0.0 : _sensorManager.rightAnalogY;
-      } else if (isMod9 && !flightFreeLookTouchActive) {
+      } else if (isFlightMode && !flightFreeLookTouchActive) {
         final double rudderVal =
             flightRudderTouch.abs() > 0.01 ? flightRudderTouch : _sensorManager.flightYaw;
         curve1x = rudderVal.clamp(-1.0, 1.0);
@@ -485,7 +555,7 @@ class _DrivingScreenState extends State<DrivingScreen>
 
       int leftStickXByte = 128;
       int leftStickYByte = 128;
-      if (isMod9) {
+      if (isFlightMode) {
         if (j0x != 0.0) {
           leftStickXByte = ((curve0x + 1.0) / 2.0 * 255).clamp(1, 255).round();
         }
@@ -507,7 +577,7 @@ class _DrivingScreenState extends State<DrivingScreen>
       final bool isRightStickSharedWithCamera =
           isGlobalGyroLookEnabled ||
           activeMod5GyroRaMode != 0 ||
-          isMod9 ||
+          isFlightMode ||
           (isMod5 && rightJoystickPresent);
 
       int rightStickXByte = 128;
@@ -519,9 +589,9 @@ class _DrivingScreenState extends State<DrivingScreen>
           // Kamera/Bakış açıkken boşta 0 gönderip sol-üste çekmemesi için 128..255
           rightStickXByte = (128 + handbrakePercentage * 127).clamp(128, 255).round();
         }
-      } else if (useSensorRightAnalog || j1x.abs() >= 0.05 || (isMod9 && curve1x != 0.0)) {
+      } else if (useSensorRightAnalog || j1x.abs() >= 0.05 || (isFlightMode && curve1x != 0.0)) {
         rightStickXByte = ((curve1x + 1.0) / 2.0 * 255).clamp(0, 255).round();
-        if (!isMod9 && rightStickXByte == 127) rightStickXByte = 128;
+        if (!isFlightMode && rightStickXByte == 127) rightStickXByte = 128;
       }
 
       int rStickYByte = 128;
@@ -533,9 +603,9 @@ class _DrivingScreenState extends State<DrivingScreen>
           // Kamera/Bakış açıkken boşta 0 gönderip sol-üste çekmemesi için 128..255
           rStickYByte = (128 + clutchPercentage * 127).clamp(128, 255).round();
         }
-      } else if (useSensorRightAnalog || j1y.abs() >= 0.05 || (isMod9 && curve1y != 0.0)) {
+      } else if (useSensorRightAnalog || j1y.abs() >= 0.05 || (isFlightMode && curve1y != 0.0)) {
         rStickYByte = ((curve1y + 1.0) / 2.0 * 255).clamp(0, 255).round();
-        if (!isMod9 && rStickYByte == 127) rStickYByte = 128;
+        if (!isFlightMode && rStickYByte == 127) rStickYByte = 128;
       }
 
       payload.addAll([
@@ -593,7 +663,37 @@ class _DrivingScreenState extends State<DrivingScreen>
 
     payload.add(221);
     NetworkManager().sendPayloadData(payload);
-    if (mounted && !_isInBackground) setState(() {});
+    if (mounted && !_isInBackground) {
+      final now = DateTime.now();
+      final elapsedMs = now.difference(_lastUiRefresh).inMilliseconds;
+      final bool changed =
+          (steeringAngle - _uiLastSteer).abs() > 0.005 ||
+          (gasPercentage - _uiLastGas).abs() > 0.005 ||
+          (brakePercentage - _uiLastBrake).abs() > 0.005 ||
+          (clutchPercentage - _uiLastClutch).abs() > 0.005 ||
+          (handbrakePercentage - _uiLastHandbrake).abs() > 0.005 ||
+          (pitchDeg - _uiLastPitch).abs() > 0.4 ||
+          (joy0x - _uiLastJoy0x).abs() > 0.005 ||
+          (joy0y - _uiLastJoy0y).abs() > 0.005 ||
+          (joy1x - _uiLastJoy1x).abs() > 0.005 ||
+          (joy1y - _uiLastJoy1y).abs() > 0.005 ||
+          pressedKeys.length != _uiLastKeysCount;
+      if ((changed && elapsedMs >= 30) || elapsedMs >= 160) {
+        _lastUiRefresh = now;
+        _uiLastSteer = steeringAngle;
+        _uiLastGas = gasPercentage;
+        _uiLastBrake = brakePercentage;
+        _uiLastClutch = clutchPercentage;
+        _uiLastHandbrake = handbrakePercentage;
+        _uiLastPitch = pitchDeg;
+        _uiLastJoy0x = joy0x;
+        _uiLastJoy0y = joy0y;
+        _uiLastJoy1x = joy1x;
+        _uiLastJoy1y = joy1y;
+        _uiLastKeysCount = pressedKeys.length;
+        setState(() {});
+      }
+    }
   }
 
   @override
@@ -659,11 +759,13 @@ class _DrivingScreenState extends State<DrivingScreen>
     _tickController.dispose();
     _sensorManager.dispose();
     
-    // Revert to landscape for the rest of the app
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    // Sadece Mod 8 için portre moda geçildiyse yatay moda geri döndür
+    if (_enteredPortrait) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
     
     super.dispose();
   }
@@ -680,7 +782,6 @@ class _DrivingScreenState extends State<DrivingScreen>
     final int activeMode = AppConfig.instance.sanitizeMode(
       settings.defaultDrivingMode,
     );
-    _syncMod8BackgroundService(settings);
     final size = MediaQuery.of(context).size;
 
     return PopScope(
@@ -718,14 +819,20 @@ class _DrivingScreenState extends State<DrivingScreen>
               if (settings.modeBackgroundMedia(activeMode) != null &&
                   settings.modeBackgroundMedia(activeMode)!.isNotEmpty)
                 Positioned.fill(
-                  child: LoopingMediaWidget(
-                    mediaPath: settings.modeBackgroundMedia(activeMode),
-                    fit: BoxFit.cover,
+                  child: RepaintBoundary(
+                    child: LoopingMediaWidget(
+                      mediaPath: settings.modeBackgroundMedia(activeMode),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
 
               // Ana layout
-              Positioned.fill(child: buildLayout(settings, size)),
+              Positioned.fill(
+                child: RepaintBoundary(
+                  child: buildLayout(settings, size),
+                ),
+              ),
 
               // Direksiyon göstergesi alt-orta, yüksekliğin %10'u (Mod 0-4 ve Mod 7 için)
               if (activeMode < 5 || activeMode == 7)

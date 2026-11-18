@@ -127,6 +127,11 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         @Volatile
         var overlayGearBtnColor: Int = Color.parseColor("#40E0D0")
 
+        @Volatile
+        var lang: String = "tr"
+
+        private fun isEn(): Boolean = lang.equals("en", ignoreCase = true) || lang.startsWith("en", ignoreCase = true)
+
         private fun withAlphaInt(color: Int, alpha: Int): Int {
             return (color and 0x00FFFFFF) or ((alpha.coerceIn(0, 255)) shl 24)
         }
@@ -179,6 +184,10 @@ class Mod8BackgroundService : Service(), SensorEventListener {
     private var gasTextView: TextView? = null
     private var gearRowView: LinearLayout? = null
     private var currentActiveOverlayStyle: Int = 0
+    private var currentActiveOverlayLang: String = "tr"
+    private var lastDisplayedSteerPct: Int = Int.MIN_VALUE
+    private var lastDisplayedGasPct: Int = Int.MIN_VALUE
+    private var lastDisplayedBrakePct: Int = Int.MIN_VALUE
 
     private val tickRunnable = object : Runnable {
         override fun run() {
@@ -259,8 +268,12 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         mainHandler.post {
             gearRowView?.visibility = if (showGearButtons) View.VISIBLE else View.GONE
             if (isInBackgroundMode && bubbleRootView != null) {
-                hideBubbleOverlay()
-                showBubbleOverlay()
+                if (currentActiveOverlayStyle != overlayStyle || currentActiveOverlayLang != lang) {
+                    hideBubbleOverlay()
+                    showBubbleOverlay()
+                } else {
+                    updateBubbleUi()
+                }
             }
         }
     }
@@ -292,6 +305,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
     private fun enterBackgroundModeInternal() {
         if (!isArmedForMod8) return
+        if (isInBackgroundMode && bubbleRootView != null) return
         isInBackgroundMode = true
         registerSensorsIfNeeded()
         showBubbleOverlay()
@@ -303,14 +317,13 @@ class Mod8BackgroundService : Service(), SensorEventListener {
     }
 
     private fun exitBackgroundModeInternal() {
-        val wasInBackground = isInBackgroundMode
+        if (!isInBackgroundMode && bubbleRootView == null) return
         isInBackgroundMode = false
         gearDownPressed = false
         gearUpPressed = false
         mainHandler.removeCallbacks(tickRunnable)
         unregisterSensors()
         hideBubbleOverlay()
-        if (wasInBackground) ensureForeground()
     }
 
     private fun stopEverything() {
@@ -478,12 +491,11 @@ class Mod8BackgroundService : Service(), SensorEventListener {
             221.toByte()
         )
 
-        // Bluetooth veya Dart dinleyicisi varsa ilet
-        onBluetoothPacketCallback?.invoke(packetBytes)
-
-        // Wi-Fi / USB UDP doğrudan gönderim
+        // Wi-Fi / USB UDP doğrudan gönderim; yalnızca ip boşsa (BT modu) MethodChannel köprüsünü kullan
         val ip = targetIp.trim()
-        if (ip.isNotEmpty()) {
+        if (ip.isEmpty()) {
+            onBluetoothPacketCallback?.invoke(packetBytes)
+        } else {
             udpExecutor.execute {
                 try {
                     if (udpSocket == null || udpSocket?.isClosed == true) {
@@ -521,6 +533,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
 
         currentActiveOverlayStyle = overlayStyle
+        currentActiveOverlayLang = lang
         if (overlayStyle == 1) {
             showTripleCircleOverlay()
         } else {
@@ -579,7 +592,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
 
         val titleTv = TextView(this).apply {
-            text = "🚗 CHILL DRIVE"
+            text = if (isEn()) "🚗 CHILL DRIVE" else "🚗 RAHAT SÜRÜŞ"
             setTextColor(withAlphaInt(overlayBorderColor, 255))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
             typeface = Typeface.DEFAULT_BOLD
@@ -597,7 +610,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
 
         val resetBtn = TextView(this).apply {
-            text = "SIFIRLA"
+            text = if (isEn()) "RESET" else "SIFIRLA"
             setTextColor(withAlphaInt(overlayBorderColor, 255))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 8.5f)
             typeface = Typeface.DEFAULT_BOLD
@@ -668,14 +681,14 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
 
         val bTv = TextView(this).apply {
-            text = "FREN 0%"
+            text = if (isEn()) "BRK 0%" else "FREN 0%"
             setTextColor(withAlphaInt(overlayBrakeColor, 255))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             typeface = Typeface.MONOSPACE
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         val sTv = TextView(this).apply {
-            text = "DİR 0%"
+            text = if (isEn()) "STR 0%" else "DİR 0%"
             setTextColor(withAlphaInt(ovTxt, 215))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             typeface = Typeface.MONOSPACE
@@ -683,7 +696,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         val gTv = TextView(this).apply {
-            text = "GAZ 0%"
+            text = if (isEn()) "GAS 0%" else "GAZ 0%"
             setTextColor(withAlphaInt(overlayGasColor, 255))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             typeface = Typeface.MONOSPACE
@@ -727,7 +740,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
 
         val gearDownBtn = TextView(this).apply {
-            text = "VİTES -"
+            text = if (isEn()) "GEAR -" else "VİTES -"
             setTextColor(ovTxt)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f)
             typeface = Typeface.DEFAULT_BOLD
@@ -755,7 +768,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
 
         val gearUpBtn = TextView(this).apply {
-            text = "VİTES +"
+            text = if (isEn()) "GEAR +" else "VİTES +"
             setTextColor(ovTxt)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f)
             typeface = Typeface.DEFAULT_BOLD
@@ -919,7 +932,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
                 gravity = Gravity.CENTER
             }
             val labelTv = TextView(this@Mod8BackgroundService).apply {
-                text = "V+"
+                text = if (isEn()) "G+" else "V+"
                 setTextColor(ovTxt)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 7.5f)
                 typeface = Typeface.DEFAULT_BOLD
@@ -1001,7 +1014,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
                 gravity = Gravity.CENTER
             }
             val labelTv = TextView(this@Mod8BackgroundService).apply {
-                text = "SIFIRLA"
+                text = if (isEn()) "RESET" else "SIFIRLA"
                 setTextColor(ovTxt)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 7.5f)
                 typeface = Typeface.DEFAULT_BOLD
@@ -1096,7 +1109,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
                 gravity = Gravity.CENTER
             }
             val labelTv = TextView(this@Mod8BackgroundService).apply {
-                text = "V-"
+                text = if (isEn()) "G-" else "V-"
                 setTextColor(ovTxt)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 7.5f)
                 typeface = Typeface.DEFAULT_BOLD
@@ -1174,11 +1187,21 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         val gasPct = (currentGas * 100.0).toInt()
         val brakePct = (currentBrake * 100.0).toInt()
 
-        brakeTextView?.text = "FREN $brakePct%"
-        steerTextView?.text = "DİR $steerPct%"
-        gasTextView?.text = "GAZ $gasPct%"
-        steeringBarView?.steering = currentSteering.toFloat()
-        steeringBarView?.invalidate()
+        val en = isEn()
+        if (brakePct != lastDisplayedBrakePct) {
+            lastDisplayedBrakePct = brakePct
+            brakeTextView?.text = if (en) "BRK $brakePct%" else "FREN $brakePct%"
+        }
+        if (steerPct != lastDisplayedSteerPct) {
+            lastDisplayedSteerPct = steerPct
+            steerTextView?.text = if (en) "STR $steerPct%" else "DİR $steerPct%"
+            steeringBarView?.steering = currentSteering.toFloat()
+            steeringBarView?.invalidate()
+        }
+        if (gasPct != lastDisplayedGasPct) {
+            lastDisplayedGasPct = gasPct
+            gasTextView?.text = if (en) "GAS $gasPct%" else "GAZ $gasPct%"
+        }
     }
 
     private fun hideBubbleOverlay() {
@@ -1189,6 +1212,9 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         steerTextView = null
         gasTextView = null
         gearRowView = null
+        lastDisplayedSteerPct = Int.MIN_VALUE
+        lastDisplayedGasPct = Int.MIN_VALUE
+        lastDisplayedBrakePct = Int.MIN_VALUE
         try {
             windowManager?.removeView(view)
         } catch (_: Exception) {
@@ -1298,12 +1324,17 @@ class Mod8BackgroundService : Service(), SensorEventListener {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val en = isEn()
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Mod 8 Arka Plan Sürüşü",
+                if (en) "Mode 8 Background Drive" else "Mod 8 Arka Plan Sürüşü",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Sadece Mod 8 (Rahat Sürüş) arka planda çalışırken aktif olur"
+                description = if (en) {
+                    "Active only while Mode 8 (Chill Drive) runs in the background"
+                } else {
+                    "Sadece Mod 8 (Rahat Sürüş) arka planda çalışırken aktif olur"
+                }
                 setShowBadge(false)
             }
             nm?.createNotificationChannel(channel)
@@ -1330,10 +1361,23 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
         val overlayAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
             Settings.canDrawOverlays(this)
+        val en = isEn()
         val contentText = when {
-            !isInBackgroundMode -> "Hazır: Uygulamayı arka plana attığınızda sürüş devam eder"
-            overlayAllowed -> "Arka planda kapsül baloncuk ve sensör sürüşü aktif"
-            else -> "Baloncuk izni yok — kontrolleri buradaki butonlardan kullanın"
+            !isInBackgroundMode -> if (en) {
+                "Ready: Driving continues when you minimize the app"
+            } else {
+                "Hazır: Uygulamayı arka plana attığınızda sürüş devam eder"
+            }
+            overlayAllowed -> if (en) {
+                "Floating capsule bubble & sensor driving active in background"
+            } else {
+                "Arka planda kapsül baloncuk ve sensör sürüşü aktif"
+            }
+            else -> if (en) {
+                "Overlay permission missing — use controls here"
+            } else {
+                "Baloncuk izni yok — kontrolleri buradaki butonlardan kullanın"
+            }
         }
 
         fun serviceAction(action: String, requestCode: Int): PendingIntent {
@@ -1344,7 +1388,7 @@ class Mod8BackgroundService : Service(), SensorEventListener {
         }
 
         builder
-            .setContentTitle("DoYaDi — Mod 8 Rahat Sürüş")
+            .setContentTitle(if (en) "Mode 8 — Chill Drive" else "Mod 8 — Rahat Sürüş")
             .setContentText(contentText)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
@@ -1356,9 +1400,9 @@ class Mod8BackgroundService : Service(), SensorEventListener {
 
         @Suppress("DEPRECATION")
         builder
-            .addAction(Notification.Action.Builder(actionIcon, "SIFIRLA", serviceAction(ACTION_RECALIBRATE, 11)).build())
-            .addAction(Notification.Action.Builder(actionIcon, "VİTES -", serviceAction(ACTION_GEAR_DOWN, 12)).build())
-            .addAction(Notification.Action.Builder(actionIcon, "VİTES +", serviceAction(ACTION_GEAR_UP, 13)).build())
+            .addAction(Notification.Action.Builder(actionIcon, if (en) "RESET" else "SIFIRLA", serviceAction(ACTION_RECALIBRATE, 11)).build())
+            .addAction(Notification.Action.Builder(actionIcon, if (en) "GEAR -" else "VİTES -", serviceAction(ACTION_GEAR_DOWN, 12)).build())
+            .addAction(Notification.Action.Builder(actionIcon, if (en) "GEAR +" else "VİTES +", serviceAction(ACTION_GEAR_UP, 13)).build())
 
         return builder.build()
     }

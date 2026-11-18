@@ -2,8 +2,8 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 ; Non-commercial use only
 
-#define MyAppName "DoYaDi_Server"
-#define MyAppVersion "1.6"
+#define MyAppName "OyuKu_Server"
+#define MyAppVersion "1.7.1"
 #define MyAppPublisher "Navilastro"
 #define MyAppURL "https://www.Navilastro.tk"
 #define MyAppExeName "DoYaDi_Server.exe"
@@ -33,7 +33,7 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
 ;PrivilegesRequired=lowest
 OutputBaseFilename=DoYaDi_Server_Setup
-SetupIconFile=DoYaDi_ico.ico
+SetupIconFile=oyuku_logo.ico
 SolidCompression=yes
 WizardStyle=modern dark
 

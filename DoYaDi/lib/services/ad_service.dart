@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+
+import '../config/app_config.dart';
 
 /// Oyun akışını ve sürüş hissini korumak için SADECE Geçiş Reklamlarını (Interstitial Ad)
 /// önceden yükleyerek (Pre-load) yöneten servis.
@@ -23,6 +27,7 @@ class AdService {
   bool _isInitialized = false;
   bool _isLoadingAd = false;
   bool _isAdFreeOrPro = false;
+  Timer? _delayedPreloadTimer;
 
   bool get isAdReady => _interstitialAd != null;
   bool get isAdFreeOrPro => _isAdFreeOrPro;
@@ -38,6 +43,8 @@ class AdService {
   void updateSubscriptionStatus({required bool isAdFreeOrPro}) {
     _isAdFreeOrPro = isAdFreeOrPro;
     if (_isAdFreeOrPro) {
+      _delayedPreloadTimer?.cancel();
+      _delayedPreloadTimer = null;
       _interstitialAd?.dispose();
       _interstitialAd = null;
     } else if (_isInitialized) {
@@ -47,7 +54,9 @@ class AdService {
 
   /// MobileAds SDK'sını başlatır ve ilk geçiş reklamını önceden yükler.
   Future<void> initialize() async {
-    if (_isInitialized || !_isMobilePlatform) return;
+    if (AppConfig.instance.isVIP || _isInitialized || !_isMobilePlatform) {
+      return;
+    }
     try {
       await MobileAds.instance.initialize();
       _isInitialized = true;
@@ -61,7 +70,8 @@ class AdService {
 
   /// Geçiş reklamını kullanıcıyı bekletmeden göstermek için arka planda önceden yükler.
   void preloadInterstitial() {
-    if (_isAdFreeOrPro ||
+    if (AppConfig.instance.isVIP ||
+        _isAdFreeOrPro ||
         !_isMobilePlatform ||
         _isLoadingAd ||
         _interstitialAd != null) {
@@ -102,6 +112,10 @@ class AdService {
     required VoidCallback onComplete,
     bool? isAdFree,
   }) {
+    if (AppConfig.instance.isVIP) {
+      onComplete();
+      return;
+    }
     final skipAds = (isAdFree ?? false) || _isAdFreeOrPro;
     if (skipAds || !_isMobilePlatform) {
       onComplete();
@@ -118,25 +132,34 @@ class AdService {
 
     _interstitialAd = null;
     bool completed = false;
-    void finish() {
+    void finish({bool deferPreload = false}) {
       if (completed) return;
       completed = true;
-      onComplete();
+      // Android tam ekran reklam Activity'si kapandıktan hemen sonraki karede
+      // rota geçişini başlatarak yüzey geçişi kaynaklı takılmayı önler.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        onComplete();
+      });
+      if (deferPreload && !_isAdFreeOrPro) {
+        // Yeni reklam yüklemesini sürüş ekranı açılışını tıkamaması için 3 sn ertele.
+        _delayedPreloadTimer?.cancel();
+        _delayedPreloadTimer = Timer(const Duration(seconds: 3), () {
+          preloadInterstitial();
+        });
+      }
     }
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (InterstitialAd shownAd) {
         shownAd.dispose();
-        preloadInterstitial();
-        finish();
+        finish(deferPreload: true);
       },
       onAdFailedToShowFullScreenContent: (
         InterstitialAd shownAd,
         AdError error,
       ) {
         shownAd.dispose();
-        preloadInterstitial();
-        finish();
+        finish(deferPreload: true);
       },
     );
 
@@ -144,8 +167,7 @@ class AdService {
       ad.show();
     } catch (e) {
       ad.dispose();
-      preloadInterstitial();
-      finish();
+      finish(deferPreload: true);
     }
   }
 }

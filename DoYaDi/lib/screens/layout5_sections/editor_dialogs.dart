@@ -227,6 +227,20 @@ extension _EditorDialogsExt on _CustomLayout5EditorScreenState {
         'color': Colors.orangeAccent,
         'json': getGamerKeyboardTemplate(),
       },
+      {
+        'name': AppTranslations.getText('tmpl_full_kb'),
+        'desc': AppTranslations.getText('tmpl_full_kb_desc'),
+        'icon': Icons.keyboard_outlined,
+        'color': Colors.lightBlueAccent,
+        'json': getFullKeyboardTemplate(),
+      },
+      {
+        'name': AppTranslations.getText('tmpl_full_kb_tp'),
+        'desc': AppTranslations.getText('tmpl_full_kb_tp_desc'),
+        'icon': Icons.touch_app,
+        'color': Colors.tealAccent,
+        'json': getFullKeyboardTouchpadTemplate(),
+      },
     ];
 
     showDialog(

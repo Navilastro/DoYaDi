@@ -195,6 +195,7 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
         'overlayGasColor': s.mod8OverlayGasColor.toARGB32(),
         'overlayBrakeColor': s.mod8OverlayBrakeColor.toARGB32(),
         'overlayGearBtnColor': s.mod8OverlayGearBtnColor.toARGB32(),
+        'lang': AppTranslations.currentLanguage,
       }).catchError((_) {});
 
       if (context.mounted) {
@@ -584,8 +585,8 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
                           children: [
                             // SOL SÜTUN: FREN (Hem Sensör Göstergesi Hem Dokunmatik)
                             _buildInteractivePedalBar(
-                              label: 'FREN',
-                              subLabel: 'GERİ EĞ / DOKUN',
+                              label: AppTranslations.getText('chill_brake_label'),
+                              subLabel: AppTranslations.getText('chill_brake_sub'),
                               value: widget.brakePercentage,
                               color: s.mod8BrakeColor,
                               subColor: sub,
@@ -676,8 +677,8 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
 
                             // SAĞ SÜTUN: GAZ (Hem Sensör Göstergesi Hem Dokunmatik)
                             _buildInteractivePedalBar(
-                              label: 'GAZ',
-                              subLabel: 'ÖNE EĞ / DOKUN',
+                              label: AppTranslations.getText('chill_gas_label'),
+                              subLabel: AppTranslations.getText('chill_gas_sub'),
                               value: widget.gasPercentage,
                               color: s.mod8GasColor,
                               subColor: sub,
@@ -696,12 +697,12 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
                             Expanded(
                               child: _buildGearShiftButton(
                                 label: AppTranslations.getText('chill_gear_down'),
-                                badge: 'LB / -',
+                                badge: 'L1 / -',
                                 icon: Icons.keyboard_double_arrow_down_rounded,
                                 color: s.mod8GearBtnColor,
                                 isActive: widget.isGearDownActive,
                                 compact: isTightH,
-                                onDown: () => widget.onButtonDown(1), // LB
+                                onDown: () => widget.onButtonDown(1), // L1
                                 onUp: () => widget.onButtonUp(1),
                               ),
                             ),
@@ -709,12 +710,12 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
                             Expanded(
                               child: _buildGearShiftButton(
                                 label: AppTranslations.getText('chill_gear_up'),
-                                badge: 'RB / +',
+                                badge: 'R1 / +',
                                 icon: Icons.keyboard_double_arrow_up_rounded,
                                 color: s.mod8GearBtnColor,
                                 isActive: widget.isGearUpActive,
                                 compact: isTightH,
-                                onDown: () => widget.onButtonDown(2), // RB
+                                onDown: () => widget.onButtonDown(2), // R1
                                 onUp: () => widget.onButtonUp(2),
                               ),
                             ),
@@ -728,7 +729,7 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
                         children: [
                           Expanded(
                             child: _buildInfoChip(
-                              'EĞİM (GAZ/FREN)',
+                              AppTranslations.getText('chill_chip_tilt'),
                               '${widget.pitchDeltaDeg >= 0 ? '+' : ''}${widget.pitchDeltaDeg.toStringAsFixed(1)}°',
                               s,
                             ),
@@ -736,7 +737,7 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: _buildInfoChip(
-                              'DİREKSİYON AÇISI',
+                              AppTranslations.getText('chill_chip_steer_angle'),
                               '${(widget.steeringAngle * s.steeringAngle).toStringAsFixed(0)}°',
                               s,
                             ),
@@ -744,7 +745,7 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: _buildInfoChip(
-                              'HASSASİYET',
+                              AppTranslations.getText('chill_chip_sensitivity'),
                               '${s.chillSteeringSensitivity.toStringAsFixed(1)}x / ${s.chillGasBrakeSensitivity.toStringAsFixed(1)}x',
                               s,
                             ),
@@ -765,11 +766,13 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
   Widget _buildSteeringSection(double angle, AppSettings s) {
     final ac = s.mod8SteerColor;
     final int pct = (angle * 100).round();
+    final String leftTxt = AppTranslations.getText('chill_left_short');
+    final String rightTxt = AppTranslations.getText('chill_right_short');
     final String dirText = pct == 0
         ? AppTranslations.getText('chill_center_zero')
         : pct < 0
-            ? 'SOL ${pct.abs()}%'
-            : 'SAĞ $pct%';
+            ? '$leftTxt ${pct.abs()}%'
+            : '$rightTxt $pct%';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -783,9 +786,9 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                '◄ SOL',
-                style: TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 1.5),
+              Text(
+                '◄ $leftTxt',
+                style: const TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 1.5),
               ),
               Text(
                 dirText,
@@ -796,9 +799,9 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
                   fontFamily: 'monospace',
                 ),
               ),
-              const Text(
-                'SAĞ ►',
-                style: TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 1.5),
+              Text(
+                '$rightTxt ►',
+                style: const TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 1.5),
               ),
             ],
           ),
@@ -1015,8 +1018,8 @@ class _ChillDriveContentState extends State<_ChillDriveContent> {
             Flexible(
               child: Text(
                 locked
-                    ? 'HIZ SABİT (${(widget.cruiseGasValue * 100).round()}%)'
-                    : 'HIZ SABİTLEYİCİ (CRUISE)',
+                    ? '${AppTranslations.getText('chill_cruise_locked')} (${(widget.cruiseGasValue * 100).round()}%)'
+                    : AppTranslations.getText('chill_cruise_button'),
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: locked ? activeColor : Colors.white70,

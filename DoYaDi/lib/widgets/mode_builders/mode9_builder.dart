@@ -1139,11 +1139,15 @@ extension _Mode9BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin<T>
       case 0:
         return 'YOK';
       case 1:
-        return 'LB';
+        return 'L1';
       case 2:
-        return 'RB';
+        return 'R1';
       case 3:
-        return 'GUIDE';
+        return 'ANA EKRAN';
+      case 19:
+        return 'R2';
+      case 20:
+        return 'L2';
       case 5:
         return 'A';
       case 6:

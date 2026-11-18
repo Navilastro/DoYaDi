@@ -131,7 +131,7 @@ String getControllerTemplate2() {
       top: 0.75,
       width: 0.12,
       height: 0.18,
-      label: 'Steam',
+      label: 'Ana Ekran',
       keyIndex: 3,
     ),
     // D-Pad
@@ -216,7 +216,7 @@ String getControllerTemplate2() {
       label: 'X',
       keyIndex: 7,
     ),
-    // LB, RB
+    // L1, R1
     Layout5Item(
       id: 'btn_1',
       type: Layout5ItemType.buttonSoft,
@@ -224,7 +224,7 @@ String getControllerTemplate2() {
       top: 0.05,
       width: 0.16,
       height: 0.14,
-      label: 'LB',
+      label: 'L1',
       keyIndex: 1,
     ),
     Layout5Item(
@@ -234,7 +234,7 @@ String getControllerTemplate2() {
       top: 0.05,
       width: 0.16,
       height: 0.14,
-      label: 'RB',
+      label: 'R1',
       keyIndex: 2,
     ),
   ];
@@ -367,7 +367,7 @@ String getFullControllerTemplate() {
       width: 0.10,
       height: 0.28,
     ),
-    // LB
+    // L1
     Layout5Item(
       id: 'btn_lb',
       type: Layout5ItemType.buttonSoft,
@@ -375,10 +375,10 @@ String getFullControllerTemplate() {
       top: 0.02,
       width: 0.12,
       height: 0.12,
-      label: 'LB',
+      label: 'L1',
       keyIndex: 1,
     ),
-    // RB
+    // R1
     Layout5Item(
       id: 'btn_rb',
       type: Layout5ItemType.buttonSoft,
@@ -386,7 +386,7 @@ String getFullControllerTemplate() {
       top: 0.02,
       width: 0.12,
       height: 0.12,
-      label: 'RB',
+      label: 'R1',
       keyIndex: 2,
     ),
     // D-Pad (Up: left 0.28, top 0.35 | Left: 0.20, top 0.48 | Right: 0.36, top 0.48 | Down: 0.28, top 0.61)
@@ -680,6 +680,265 @@ String getGamerKeyboardTemplate() {
       height: 0.13,
       label: 'F4',
       keyIndex: 1115,
+    ),
+  ];
+  return jsonEncode(items.map((e) => e.toJson()).toList());
+}
+
+Layout5Item _kbKey(
+  String id,
+  String label,
+  int keyIndex,
+  double left,
+  double top,
+  double width,
+  double height, {
+  bool square = true,
+}) {
+  return Layout5Item(
+    id: id,
+    type: square ? Layout5ItemType.buttonSquare : Layout5ItemType.buttonSoft,
+    left: left,
+    top: top,
+    width: width,
+    height: height,
+    label: label,
+    keyIndex: keyIndex,
+  );
+}
+
+String getFullKeyboardTemplate() {
+  final items = <Layout5Item>[
+    // Satır 0: Esc + F1..F12 + Del
+    _kbKey('fk_esc', 'Esc', 1027, 0.024, 0.03, 0.064, 0.13, square: false),
+    for (int i = 0; i < 12; i++)
+      _kbKey(
+        'fk_f${i + 1}',
+        'F${i + 1}',
+        1112 + i,
+        0.092 + i * 0.068,
+        0.03,
+        0.064,
+        0.13,
+        square: false,
+      ),
+    _kbKey('fk_del', 'Del', 1046, 0.908, 0.03, 0.068, 0.13, square: false),
+
+    // Satır 1: 1..0 + Backspace
+    for (final d in [
+      ('1', 1049, 0),
+      ('2', 1050, 1),
+      ('3', 1051, 2),
+      ('4', 1052, 3),
+      ('5', 1053, 4),
+      ('6', 1054, 5),
+      ('7', 1055, 6),
+      ('8', 1056, 7),
+      ('9', 1057, 8),
+      ('0', 1048, 9),
+    ])
+      _kbKey('fk_${d.$1}', d.$1, d.$2, 0.02 + d.$3 * 0.076, 0.19, 0.072, 0.14),
+    _kbKey('fk_bksp', 'Bksp', 1008, 0.78, 0.19, 0.196, 0.14, square: false),
+
+    // Satır 2: Tab + Q..P
+    _kbKey('fk_tab', 'Tab', 1009, 0.02, 0.36, 0.11, 0.15, square: false),
+    for (final k in [
+      ('Q', 1081, 0),
+      ('W', 1087, 1),
+      ('E', 1069, 2),
+      ('R', 1082, 3),
+      ('T', 1084, 4),
+      ('Y', 1089, 5),
+      ('U', 1085, 6),
+      ('I', 1073, 7),
+      ('O', 1079, 8),
+      ('P', 1080, 9),
+    ])
+      _kbKey('fk_${k.$1}', k.$1, k.$2, 0.138 + k.$3 * 0.084, 0.36, 0.079, 0.15),
+
+    // Satır 3: Caps + A..L + Enter
+    _kbKey('fk_caps', 'Caps', 1020, 0.02, 0.53, 0.10, 0.15, square: false),
+    for (final k in [
+      ('A', 1065, 0),
+      ('S', 1083, 1),
+      ('D', 1068, 2),
+      ('F', 1070, 3),
+      ('G', 1071, 4),
+      ('H', 1072, 5),
+      ('J', 1074, 6),
+      ('K', 1075, 7),
+      ('L', 1076, 8),
+    ])
+      _kbKey('fk_${k.$1}', k.$1, k.$2, 0.128 + k.$3 * 0.076, 0.53, 0.072, 0.15),
+    _kbKey('fk_enter', 'Enter', 1013, 0.816, 0.53, 0.16, 0.15, square: false),
+
+    // Satır 4: Shift + Z..M + , + . + Up Arrow
+    _kbKey(
+      'fk_shift',
+      AppTranslations.getText('shift'),
+      1016,
+      0.02,
+      0.70,
+      0.12,
+      0.14,
+      square: false,
+    ),
+    for (final k in [
+      ('Z', 1090, 0),
+      ('X', 1088, 1),
+      ('C', 1067, 2),
+      ('V', 1086, 3),
+      ('B', 1066, 4),
+      ('N', 1078, 5),
+      ('M', 1077, 6),
+    ])
+      _kbKey('fk_${k.$1}', k.$1, k.$2, 0.148 + k.$3 * 0.079, 0.70, 0.074, 0.14),
+    _kbKey('fk_comma', ',', 1145, 0.703, 0.70, 0.06, 0.14),
+    _kbKey('fk_dot', '.', 1146, 0.768, 0.70, 0.06, 0.14),
+    _kbKey('fk_up', '↑', 1038, 0.85, 0.70, 0.06, 0.14),
+
+    // Satır 5: Ctrl + Win + Alt + Space + Left/Down/Right Arrows
+    _kbKey('fk_ctrl', 'Ctrl', 1017, 0.02, 0.86, 0.09, 0.12, square: false),
+    _kbKey('fk_win', 'Win', 1091, 0.115, 0.86, 0.08, 0.12, square: false),
+    _kbKey('fk_alt', 'Alt', 1018, 0.20, 0.86, 0.08, 0.12, square: false),
+    _kbKey(
+      'fk_space',
+      AppTranslations.getText('space'),
+      1032,
+      0.285,
+      0.86,
+      0.47,
+      0.12,
+      square: false,
+    ),
+    _kbKey('fk_left', '←', 1037, 0.785, 0.86, 0.06, 0.12),
+    _kbKey('fk_down', '↓', 1040, 0.85, 0.86, 0.06, 0.12),
+    _kbKey('fk_right', '→', 1039, 0.915, 0.86, 0.06, 0.12),
+  ];
+  return jsonEncode(items.map((e) => e.toJson()).toList());
+}
+
+String getFullKeyboardTouchpadTemplate() {
+  final items = <Layout5Item>[
+    // Sol bölüm: Kompakt Tam QWERTY Klavye (0.02..0.64)
+    // Satır 0: Esc + 1..0 + Backspace
+    _kbKey('kt_esc', 'Esc', 1027, 0.02, 0.04, 0.066, 0.14, square: false),
+    for (final d in [
+      ('1', 1049, 0),
+      ('2', 1050, 1),
+      ('3', 1051, 2),
+      ('4', 1052, 3),
+      ('5', 1053, 4),
+      ('6', 1054, 5),
+      ('7', 1055, 6),
+      ('8', 1056, 7),
+      ('9', 1057, 8),
+      ('0', 1048, 9),
+    ])
+      _kbKey('kt_${d.$1}', d.$1, d.$2, 0.09 + d.$3 * 0.049, 0.04, 0.045, 0.14),
+    _kbKey('kt_bksp', 'Bksp', 1008, 0.582, 0.04, 0.058, 0.14, square: false),
+
+    // Satır 1: Tab + Q..P
+    _kbKey('kt_tab', 'Tab', 1009, 0.02, 0.21, 0.072, 0.15, square: false),
+    for (final k in [
+      ('Q', 1081, 0),
+      ('W', 1087, 1),
+      ('E', 1069, 2),
+      ('R', 1082, 3),
+      ('T', 1084, 4),
+      ('Y', 1089, 5),
+      ('U', 1085, 6),
+      ('I', 1073, 7),
+      ('O', 1079, 8),
+      ('P', 1080, 9),
+    ])
+      _kbKey('kt_${k.$1}', k.$1, k.$2, 0.096 + k.$3 * 0.054, 0.21, 0.05, 0.15),
+
+    // Satır 2: Caps + A..L + Enter
+    _kbKey('kt_caps', 'Caps', 1020, 0.02, 0.39, 0.076, 0.15, square: false),
+    for (final k in [
+      ('A', 1065, 0),
+      ('S', 1083, 1),
+      ('D', 1068, 2),
+      ('F', 1070, 3),
+      ('G', 1071, 4),
+      ('H', 1072, 5),
+      ('J', 1074, 6),
+      ('K', 1075, 7),
+      ('L', 1076, 8),
+    ])
+      _kbKey('kt_${k.$1}', k.$1, k.$2, 0.10 + k.$3 * 0.052, 0.39, 0.048, 0.15),
+    _kbKey('kt_enter', 'Enter', 1013, 0.57, 0.39, 0.07, 0.15, square: false),
+
+    // Satır 3: Shift + Z..M + Up + Del
+    _kbKey(
+      'kt_shift',
+      AppTranslations.getText('shift'),
+      1016,
+      0.02,
+      0.57,
+      0.088,
+      0.15,
+      square: false,
+    ),
+    for (final k in [
+      ('Z', 1090, 0),
+      ('X', 1088, 1),
+      ('C', 1067, 2),
+      ('V', 1086, 3),
+      ('B', 1066, 4),
+      ('N', 1078, 5),
+      ('M', 1077, 6),
+    ])
+      _kbKey('kt_${k.$1}', k.$1, k.$2, 0.112 + k.$3 * 0.056, 0.57, 0.052, 0.15),
+    _kbKey('kt_up', '↑', 1038, 0.515, 0.57, 0.055, 0.15),
+    _kbKey('kt_del', 'Del', 1046, 0.575, 0.57, 0.065, 0.15, square: false),
+
+    // Satır 4: Ctrl + Alt + Space + Yön Tuşları
+    _kbKey('kt_ctrl', 'Ctrl', 1017, 0.02, 0.76, 0.08, 0.19, square: false),
+    _kbKey('kt_alt', 'Alt', 1018, 0.105, 0.76, 0.075, 0.19, square: false),
+    _kbKey(
+      'kt_space',
+      AppTranslations.getText('space'),
+      1032,
+      0.185,
+      0.76,
+      0.265,
+      0.19,
+      square: false,
+    ),
+    _kbKey('kt_left', '←', 1037, 0.455, 0.76, 0.055, 0.19),
+    _kbKey('kt_down', '↓', 1040, 0.515, 0.76, 0.055, 0.19),
+    _kbKey('kt_right', '→', 1039, 0.575, 0.76, 0.065, 0.19),
+
+    // Sağ bölüm: Touchpad + Sol/Sağ Tık
+    Layout5Item(
+      id: 'kt_touchpad',
+      type: Layout5ItemType.touchpad,
+      left: 0.66,
+      top: 0.04,
+      width: 0.32,
+      height: 0.71,
+    ),
+    _kbKey(
+      'kt_lclick',
+      AppTranslations.getText('left_click'),
+      2001,
+      0.66,
+      0.77,
+      0.155,
+      0.18,
+      square: false,
+    ),
+    _kbKey(
+      'kt_rclick',
+      AppTranslations.getText('right_click'),
+      2003,
+      0.825,
+      0.77,
+      0.155,
+      0.18,
+      square: false,
     ),
   ];
   return jsonEncode(items.map((e) => e.toJson()).toList());

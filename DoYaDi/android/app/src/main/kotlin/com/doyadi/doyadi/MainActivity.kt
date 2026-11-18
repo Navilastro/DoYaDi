@@ -161,6 +161,7 @@ class MainActivity : FlutterActivity() {
         (args["overlayGasColor"] as? Number)?.let { Mod8BackgroundService.overlayGasColor = it.toInt() }
         (args["overlayBrakeColor"] as? Number)?.let { Mod8BackgroundService.overlayBrakeColor = it.toInt() }
         (args["overlayGearBtnColor"] as? Number)?.let { Mod8BackgroundService.overlayGearBtnColor = it.toInt() }
+        (args["lang"] as? String)?.let { Mod8BackgroundService.lang = it }
     }
 
     private fun sendServiceAction(action: String) {

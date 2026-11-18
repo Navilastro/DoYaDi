@@ -419,10 +419,8 @@ class _PropertiesPanelState extends State<_PropertiesPanel> {
               0.05,
               0.95,
               (v) {
-                // Determine physical screen aspect ratio to make it a perfect square
-                final size = MediaQuery.of(context).size;
-                final screenRatio = size.width / size.height;
-                _update(item.copyWith(width: v, height: v * screenRatio));
+                // Kare joystick/ikon boyutu sürüş ekranıyla birebir eşleşsin
+                _update(item.copyWith(width: v, height: v));
               },
             ),
           ] else if (_lockAspectRatio) ...[

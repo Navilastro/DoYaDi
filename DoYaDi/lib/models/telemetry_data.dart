@@ -97,6 +97,36 @@ class ExtendedTelemetryData {
   /// Egzoz gaz sıcaklığı (0-255 haritalanmış)
   final int egtRaw;
 
+  /// Pusula baş açısı (0..359 derece, uçuş paketinde)
+  final int headingDeg;
+
+  /// Mach x 100 (örn: 125 -> Mach 1.25)
+  final int machX100;
+
+  /// Kalan yakıt yüzdesi (0..100)
+  final int fuelPct;
+
+  /// İniş takımı açılma yüzdesi (0..100)
+  final int gearDeployPct;
+
+  /// Flap açılma yüzdesi (0..100)
+  final int flapsDeployPct;
+
+  /// Hava freni açılma yüzdesi (0..100)
+  final int airbrakeDeployPct;
+
+  /// G-Kuvveti x 10 (-127..127, örn: 45 -> 4.5G)
+  final int gForceX10;
+
+  /// Hücum açısı (AoA derece, -127..127)
+  final int aoaDeg;
+
+  /// Dikey hız (ft/min)
+  final int verticalSpeedFpm;
+
+  /// PC uçuş telemetrisi aktif bir sim/oyuna bağlı mı ([31] != 0)
+  final bool isFlightLive;
+
   // ── Genel ──────────────────────────────────────────────────────────────────
   /// Tur delta zamanı (milisaniye, negatif = önde)
   final int deltaTimeMs;
@@ -128,6 +158,16 @@ class ExtendedTelemetryData {
     this.n1Pct = 0,
     this.n2Pct = 0,
     this.egtRaw = 0,
+    this.headingDeg = 0,
+    this.machX100 = 0,
+    this.fuelPct = 0,
+    this.gearDeployPct = 0,
+    this.flapsDeployPct = 0,
+    this.airbrakeDeployPct = 0,
+    this.gForceX10 = 10,
+    this.aoaDeg = 0,
+    this.verticalSpeedFpm = 0,
+    this.isFlightLive = false,
     this.deltaTimeMs = 0,
     this.flags = 0,
   });
@@ -178,6 +218,27 @@ class ExtendedTelemetryData {
   /// Paket gerçek motor devri taşıyor mu (araç paketi, flags bit3)
   bool get hasEngineRpm => (flags & 0x08) != 0;
 
+  /// Genişletilmiş uçuş telemetri paketi mi (flags bit7)
+  bool get isFlightPacket => (flags & 0x80) != 0 && !hasEngineRpm;
+
+  /// Aşırı hız (overspeed) uyarısı (flags bit4)
+  bool get isOverspeedWarning => (flags & 0x10) != 0;
+
+  /// WEP / Afterburner telemetrisi aktif mi (flags bit5)
+  bool get isWepTelemetry => (flags & 0x20) != 0;
+
+  /// İniş takımı aşağıda mı (flags bit6 veya %50+)
+  bool get isGearDownTelemetry => (flags & 0x40) != 0 || gearDeployPct >= 50;
+
+  /// Hava freni açık mı
+  bool get isAirbrakeTelemetry => airbrakeDeployPct >= 15;
+
+  /// Mach sayısı
+  double get machNumber => machX100 / 100.0;
+
+  /// G yükü
+  double get gForce => gForceX10 / 10.0;
+
   /// Rev limiter bölgesinde mi (RPM > %94)
   bool get isRevLimiter => rpmPct > 240;
 
@@ -197,6 +258,7 @@ class ExtendedTelemetryData {
     final int flags = bytes[30];
     // Araç paketlerinde [19-20] irtifa yerine gerçek motor devrini taşır
     final bool isCarPacket = (flags & 0x08) != 0;
+    final bool flightPacket = (flags & 0x80) != 0 && !isCarPacket;
     final int field19 = bd.getUint16(19, Endian.big);
 
     return ExtendedTelemetryData(
@@ -208,11 +270,15 @@ class ExtendedTelemetryData {
       engineRpm: isCarPacket ? field19 : 0,
       drsStatus: bytes[6],
       ersDeployPct: bytes[7],
-      tyreTemps: [bytes[8], bytes[9], bytes[10], bytes[11]],
-      tyreWears: [bytes[12], bytes[13], bytes[14], bytes[15]],
-      leftSlip: bytes[16],
-      rightSlip: bytes[17],
-      gearImpact: bytes[18],
+      tyreTemps: flightPacket
+          ? const [0, 0, 0, 0]
+          : [bytes[8], bytes[9], bytes[10], bytes[11]],
+      tyreWears: flightPacket
+          ? const [0, 0, 0, 0]
+          : [bytes[12], bytes[13], bytes[14], bytes[15]],
+      leftSlip: flightPacket ? 0 : bytes[16],
+      rightSlip: flightPacket ? 0 : bytes[17],
+      gearImpact: flightPacket ? 0 : bytes[18],
       altitudeFt: isCarPacket ? 0 : field19,
       airspeedKnots: bd.getUint16(21, Endian.big),
       pitchDeg: bd.getInt8(23),
@@ -220,6 +286,16 @@ class ExtendedTelemetryData {
       n1Pct: bytes[25],
       n2Pct: bytes[26],
       egtRaw: bytes[27],
+      headingDeg: flightPacket ? (bd.getUint16(8, Endian.big) % 360) : 0,
+      machX100: flightPacket ? bytes[10] : 0,
+      fuelPct: flightPacket ? bytes[11].clamp(0, 100) : 0,
+      gearDeployPct: flightPacket ? bytes[12].clamp(0, 100) : 0,
+      flapsDeployPct: flightPacket ? bytes[13].clamp(0, 100) : 0,
+      airbrakeDeployPct: flightPacket ? bytes[14].clamp(0, 100) : 0,
+      gForceX10: flightPacket ? bd.getInt8(15) : 10,
+      aoaDeg: flightPacket ? bd.getInt8(16) : 0,
+      verticalSpeedFpm: flightPacket ? bd.getInt16(17, Endian.big) * 10 : 0,
+      isFlightLive: flightPacket && bytes[31] != 0,
       deltaTimeMs: bd.getInt16(28, Endian.big),
       flags: flags,
     );

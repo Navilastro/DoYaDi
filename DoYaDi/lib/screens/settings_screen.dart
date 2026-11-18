@@ -53,6 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<SettingsProvider>(context);
+    final isProUser = Provider.of<MonetizationProvider>(context).isPro;
     final s = provider.settings;
     final ac = s.detailColor;
     final hasBgMedia = AppMediaHelper.hasMedia(s.bgMediaPath);
@@ -117,7 +118,18 @@ class _SettingsScreenState extends State<SettingsScreen>
             Tab(text: AppTranslations.getText('tab_main')),
             Tab(text: AppTranslations.getText('tab_steering')),
             Tab(text: AppTranslations.getText('tab_assign')),
-            Tab(text: AppTranslations.getText('tab_colors')),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(AppTranslations.getText('tab_colors')),
+                  if (!isProUser) ...[
+                    const SizedBox(width: 6),
+                    const Icon(Icons.lock_outline, size: 15),
+                  ],
+                ],
+              ),
+            ),
             Tab(text: AppTranslations.getText('addon_content')),
             Tab(text: AppTranslations.getText('tab_membership')),
           ],

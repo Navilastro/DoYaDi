@@ -53,7 +53,8 @@ class SettingsProvider with ChangeNotifier {
     _settings.clickMaxDistance = prefs.getDouble('clickMaxDistance') ?? 2.0;
     _settings.clickMaxDuration = prefs.getDouble('clickMaxDuration') ?? 0.30;
     _settings.defaultDrivingMode = AppConfig.instance.sanitizeMode(
-      prefs.getInt('defaultDrivingMode') ?? AppConfig.instance.allowedModes.first,
+      prefs.getInt('defaultDrivingMode') ??
+          AppConfig.instance.allowedModes.first,
     );
     _settings.isCumulativeSteering =
         prefs.getBool('isCumulativeSteering') ?? false;
@@ -80,16 +81,16 @@ class SettingsProvider with ChangeNotifier {
     _settings.gyroCenterMode = prefs.getInt('gyroCenterMode') ?? 0;
     _settings.gyroAutoCenterDuration =
         (prefs.getDouble('gyroAutoCenterDuration') ?? 10.0).clamp(5.0, 30.0);
-    _settings.includePitchInDeadzone = prefs.getBool('includePitchInDeadzone') ?? true;
+    _settings.includePitchInDeadzone =
+        prefs.getBool('includePitchInDeadzone') ?? true;
     _settings.gyroLookEnabled = prefs.getBool('gyroLookEnabled') ?? false;
     _settings.gyroLookStyle = prefs.getInt('gyroLookStyle') ?? 0;
     _settings.gyroLookMode = (prefs.getInt('gyroLookMode') ?? 1).clamp(1, 3);
     _settings.gyroLookSensitivity =
         (prefs.getDouble('gyroLookSensitivity') ?? 1.0).clamp(0.2, 3.0);
-    _settings.gyroLookDeadzone =
-        (prefs.getDouble('gyroLookDeadzone') ?? 7.0).clamp(1.0, 30.0);
-    _settings.joystickMode =
-        (prefs.getInt('joystickMode') ?? 0).clamp(0, 3);
+    _settings.gyroLookDeadzone = (prefs.getDouble('gyroLookDeadzone') ?? 7.0)
+        .clamp(1.0, 30.0);
+    _settings.joystickMode = (prefs.getInt('joystickMode') ?? 0).clamp(0, 3);
     final profilesStr = prefs.getString('layout5Profiles');
     if (profilesStr != null && profilesStr.isNotEmpty) {
       try {
@@ -99,49 +100,35 @@ class SettingsProvider with ChangeNotifier {
         );
       } catch (_) {}
     }
-    if (_settings.layout5Profiles.isEmpty &&
-        !(prefs.getBool('templatesInitialized') ?? false)) {
-      _settings.layout5Profiles = AppConfig.instance.hasRestrictedMod5
-          ? {
-              'Klavye fare dizilimi': getKeyboardMouseTemplate(),
-              'Oyuncu Klavyesi': getGamerKeyboardTemplate(),
-            }
-          : {
-              'Oyun şablonu 1': getGameTemplate1(),
-              'Oyuncu şablonu 2': getControllerTemplate2(),
-              'Klavye fare dizilimi': getKeyboardMouseTemplate(),
-              'Tam Gamepad': getFullControllerTemplate(),
-              'Oyuncu Klavyesi': getGamerKeyboardTemplate(),
-            };
-      prefs.setBool('templatesInitialized', true);
-    } else {
-      // Mevcut profillere yeni şablonlar eksikse ekle (güncelleme uyumluluğu)
-      // Ayrıca built-in şablonları her zaman en güncel halleriyle güncelle
-      bool changed = false;
-      final builtins = AppConfig.instance.hasRestrictedMod5
-          ? {
-              'Klavye fare dizilimi': getKeyboardMouseTemplate(),
-              'Oyuncu Klavyesi': getGamerKeyboardTemplate(),
-            }
-          : {
-              'Oyun Şablonu 1': getGameTemplate1(),
-              'Oyuncu şablonu 2': getControllerTemplate2(),
-              'Klavye fare dizilimi': getKeyboardMouseTemplate(),
-              'Tam Gamepad': getFullControllerTemplate(),
-              'Oyuncu Klavyesi': getGamerKeyboardTemplate(),
-            };
-      for (final entry in builtins.entries) {
-        if (!_settings.layout5Profiles.containsKey(entry.key)) {
-          _settings.layout5Profiles[entry.key] = entry.value;
-          changed = true;
+    // Varsayılan Mod 5 profilleri boş olmalı; eski sürümden otomatik eklenen şablon profillerini tek seferlik temizle.
+    if (!(prefs.getBool('migrated_clear_default_layout5_profiles_v1') ??
+        false)) {
+      const autoSeededNames = <String>{
+        'Oyun şablonu 1',
+        'Oyun Şablonu 1',
+        'Oyuncu şablonu 2',
+        'Klavye fare dizilimi',
+        'Tam Gamepad',
+        'Oyuncu Klavyesi',
+      };
+      bool cleared = false;
+      for (final name in autoSeededNames) {
+        if (_settings.layout5Profiles.remove(name) != null) {
+          cleared = true;
         }
       }
-      if (changed) {
+      if (_settings.activeLayout5Profile != null &&
+          autoSeededNames.contains(_settings.activeLayout5Profile)) {
+        _settings.activeLayout5Profile = null;
+        await prefs.remove('activeLayout5Profile');
+      }
+      if (cleared) {
         await prefs.setString(
           'layout5Profiles',
           jsonEncode(_settings.layout5Profiles),
         );
       }
+      await prefs.setBool('migrated_clear_default_layout5_profiles_v1', true);
     }
     _settings.globalButtonPressMode =
         prefs.getInt('globalButtonPressMode') ?? 0;
@@ -161,10 +148,14 @@ class SettingsProvider with ChangeNotifier {
       } catch (_) {}
     }
 
-    final customHapticTriggersStr = prefs.getString('customButtonHapticTriggers');
+    final customHapticTriggersStr = prefs.getString(
+      'customButtonHapticTriggers',
+    );
     if (customHapticTriggersStr != null && customHapticTriggersStr.isNotEmpty) {
       try {
-        final Map<String, dynamic> decoded = jsonDecode(customHapticTriggersStr);
+        final Map<String, dynamic> decoded = jsonDecode(
+          customHapticTriggersStr,
+        );
         _settings.customButtonHapticTriggers = decoded.map(
           (key, value) => MapEntry(int.parse(key), value as int),
         );
@@ -250,7 +241,14 @@ class SettingsProvider with ChangeNotifier {
     _settings.gasSwipeDownRight = prefs.getInt('gasSwipeDownRight') ?? 0;
 
     // Fren swipe atamaları
-    _settings.brakeSwipeUp = prefs.getInt('brakeSwipeUp') ?? -1;
+    _settings.brakeSwipeUp = prefs.getInt('brakeSwipeUp') ?? -2;
+    if (!(prefs.getBool('migrated_brake_swipe_up_v2') ?? false)) {
+      if (_settings.brakeSwipeUp == -1) {
+        _settings.brakeSwipeUp = -2;
+        await prefs.setInt('brakeSwipeUp', -2);
+      }
+      await prefs.setBool('migrated_brake_swipe_up_v2', true);
+    }
     _settings.brakeSwipeDown = prefs.getInt('brakeSwipeDown') ?? -2;
     _settings.brakeSwipeLeft = prefs.getInt('brakeSwipeLeft') ?? 15;
     _settings.brakeSwipeRight = prefs.getInt('brakeSwipeRight') ?? 4;
@@ -288,7 +286,9 @@ class SettingsProvider with ChangeNotifier {
     // Medya arka planları & Mod 0-4
     _settings.bgMediaPath = prefs.getString('bgMediaPath');
     _settings.homeStartBtnMediaPath = prefs.getString('homeStartBtnMediaPath');
-    _settings.generalButtonMediaPath = prefs.getString('generalButtonMediaPath');
+    _settings.generalButtonMediaPath = prefs.getString(
+      'generalButtonMediaPath',
+    );
     _settings.gasBarMediaPath = prefs.getString('gasBarMediaPath');
     _settings.brakeBarMediaPath = prefs.getString('brakeBarMediaPath');
     _settings.pedalBarBgMediaPath = prefs.getString('pedalBarBgMediaPath');
@@ -306,7 +306,9 @@ class SettingsProvider with ChangeNotifier {
     _settings.mode234ButtonColor = Color(
       prefs.getInt('mode234ButtonColor') ?? const Color(0xFF40E0D0).toARGB32(),
     );
-    _settings.mode234ButtonMediaPath = prefs.getString('mode234ButtonMediaPath');
+    _settings.mode234ButtonMediaPath = prefs.getString(
+      'mode234ButtonMediaPath',
+    );
     _settings.mod01BgColor = Color(
       prefs.getInt('mod01BgColor') ?? const Color(0xFF050510).toARGB32(),
     );
@@ -320,7 +322,9 @@ class SettingsProvider with ChangeNotifier {
     );
     _settings.mod5BgMediaPath = prefs.getString('mod5BgMediaPath');
     _settings.mod5JoystickMediaPath = prefs.getString('mod5JoystickMediaPath');
-    _settings.mod5JoystickBaseMediaPath = prefs.getString('mod5JoystickBaseMediaPath');
+    _settings.mod5JoystickBaseMediaPath = prefs.getString(
+      'mod5JoystickBaseMediaPath',
+    );
     _settings.mod5ButtonMediaPath = prefs.getString('mod5ButtonMediaPath');
     _settings.steeringIndicatorColor = Color(
       prefs.getInt('steeringIndicatorColor') ??
@@ -352,7 +356,8 @@ class SettingsProvider with ChangeNotifier {
       prefs.getInt('handbrakeColor') ?? const Color(0xFFFF5252).toARGB32(),
     );
     _settings.handbrakeYetsoreColor = Color(
-      prefs.getInt('handbrakeYetsoreColor') ?? const Color(0xFFFFD600).toARGB32(),
+      prefs.getInt('handbrakeYetsoreColor') ??
+          const Color(0xFFFFD600).toARGB32(),
     );
     _settings.gasIconColor = Color(
       prefs.getInt('gasIconColor') ?? const Color(0xFF69F0AE).toARGB32(),
@@ -370,16 +375,19 @@ class SettingsProvider with ChangeNotifier {
       prefs.getInt('handbrakeIconColor') ?? const Color(0xFFFF5252).toARGB32(),
     );
     _settings.handbrakeButtonColor = Color(
-      prefs.getInt('handbrakeButtonColor') ?? const Color(0xFF381E1E).toARGB32(),
+      prefs.getInt('handbrakeButtonColor') ??
+          const Color(0xFF381E1E).toARGB32(),
     );
     _settings.steeringWheelColor = Color(
       prefs.getInt('steeringWheelColor') ?? const Color(0xFF222234).toARGB32(),
     );
     _settings.steeringTurnRightColor = Color(
-      prefs.getInt('steeringTurnRightColor') ?? const Color(0xFF00E5FF).toARGB32(),
+      prefs.getInt('steeringTurnRightColor') ??
+          const Color(0xFF00E5FF).toARGB32(),
     );
     _settings.steeringTurnLeftColor = Color(
-      prefs.getInt('steeringTurnLeftColor') ?? const Color(0xFFFF2A6D).toARGB32(),
+      prefs.getInt('steeringTurnLeftColor') ??
+          const Color(0xFFFF2A6D).toARGB32(),
     );
     _settings.mod6BgColor = Color(
       prefs.getInt('mod6BgColor') ?? const Color(0xFF0A0A12).toARGB32(),
@@ -390,7 +398,9 @@ class SettingsProvider with ChangeNotifier {
     );
     _settings.mod6HornMediaPath = prefs.getString('mod6HornMediaPath');
     _settings.mod6ButtonsMediaPath = prefs.getString('mod6ButtonsMediaPath');
-    _settings.mod6AccelIconsMediaPath = prefs.getString('mod6AccelIconsMediaPath');
+    _settings.mod6AccelIconsMediaPath = prefs.getString(
+      'mod6AccelIconsMediaPath',
+    );
     _settings.clutchBarMediaPath = prefs.getString('clutchBarMediaPath');
     _settings.handbrakeBarMediaPath = prefs.getString('handbrakeBarMediaPath');
 
@@ -420,9 +430,16 @@ class SettingsProvider with ChangeNotifier {
     _settings.mod7RpmHighColor = Color(
       prefs.getInt('mod7RpmHighColor') ?? const Color(0xFFFF1744).toARGB32(),
     );
-    _settings.mod7RpmLimColor = Color(
-      prefs.getInt('mod7RpmLimColor') ?? const Color(0xFFD500F9).toARGB32(),
-    );
+    int rpmLimColorInt =
+        prefs.getInt('mod7RpmLimColor') ?? const Color(0xFFFF0000).toARGB32();
+    if (!(prefs.getBool('migrated_mod7_rpm_lim_red_v1') ?? false)) {
+      if (rpmLimColorInt == const Color(0xFFD500F9).toARGB32()) {
+        rpmLimColorInt = const Color(0xFFFF0000).toARGB32();
+        await prefs.setInt('mod7RpmLimColor', rpmLimColorInt);
+      }
+      await prefs.setBool('migrated_mod7_rpm_lim_red_v1', true);
+    }
+    _settings.mod7RpmLimColor = Color(rpmLimColorInt);
     _settings.mod7GearColor = Color(
       prefs.getInt('mod7GearColor') ?? const Color(0xFFFFFFFF).toARGB32(),
     );
@@ -463,7 +480,8 @@ class SettingsProvider with ChangeNotifier {
       prefs.getInt('mod8CruiseColor') ?? const Color(0xFF00E676).toARGB32(),
     );
     _settings.mod8HoldButtonsColor = Color(
-      prefs.getInt('mod8HoldButtonsColor') ?? const Color(0xFFFFB300).toARGB32(),
+      prefs.getInt('mod8HoldButtonsColor') ??
+          const Color(0xFFFFB300).toARGB32(),
     );
     _settings.mod8GearBtnColor = Color(
       prefs.getInt('mod8GearBtnColor') ?? const Color(0xFF00E5FF).toARGB32(),
@@ -472,19 +490,23 @@ class SettingsProvider with ChangeNotifier {
       prefs.getInt('mod8OverlayBgColor') ?? const Color(0xE610141E).toARGB32(),
     );
     _settings.mod8OverlayBorderColor = Color(
-      prefs.getInt('mod8OverlayBorderColor') ?? const Color(0x6600E5FF).toARGB32(),
+      prefs.getInt('mod8OverlayBorderColor') ??
+          const Color(0x6600E5FF).toARGB32(),
     );
     _settings.mod8OverlaySteerColor = Color(
-      prefs.getInt('mod8OverlaySteerColor') ?? const Color(0xFF00E5FF).toARGB32(),
+      prefs.getInt('mod8OverlaySteerColor') ??
+          const Color(0xFF00E5FF).toARGB32(),
     );
     _settings.mod8OverlayGasColor = Color(
       prefs.getInt('mod8OverlayGasColor') ?? const Color(0xFF81C784).toARGB32(),
     );
     _settings.mod8OverlayBrakeColor = Color(
-      prefs.getInt('mod8OverlayBrakeColor') ?? const Color(0xFFE57373).toARGB32(),
+      prefs.getInt('mod8OverlayBrakeColor') ??
+          const Color(0xFFE57373).toARGB32(),
     );
     _settings.mod8OverlayGearBtnColor = Color(
-      prefs.getInt('mod8OverlayGearBtnColor') ?? const Color(0xFF00E5FF).toARGB32(),
+      prefs.getInt('mod8OverlayGearBtnColor') ??
+          const Color(0xFF00E5FF).toARGB32(),
     );
 
     // Mod 9 Özelleştirme
@@ -519,8 +541,10 @@ class SettingsProvider with ChangeNotifier {
 
     // ── Mod 7 (F1 HUD) Ayarları ──
     _settings.f1UseImperial = prefs.getBool('f1UseImperial') ?? false;
-    _settings.f1LowPassAlpha =
-        (prefs.getDouble('f1LowPassAlpha') ?? 0.3).clamp(0.05, 1.0);
+    _settings.f1LowPassAlpha = (prefs.getDouble('f1LowPassAlpha') ?? 0.3).clamp(
+      0.05,
+      1.0,
+    );
     _settings.f1HapticRevLimiter = prefs.getBool('f1HapticRevLimiter') ?? true;
     _settings.f1HapticWheelSlip = prefs.getBool('f1HapticWheelSlip') ?? true;
     _settings.m7Key1 = prefs.getInt('m7Key1') ?? 7;
@@ -537,8 +561,10 @@ class SettingsProvider with ChangeNotifier {
     _settings.hudShowStatusFlags = prefs.getBool('hudShowStatusFlags') ?? true;
 
     // ── Mod 8 (Chill Drive) Ayarları ──
-    _settings.chillOverlayEnabled = prefs.getBool('chillOverlayEnabled') ?? true;
-    _settings.chillOverlayGearButtons = prefs.getBool('chillOverlayGearButtons') ?? true;
+    _settings.chillOverlayEnabled =
+        prefs.getBool('chillOverlayEnabled') ?? true;
+    _settings.chillOverlayGearButtons =
+        prefs.getBool('chillOverlayGearButtons') ?? true;
     _settings.chillOverlayStyle = prefs.getInt('chillOverlayStyle') ?? 0;
     _settings.chillSteeringAxis = prefs.getInt('chillSteeringAxis') ?? 0;
     _settings.chillSteeringSensitivity =
@@ -557,13 +583,13 @@ class SettingsProvider with ChangeNotifier {
         (prefs.getDouble('flightPitchDeadzone') ?? 0.0).clamp(0.0, 10.0);
     _settings.flightRollDeadzone =
         (prefs.getDouble('flightRollDeadzone') ?? 0.0).clamp(0.0, 10.0);
-    _settings.flightYawDeadzone =
-        (prefs.getDouble('flightYawDeadzone') ?? 0.0).clamp(0.0, 10.0);
+    _settings.flightYawDeadzone = (prefs.getDouble('flightYawDeadzone') ?? 0.0)
+        .clamp(0.0, 10.0);
     _settings.flightInvertPitch = prefs.getBool('flightInvertPitch') ?? false;
     _settings.flightInvertRoll = prefs.getBool('flightInvertRoll') ?? false;
     _settings.flightInvertYaw = prefs.getBool('flightInvertYaw') ?? false;
-    _settings.flightThrustDetents =
-        (prefs.getInt('flightThrustDetents') ?? 4).clamp(2, 8);
+    _settings.flightThrustDetents = (prefs.getInt('flightThrustDetents') ?? 4)
+        .clamp(2, 8);
     _settings.m9FireKey = prefs.getInt('m9FireKey') ?? 5;
     _settings.m9MissileKey = prefs.getInt('m9MissileKey') ?? 6;
     _settings.m9LockKey = prefs.getInt('m9LockKey') ?? 7;
@@ -580,14 +606,19 @@ class SettingsProvider with ChangeNotifier {
     _settings.m9RudderRightKey = prefs.getInt('m9RudderRightKey') ?? 2;
 
     // ── Mod 10 (Flight MFD) Ayarları ──
-    _settings.mfdShowArtificialHorizon = prefs.getBool('mfdShowArtificialHorizon') ?? true;
+    _settings.mfdShowArtificialHorizon =
+        prefs.getBool('mfdShowArtificialHorizon') ?? true;
     _settings.mfdShowSpeedTape = prefs.getBool('mfdShowSpeedTape') ?? true;
-    _settings.mfdShowAltitudeTape = prefs.getBool('mfdShowAltitudeTape') ?? true;
-    _settings.mfdShowEngineGauges = prefs.getBool('mfdShowEngineGauges') ?? true;
+    _settings.mfdShowAltitudeTape =
+        prefs.getBool('mfdShowAltitudeTape') ?? true;
+    _settings.mfdShowEngineGauges =
+        prefs.getBool('mfdShowEngineGauges') ?? true;
     _settings.mfdGyroFilterAlpha =
         (prefs.getDouble('mfdGyroFilterAlpha') ?? 0.15).clamp(0.05, 1.0);
 
-    _snapshots = SettingsSnapshot.decodeList(prefs.getString(_snapshotsPrefKey));
+    _snapshots = SettingsSnapshot.decodeList(
+      prefs.getString(_snapshotsPrefKey),
+    );
     _activeSnapshotId = prefs.getString(_activeSnapshotPrefKey);
 
     HapticManager().updateSettings(_settings);
@@ -607,10 +638,7 @@ class SettingsProvider with ChangeNotifier {
     await prefs.setDouble('clickMaxDistance', _settings.clickMaxDistance);
     await prefs.setDouble('clickMaxDuration', _settings.clickMaxDuration);
     await prefs.setInt('defaultDrivingMode', _settings.defaultDrivingMode);
-    await prefs.setBool(
-      'isCumulativeSteering',
-      _settings.isCumulativeSteering,
-    );
+    await prefs.setBool('isCumulativeSteering', _settings.isCumulativeSteering);
     await prefs.setDouble(
       'pedalIconAccelerationRate',
       _settings.pedalIconAccelerationRate.clamp(0.2, 3.0),
@@ -622,7 +650,10 @@ class SettingsProvider with ChangeNotifier {
       'simulatedHapticEnabled',
       _settings.simulatedHapticEnabled,
     );
-    await prefs.setBool('isAddonMasterSwitchActive', _settings.isAddonMasterSwitchActive);
+    await prefs.setBool(
+      'isAddonMasterSwitchActive',
+      _settings.isAddonMasterSwitchActive,
+    );
     await prefs.setStringList('activeAddonIds', _settings.activeAddonIds);
     await prefs.setBool('dlcHapticRpm', _settings.dlcHapticRpm);
     await prefs.setBool('dlcHapticSlip', _settings.dlcHapticSlip);
@@ -634,12 +665,18 @@ class SettingsProvider with ChangeNotifier {
     final hapticTypesMapStr = _settings.customButtonHapticTypes.map(
       (key, value) => MapEntry(key.toString(), value),
     );
-    await prefs.setString('customButtonHapticTypes', jsonEncode(hapticTypesMapStr));
+    await prefs.setString(
+      'customButtonHapticTypes',
+      jsonEncode(hapticTypesMapStr),
+    );
 
     final hapticTriggersMapStr = _settings.customButtonHapticTriggers.map(
       (key, value) => MapEntry(key.toString(), value),
     );
-    await prefs.setString('customButtonHapticTriggers', jsonEncode(hapticTriggersMapStr));
+    await prefs.setString(
+      'customButtonHapticTriggers',
+      jsonEncode(hapticTriggersMapStr),
+    );
     if (_settings.customLayout5Json != null) {
       await prefs.setString('customLayout5Json', _settings.customLayout5Json!);
     }
@@ -659,7 +696,10 @@ class SettingsProvider with ChangeNotifier {
       'gyroAutoCenterDuration',
       _settings.gyroAutoCenterDuration.clamp(5.0, 30.0),
     );
-    await prefs.setBool('includePitchInDeadzone', _settings.includePitchInDeadzone);
+    await prefs.setBool(
+      'includePitchInDeadzone',
+      _settings.includePitchInDeadzone,
+    );
     await prefs.setBool('gyroLookEnabled', _settings.gyroLookEnabled);
     await prefs.setInt('gyroLookStyle', _settings.gyroLookStyle);
     await prefs.setInt('gyroLookMode', _settings.gyroLookMode.clamp(1, 3));
@@ -671,10 +711,7 @@ class SettingsProvider with ChangeNotifier {
       'gyroLookDeadzone',
       _settings.gyroLookDeadzone.clamp(1.0, 30.0),
     );
-    await prefs.setInt(
-      'joystickMode',
-      _settings.joystickMode.clamp(0, 3),
-    );
+    await prefs.setInt('joystickMode', _settings.joystickMode.clamp(0, 3));
     await prefs.setString(
       'layout5Profiles',
       jsonEncode(_settings.layout5Profiles),
@@ -763,12 +800,27 @@ class SettingsProvider with ChangeNotifier {
     await prefs.setInt('tertiaryColor', _settings.tertiaryColor.toARGB32());
     await prefs.setInt('warningColor', _settings.warningColor.toARGB32());
     await prefs.setInt('surfaceColor', _settings.surfaceColor.toARGB32());
-    await prefs.setBool('preventIncompatibleColors', _settings.preventIncompatibleColors);
-    await prefs.setInt('homeStartBtnColor', _settings.homeStartBtnColor.toARGB32());
+    await prefs.setBool(
+      'preventIncompatibleColors',
+      _settings.preventIncompatibleColors,
+    );
+    await prefs.setInt(
+      'homeStartBtnColor',
+      _settings.homeStartBtnColor.toARGB32(),
+    );
     await prefs.setBool('separatePedalBg', _settings.separatePedalBg);
-    await prefs.setInt('leftPedalBgColor', _settings.leftPedalBgColor.toARGB32());
-    await prefs.setInt('rightPedalBgColor', _settings.rightPedalBgColor.toARGB32());
-    await prefs.setInt('mode234ButtonColor', _settings.mode234ButtonColor.toARGB32());
+    await prefs.setInt(
+      'leftPedalBgColor',
+      _settings.leftPedalBgColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'rightPedalBgColor',
+      _settings.rightPedalBgColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mode234ButtonColor',
+      _settings.mode234ButtonColor.toARGB32(),
+    );
     await prefs.setInt('mod01BgColor', _settings.mod01BgColor.toARGB32());
     await prefs.setInt('mod234BgColor', _settings.mod234BgColor.toARGB32());
     await prefs.setInt('mod5BgColor', _settings.mod5BgColor.toARGB32());
@@ -781,36 +833,64 @@ class SettingsProvider with ChangeNotifier {
         await prefs.remove(key);
       }
     }
+
     await saveOrRemove('bgMediaPath', _settings.bgMediaPath);
-    await saveOrRemove('homeStartBtnMediaPath', _settings.homeStartBtnMediaPath);
-    await saveOrRemove('generalButtonMediaPath', _settings.generalButtonMediaPath);
+    await saveOrRemove(
+      'homeStartBtnMediaPath',
+      _settings.homeStartBtnMediaPath,
+    );
+    await saveOrRemove(
+      'generalButtonMediaPath',
+      _settings.generalButtonMediaPath,
+    );
     await saveOrRemove('gasBarMediaPath', _settings.gasBarMediaPath);
     await saveOrRemove('brakeBarMediaPath', _settings.brakeBarMediaPath);
     await saveOrRemove('pedalBarBgMediaPath', _settings.pedalBarBgMediaPath);
     await saveOrRemove('leftPedalBgMediaPath', _settings.leftPedalBgMediaPath);
-    await saveOrRemove('rightPedalBgMediaPath', _settings.rightPedalBgMediaPath);
+    await saveOrRemove(
+      'rightPedalBgMediaPath',
+      _settings.rightPedalBgMediaPath,
+    );
     await saveOrRemove('yetsoreMediaPath', _settings.yetsoreMediaPath);
     await saveOrRemove('steeringBarMediaPath', _settings.steeringBarMediaPath);
-    await saveOrRemove('mode234ButtonMediaPath', _settings.mode234ButtonMediaPath);
+    await saveOrRemove(
+      'mode234ButtonMediaPath',
+      _settings.mode234ButtonMediaPath,
+    );
     await saveOrRemove('mod01BgMediaPath', _settings.mod01BgMediaPath);
     await saveOrRemove('mod234BgMediaPath', _settings.mod234BgMediaPath);
     await saveOrRemove('mod5BgMediaPath', _settings.mod5BgMediaPath);
-    await saveOrRemove('mod5JoystickMediaPath', _settings.mod5JoystickMediaPath);
-    await saveOrRemove('mod5JoystickBaseMediaPath', _settings.mod5JoystickBaseMediaPath);
+    await saveOrRemove(
+      'mod5JoystickMediaPath',
+      _settings.mod5JoystickMediaPath,
+    );
+    await saveOrRemove(
+      'mod5JoystickBaseMediaPath',
+      _settings.mod5JoystickBaseMediaPath,
+    );
     await saveOrRemove('mod5ButtonMediaPath', _settings.mod5ButtonMediaPath);
     await saveOrRemove('mod6BgMediaPath', _settings.mod6BgMediaPath);
     await saveOrRemove('mod6HornMediaPath', _settings.mod6HornMediaPath);
     await saveOrRemove('mod6ButtonsMediaPath', _settings.mod6ButtonsMediaPath);
-    await saveOrRemove('mod6AccelIconsMediaPath', _settings.mod6AccelIconsMediaPath);
+    await saveOrRemove(
+      'mod6AccelIconsMediaPath',
+      _settings.mod6AccelIconsMediaPath,
+    );
     await saveOrRemove('clutchBarMediaPath', _settings.clutchBarMediaPath);
-    await saveOrRemove('handbrakeBarMediaPath', _settings.handbrakeBarMediaPath);
+    await saveOrRemove(
+      'handbrakeBarMediaPath',
+      _settings.handbrakeBarMediaPath,
+    );
     await saveOrRemove('mod7BgMediaPath', _settings.mod7BgMediaPath);
     await saveOrRemove('mod8BgMediaPath', _settings.mod8BgMediaPath);
     await saveOrRemove('mod9BgMediaPath', _settings.mod9BgMediaPath);
 
     // ── Mod 7 (F1 HUD) Ayarları ──
     await prefs.setBool('f1UseImperial', _settings.f1UseImperial);
-    await prefs.setDouble('f1LowPassAlpha', _settings.f1LowPassAlpha.clamp(0.05, 1.0));
+    await prefs.setDouble(
+      'f1LowPassAlpha',
+      _settings.f1LowPassAlpha.clamp(0.05, 1.0),
+    );
     await prefs.setBool('f1HapticRevLimiter', _settings.f1HapticRevLimiter);
     await prefs.setBool('f1HapticWheelSlip', _settings.f1HapticWheelSlip);
     await prefs.setInt('m7Key1', _settings.m7Key1);
@@ -828,23 +908,53 @@ class SettingsProvider with ChangeNotifier {
 
     // ── Mod 8 (Chill Drive) Ayarları ──
     await prefs.setBool('chillOverlayEnabled', _settings.chillOverlayEnabled);
-    await prefs.setBool('chillOverlayGearButtons', _settings.chillOverlayGearButtons);
+    await prefs.setBool(
+      'chillOverlayGearButtons',
+      _settings.chillOverlayGearButtons,
+    );
     await prefs.setInt('chillOverlayStyle', _settings.chillOverlayStyle);
     await prefs.setInt('chillSteeringAxis', _settings.chillSteeringAxis);
-    await prefs.setDouble('chillSteeringSensitivity', _settings.chillSteeringSensitivity.clamp(0.2, 3.0));
-    await prefs.setDouble('chillGasBrakeSensitivity', _settings.chillGasBrakeSensitivity.clamp(0.2, 3.0));
+    await prefs.setDouble(
+      'chillSteeringSensitivity',
+      _settings.chillSteeringSensitivity.clamp(0.2, 3.0),
+    );
+    await prefs.setDouble(
+      'chillGasBrakeSensitivity',
+      _settings.chillGasBrakeSensitivity.clamp(0.2, 3.0),
+    );
 
     // ── Mod 9 (Flight Stick) Ayarları ──
-    await prefs.setDouble('flightPitchSensitivity', _settings.flightPitchSensitivity.clamp(0.2, 3.0));
-    await prefs.setDouble('flightRollSensitivity', _settings.flightRollSensitivity.clamp(0.2, 3.0));
-    await prefs.setDouble('flightYawSensitivity', _settings.flightYawSensitivity.clamp(0.2, 3.0));
-    await prefs.setDouble('flightPitchDeadzone', _settings.flightPitchDeadzone.clamp(0.0, 10.0));
-    await prefs.setDouble('flightRollDeadzone', _settings.flightRollDeadzone.clamp(0.0, 10.0));
-    await prefs.setDouble('flightYawDeadzone', _settings.flightYawDeadzone.clamp(0.0, 10.0));
+    await prefs.setDouble(
+      'flightPitchSensitivity',
+      _settings.flightPitchSensitivity.clamp(0.2, 3.0),
+    );
+    await prefs.setDouble(
+      'flightRollSensitivity',
+      _settings.flightRollSensitivity.clamp(0.2, 3.0),
+    );
+    await prefs.setDouble(
+      'flightYawSensitivity',
+      _settings.flightYawSensitivity.clamp(0.2, 3.0),
+    );
+    await prefs.setDouble(
+      'flightPitchDeadzone',
+      _settings.flightPitchDeadzone.clamp(0.0, 10.0),
+    );
+    await prefs.setDouble(
+      'flightRollDeadzone',
+      _settings.flightRollDeadzone.clamp(0.0, 10.0),
+    );
+    await prefs.setDouble(
+      'flightYawDeadzone',
+      _settings.flightYawDeadzone.clamp(0.0, 10.0),
+    );
     await prefs.setBool('flightInvertPitch', _settings.flightInvertPitch);
     await prefs.setBool('flightInvertRoll', _settings.flightInvertRoll);
     await prefs.setBool('flightInvertYaw', _settings.flightInvertYaw);
-    await prefs.setInt('flightThrustDetents', _settings.flightThrustDetents.clamp(2, 8));
+    await prefs.setInt(
+      'flightThrustDetents',
+      _settings.flightThrustDetents.clamp(2, 8),
+    );
     await prefs.setInt('m9FireKey', _settings.m9FireKey);
     await prefs.setInt('m9MissileKey', _settings.m9MissileKey);
     await prefs.setInt('m9LockKey', _settings.m9LockKey);
@@ -860,11 +970,17 @@ class SettingsProvider with ChangeNotifier {
     await prefs.setInt('m9RudderRightKey', _settings.m9RudderRightKey);
 
     // ── Mod 10 (Flight MFD) Ayarları ──
-    await prefs.setBool('mfdShowArtificialHorizon', _settings.mfdShowArtificialHorizon);
+    await prefs.setBool(
+      'mfdShowArtificialHorizon',
+      _settings.mfdShowArtificialHorizon,
+    );
     await prefs.setBool('mfdShowSpeedTape', _settings.mfdShowSpeedTape);
     await prefs.setBool('mfdShowAltitudeTape', _settings.mfdShowAltitudeTape);
     await prefs.setBool('mfdShowEngineGauges', _settings.mfdShowEngineGauges);
-    await prefs.setDouble('mfdGyroFilterAlpha', _settings.mfdGyroFilterAlpha.clamp(0.05, 1.0));
+    await prefs.setDouble(
+      'mfdGyroFilterAlpha',
+      _settings.mfdGyroFilterAlpha.clamp(0.05, 1.0),
+    );
     await prefs.setInt('detailColor', _settings.detailColor.toARGB32());
     await prefs.setInt(
       'steeringIndicatorColor',
@@ -876,37 +992,82 @@ class SettingsProvider with ChangeNotifier {
     await prefs.setInt('yetsoreColor', _settings.yetsoreColor.toARGB32());
     await prefs.setInt('pedalBgColor', _settings.pedalBgColor.toARGB32());
     await prefs.setInt('clutchColor', _settings.clutchColor.toARGB32());
-    await prefs.setInt('clutchYetsoreColor', _settings.clutchYetsoreColor.toARGB32());
+    await prefs.setInt(
+      'clutchYetsoreColor',
+      _settings.clutchYetsoreColor.toARGB32(),
+    );
     await prefs.setInt('handbrakeColor', _settings.handbrakeColor.toARGB32());
-    await prefs.setInt('handbrakeYetsoreColor', _settings.handbrakeYetsoreColor.toARGB32());
+    await prefs.setInt(
+      'handbrakeYetsoreColor',
+      _settings.handbrakeYetsoreColor.toARGB32(),
+    );
     await prefs.setInt('gasIconColor', _settings.gasIconColor.toARGB32());
     await prefs.setInt('brakeIconColor', _settings.brakeIconColor.toARGB32());
     await prefs.setInt('clutchIconColor', _settings.clutchIconColor.toARGB32());
-    await prefs.setInt('clutchButtonColor', _settings.clutchButtonColor.toARGB32());
-    await prefs.setInt('handbrakeIconColor', _settings.handbrakeIconColor.toARGB32());
-    await prefs.setInt('handbrakeButtonColor', _settings.handbrakeButtonColor.toARGB32());
-    await prefs.setInt('steeringWheelColor', _settings.steeringWheelColor.toARGB32());
-    await prefs.setInt('steeringTurnRightColor', _settings.steeringTurnRightColor.toARGB32());
-    await prefs.setInt('steeringTurnLeftColor', _settings.steeringTurnLeftColor.toARGB32());
+    await prefs.setInt(
+      'clutchButtonColor',
+      _settings.clutchButtonColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'handbrakeIconColor',
+      _settings.handbrakeIconColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'handbrakeButtonColor',
+      _settings.handbrakeButtonColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'steeringWheelColor',
+      _settings.steeringWheelColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'steeringTurnRightColor',
+      _settings.steeringTurnRightColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'steeringTurnLeftColor',
+      _settings.steeringTurnLeftColor.toARGB32(),
+    );
     await prefs.setInt('mod6BgColor', _settings.mod6BgColor.toARGB32());
     await prefs.setInt('mod6HornColor', _settings.mod6HornColor.toARGB32());
 
     // Mod 7 Özelleştirme
     await prefs.setInt('mod7BgColor', _settings.mod7BgColor.toARGB32());
-    await prefs.setInt('mod7TyreColdColor', _settings.mod7TyreColdColor.toARGB32());
-    await prefs.setInt('mod7TyreOptColor', _settings.mod7TyreOptColor.toARGB32());
-    await prefs.setInt('mod7TyreHotColor', _settings.mod7TyreHotColor.toARGB32());
-    await prefs.setInt('mod7TyreCritColor', _settings.mod7TyreCritColor.toARGB32());
+    await prefs.setInt(
+      'mod7TyreColdColor',
+      _settings.mod7TyreColdColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod7TyreOptColor',
+      _settings.mod7TyreOptColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod7TyreHotColor',
+      _settings.mod7TyreHotColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod7TyreCritColor',
+      _settings.mod7TyreCritColor.toARGB32(),
+    );
     await prefs.setInt('mod7RpmLowColor', _settings.mod7RpmLowColor.toARGB32());
     await prefs.setInt('mod7RpmMidColor', _settings.mod7RpmMidColor.toARGB32());
-    await prefs.setInt('mod7RpmHighColor', _settings.mod7RpmHighColor.toARGB32());
+    await prefs.setInt(
+      'mod7RpmHighColor',
+      _settings.mod7RpmHighColor.toARGB32(),
+    );
     await prefs.setInt('mod7RpmLimColor', _settings.mod7RpmLimColor.toARGB32());
     await prefs.setInt('mod7GearColor', _settings.mod7GearColor.toARGB32());
     await prefs.setInt('mod7SpeedColor', _settings.mod7SpeedColor.toARGB32());
-    await prefs.setInt('mod7DrsActiveColor', _settings.mod7DrsActiveColor.toARGB32());
+    await prefs.setInt(
+      'mod7DrsActiveColor',
+      _settings.mod7DrsActiveColor.toARGB32(),
+    );
     await prefs.setInt('mod7ErsColor', _settings.mod7ErsColor.toARGB32());
     await prefs.setInt('mod7RpmBoxColor', _settings.mod7RpmBoxColor.toARGB32());
-    await prefs.setInt('mod7ButtonsColor', _settings.mod7ButtonsColor.toARGB32());
+    await prefs.setInt(
+      'mod7ButtonsColor',
+      _settings.mod7ButtonsColor.toARGB32(),
+    );
 
     // Mod 8 Özelleştirme
     await prefs.setInt('mod8BgColor', _settings.mod8BgColor.toARGB32());
@@ -915,25 +1076,64 @@ class SettingsProvider with ChangeNotifier {
     await prefs.setInt('mod8BrakeColor', _settings.mod8BrakeColor.toARGB32());
     await prefs.setInt('mod8RadarColor', _settings.mod8RadarColor.toARGB32());
     await prefs.setInt('mod8CruiseColor', _settings.mod8CruiseColor.toARGB32());
-    await prefs.setInt('mod8HoldButtonsColor', _settings.mod8HoldButtonsColor.toARGB32());
-    await prefs.setInt('mod8GearBtnColor', _settings.mod8GearBtnColor.toARGB32());
-    await prefs.setInt('mod8OverlayBgColor', _settings.mod8OverlayBgColor.toARGB32());
-    await prefs.setInt('mod8OverlayBorderColor', _settings.mod8OverlayBorderColor.toARGB32());
-    await prefs.setInt('mod8OverlaySteerColor', _settings.mod8OverlaySteerColor.toARGB32());
-    await prefs.setInt('mod8OverlayGasColor', _settings.mod8OverlayGasColor.toARGB32());
-    await prefs.setInt('mod8OverlayBrakeColor', _settings.mod8OverlayBrakeColor.toARGB32());
-    await prefs.setInt('mod8OverlayGearBtnColor', _settings.mod8OverlayGearBtnColor.toARGB32());
+    await prefs.setInt(
+      'mod8HoldButtonsColor',
+      _settings.mod8HoldButtonsColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod8GearBtnColor',
+      _settings.mod8GearBtnColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod8OverlayBgColor',
+      _settings.mod8OverlayBgColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod8OverlayBorderColor',
+      _settings.mod8OverlayBorderColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod8OverlaySteerColor',
+      _settings.mod8OverlaySteerColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod8OverlayGasColor',
+      _settings.mod8OverlayGasColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod8OverlayBrakeColor',
+      _settings.mod8OverlayBrakeColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod8OverlayGearBtnColor',
+      _settings.mod8OverlayGearBtnColor.toARGB32(),
+    );
 
     // Mod 9 Özelleştirme
     await prefs.setInt('mod9BgColor', _settings.mod9BgColor.toARGB32());
-    await prefs.setInt('mod9ThrottleColor', _settings.mod9ThrottleColor.toARGB32());
+    await prefs.setInt(
+      'mod9ThrottleColor',
+      _settings.mod9ThrottleColor.toARGB32(),
+    );
     await prefs.setInt('mod9WepColor', _settings.mod9WepColor.toARGB32());
-    await prefs.setInt('mod9AvionicsColor', _settings.mod9AvionicsColor.toARGB32());
+    await prefs.setInt(
+      'mod9AvionicsColor',
+      _settings.mod9AvionicsColor.toARGB32(),
+    );
     await prefs.setInt('mod9RudderColor', _settings.mod9RudderColor.toARGB32());
     await prefs.setInt('mod9HudColor', _settings.mod9HudColor.toARGB32());
-    await prefs.setInt('mod9FireBtnColor', _settings.mod9FireBtnColor.toARGB32());
-    await prefs.setInt('mod9WeaponBtnColor', _settings.mod9WeaponBtnColor.toARGB32());
-    await prefs.setInt('mod9HatSwitchColor', _settings.mod9HatSwitchColor.toARGB32());
+    await prefs.setInt(
+      'mod9FireBtnColor',
+      _settings.mod9FireBtnColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod9WeaponBtnColor',
+      _settings.mod9WeaponBtnColor.toARGB32(),
+    );
+    await prefs.setInt(
+      'mod9HatSwitchColor',
+      _settings.mod9HatSwitchColor.toARGB32(),
+    );
 
     notifyListeners();
   }
@@ -972,8 +1172,7 @@ class SettingsProvider with ChangeNotifier {
     required String name,
     required MonetizationProvider monetizationProvider,
   }) async {
-    if (!monetizationProvider.isPro &&
-        _snapshots.length >= maxFreeSnapshots) {
+    if (!monetizationProvider.isPro && _snapshots.length >= maxFreeSnapshots) {
       await monetizationProvider.showPaywall(context);
       return false;
     }

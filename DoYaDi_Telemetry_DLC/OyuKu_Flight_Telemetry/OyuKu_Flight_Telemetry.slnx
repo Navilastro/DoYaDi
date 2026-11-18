@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="OyuKu_Flight_Telemetry.vcxproj" Id="9c41f7b2-5b11-4f9e-8b3d-224d8f5c7a10" />
+</Solution>

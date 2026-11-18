@@ -53,12 +53,35 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
     super.dispose();
   }
 
-  void _createNewMacro(BuildContext context, SettingsProvider prov) async {
-    final newMacroId = prov.settings.customMacros.keys.isEmpty
-        ? 2000
-        : prov.settings.customMacros.keys.reduce((a, b) => a > b ? a : b) + 1;
+  String _formatMacroStep(int step, String keyboardPrefix) {
+    if (step <= -30000) {
+      final pct = -(step + 30000);
+      return '${AppTranslations.getText('brake_pct')} $pct%';
+    }
+    if (step <= -20000) {
+      final pct = -(step + 20000);
+      return '${AppTranslations.getText('gas_pct')} $pct%';
+    }
+    if (step <= -10000) {
+      final ms = -(step + 10000);
+      return '$ms ms';
+    }
+    return KeyboardKeys.getKeyLabel(step).replaceAll(keyboardPrefix, '');
+  }
 
-    List<int> selectedKeys = [];
+  void _createNewMacro(BuildContext context, SettingsProvider prov) async {
+    final existingSerialIds = prov.settings.customMacros.keys
+        .where((k) => k >= 2010 && k < 3000);
+    final newMacroId = existingSerialIds.isEmpty
+        ? 2010
+        : existingSerialIds.reduce((a, b) => a > b ? a : b) + 1;
+
+    final List<int> steps = [];
+    int stepKind = 0; // 0: Tuş, 1: Gecikme (ms), 2: Gaz %, 3: Fren %
+    int draftKey = 5;
+    double draftSlider = 200.0;
+    final keyboardPrefix = '${AppTranslations.getText('keyboard')}: ';
+
     await showDialog(
       context: context,
       builder: (dctx) => StatefulBuilder(
@@ -71,59 +94,198 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
             ),
             content: SizedBox(
               width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppTranslations.getText('max_4_keys'),
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: selectedKeys.map((k) {
-                      String kName = KeyboardKeys.appKeyMap.entries
-                          .firstWhere(
-                            (e) => e.value == k,
-                            orElse: () => const MapEntry('?', 0),
-                          )
-                          .key;
-                      return Chip(
-                        label: Text(
-                          kName,
-                          style: const TextStyle(fontSize: 12),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppTranslations.getText('serial_macro_desc'),
+                      style: const TextStyle(
+                        color: Color(0xFF40E0D0),
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (steps.isEmpty)
+                      Text(
+                        AppTranslations.getText('no_macro_steps_yet'),
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 12,
                         ),
-                        onDeleted: () {
-                          setDialogState(() => selectedKeys.remove(k));
+                      )
+                    else
+                      ...steps.asMap().entries.map((e) {
+                        final idx = e.key;
+                        final st = e.value;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1A1A3E),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${idx + 1}. ${_formatMacroStep(st, keyboardPrefix)}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.redAccent,
+                                  size: 16,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                onPressed: () =>
+                                    setDialogState(() => steps.removeAt(idx)),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    const Divider(color: Colors.white12, height: 20),
+                    DropdownButton<int>(
+                      value: stepKind,
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF1A1A3E),
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      items: [
+                        DropdownMenuItem(
+                          value: 0,
+                          child: Text(AppTranslations.getText('step_key_press')),
+                        ),
+                        DropdownMenuItem(
+                          value: 1,
+                          child: Text(AppTranslations.getText('step_delay')),
+                        ),
+                        DropdownMenuItem(
+                          value: 2,
+                          child: Text(AppTranslations.getText('step_gas_pct')),
+                        ),
+                        DropdownMenuItem(
+                          value: 3,
+                          child: Text(AppTranslations.getText('step_brake_pct')),
+                        ),
+                      ],
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setDialogState(() {
+                          stepKind = v;
+                          if (v == 1) {
+                            draftSlider = 200.0;
+                          } else if (v == 2 || v == 3) {
+                            draftSlider = 50.0;
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    if (stepKind == 0)
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.keyboard, size: 16),
+                        label: Text(
+                          KeyboardKeys.getKeyLabel(draftKey),
+                          style: const TextStyle(color: Color(0xFF40E0D0)),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.white24),
+                        ),
+                        onPressed: () async {
+                          final k = await showSearchableKeyPicker(
+                            context,
+                            draftKey,
+                            hideMacros: true,
+                          );
+                          if (k != null && k > 0) {
+                            setDialogState(() => draftKey = k);
+                          }
                         },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  if (selectedKeys.length < 4)
+                      ),
+                    if (stepKind == 1)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Slider(
+                              value: draftSlider.clamp(50.0, 2000.0),
+                              min: 50,
+                              max: 2000,
+                              divisions: 39,
+                              activeColor: const Color(0xFF40E0D0),
+                              onChanged: (v) =>
+                                  setDialogState(() => draftSlider = v),
+                            ),
+                          ),
+                          Text(
+                            '${draftSlider.round()} ms',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (stepKind == 2 || stepKind == 3)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Slider(
+                              value: draftSlider.clamp(0.0, 100.0),
+                              min: 0,
+                              max: 100,
+                              divisions: 20,
+                              activeColor: stepKind == 2
+                                  ? const Color(0xFF00C853)
+                                  : Colors.redAccent,
+                              onChanged: (v) =>
+                                  setDialogState(() => draftSlider = v),
+                            ),
+                          ),
+                          Text(
+                            '${draftSlider.round()}%',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 8),
                     ElevatedButton.icon(
                       icon: const Icon(Icons.add),
-                      label: Text(AppTranslations.getText('add_key')),
+                      label: Text(AppTranslations.getText('add_step')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1A1A3E),
                         foregroundColor: Colors.white,
                       ),
-                      onPressed: () async {
-                        final k = await showSearchableKeyPicker(
-                          context,
-                          0,
-                          hideMacros: true,
-                        );
-                        if (k != null && k > 0) {
-                          setDialogState(() {
-                            if (selectedKeys.length < 4) selectedKeys.add(k);
-                          });
-                        }
+                      onPressed: () {
+                        setDialogState(() {
+                          if (stepKind == 0 && draftKey > 0) {
+                            steps.add(draftKey);
+                          } else if (stepKind == 1) {
+                            steps.add(-10000 - draftSlider.round());
+                          } else if (stepKind == 2) {
+                            steps.add(-20000 - draftSlider.round());
+                          } else if (stepKind == 3) {
+                            steps.add(-30000 - draftSlider.round());
+                          }
+                        });
                       },
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -135,9 +297,9 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
                 ),
               ),
               ElevatedButton(
-                onPressed: selectedKeys.isNotEmpty
+                onPressed: steps.isNotEmpty
                     ? () {
-                        prov.settings.customMacros[newMacroId] = selectedKeys;
+                        prov.settings.customMacros[newMacroId] = steps;
                         prov.updateSettings(prov.settings);
                         Navigator.pop(dctx);
                         setState(() {});
@@ -566,15 +728,7 @@ class _SearchableKeyPickerState extends State<SearchableKeyPicker>
 
     final keyboardPrefix = '${AppTranslations.getText('keyboard')}: ';
     String mStr = mKeys
-        .map(
-          (k) => KeyboardKeys.appKeyMap.entries
-              .firstWhere(
-                (e) => e.value == k,
-                orElse: () => const MapEntry('?', 0),
-              )
-              .key
-              .replaceAll(keyboardPrefix, ''),
-        )
+        .map((k) => _formatMacroStep(k, keyboardPrefix))
         .join(isParallel ? ' + ' : ' → ');
 
     return InkWell(

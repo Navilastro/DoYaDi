@@ -186,14 +186,14 @@ class SensorManager {
 
     if (pitch >= 50.0 && pitch <= 70.0) {
       double t = (pitch - 50.0) / (70.0 - 50.0);
-      multiplier = maxMultiplier + (t * (1.0 - maxMultiplier));
+      multiplier = minMultiplier + (t * (1.0 - minMultiplier));
     } else if (pitch >= 110.0 && pitch <= 130.0) {
       double t = (pitch - 110.0) / (130.0 - 110.0);
-      multiplier = 1.0 + (t * (minMultiplier - 1.0));
+      multiplier = 1.0 + (t * (maxMultiplier - 1.0));
     } else if (pitch < 50.0) {
-      multiplier = maxMultiplier;
-    } else if (pitch > 130.0) {
       multiplier = minMultiplier;
+    } else if (pitch > 130.0) {
+      multiplier = maxMultiplier;
     }
 
     // Gyro-to-Right Analog and Mouse will be processed in _processGyroscope
@@ -277,9 +277,9 @@ class SensorManager {
       }
     }
 
-    // ── Mod 9 (Arcade Flight / HOTAS - WT, DCS, MSFS) İzole Hesaplama ─────────
+    // ── Mod 9 & Mod 10 (Flight / HOTAS / MFD - WT, DCS, MSFS) İzole Hesaplama ──
     // Temel sürüş modlarına (Mod 0-7) kesinlikle müdahale etmez.
-    if (settings.defaultDrivingMode == 9) {
+    if (settings.defaultDrivingMode == 9 || settings.defaultDrivingMode == 10) {
       // Yatay (Landscape) tutuşta:
       // Roll (Aileron): event.y (sağa/sola yatırma)
       // Pitch (Elevator): event.z ve event.x (öne/geriye eğme)
@@ -363,8 +363,8 @@ class SensorManager {
           }
         }
 
-        // 1.c Mod 9 (Arcade Flight) Gyro Yaw / Rudder Desteği
-        if (settings.defaultDrivingMode == 9) {
+        // 1.c Mod 9 & Mod 10 (Flight / MFD) Gyro Yaw / Rudder Desteği
+        if (settings.defaultDrivingMode == 9 || settings.defaultDrivingMode == 10) {
           final double yawDeadzoneDeg = settings.flightYawDeadzone.clamp(0.0, 15.0);
           final double yawNoiseRad = yawDeadzoneDeg > 0.0 ? 0.025 : 0.005;
           final double yawRate = -event.x; // Landscape tutuşta sağa/sola döndürme

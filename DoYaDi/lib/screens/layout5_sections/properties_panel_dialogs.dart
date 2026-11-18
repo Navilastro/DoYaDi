@@ -65,21 +65,14 @@ extension _PropertiesPanelDialogsExt on _PropertiesPanelState {
                       final newVal = await showSearchableKeyPicker(
                         ctx,
                         val.toInt(),
+                        hideMacros: true,
                       );
                       if (newVal != null) {
                         set(() => val = newVal.toDouble());
                       }
                     },
                     child: Text(
-                      val >= 2000
-                          ? '${AppTranslations.getText('macro_prefix')}${val.toInt() - 1999}'
-                          : val >= 1000
-                              ? KeyboardKeys.appKeyMap.entries
-                                  .firstWhere(
-                                      (e) => e.value == val.toInt(),
-                                      orElse: () => const MapEntry('', 0))
-                                  .key
-                              : '${AppTranslations.getText('key_prefix')} ${val.toInt()}',
+                      KeyboardKeys.getKeyLabel(val.toInt()),
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),

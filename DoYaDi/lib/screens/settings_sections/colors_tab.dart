@@ -593,19 +593,105 @@ class _ColorsTabContentState extends State<_ColorsTabContent> {
 
   @override
   Widget build(BuildContext context) {
+    final monetization = Provider.of<MonetizationProvider>(context);
+    final bool isPro = monetization.isPro;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
-        // 1. Genel başlığının hemen üstünde varsayılana sıfırlama butonu
-        _buildResetColorsButton(),
-        // 2. Genel başlığı & Karşılama yazısı
-        widget.buildHeader(AppTranslations.getText('scope_general')),
-        _buildDriverGreetingRow(),
-        // 3. Karşılama yazısının hemen altında kapsam açılır listesi
-        _buildScopeDropdown(),
-        // 4. Seçili kapsama göre dinamik içerik
-        ..._buildScopeContent(),
+        if (!isPro) _buildProLockCard(context, monetization),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: isPro ? null : () => monetization.showPaywall(context),
+          child: AbsorbPointer(
+            absorbing: !isPro,
+            child: Opacity(
+              opacity: isPro ? 1.0 : 0.45,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 1. Genel başlığının hemen üstünde varsayılana sıfırlama butonu
+                  _buildResetColorsButton(),
+                  // 2. Genel başlığı & Karşılama yazısı
+                  widget.buildHeader(AppTranslations.getText('scope_general')),
+                  _buildDriverGreetingRow(),
+                  // 3. Karşılama yazısının hemen altında kapsam açılır listesi
+                  _buildScopeDropdown(),
+                  // 4. Seçili kapsama göre dinamik içerik
+                  ..._buildScopeContent(),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildProLockCard(
+    BuildContext context,
+    MonetizationProvider monetization,
+  ) {
+    final ac = _s.detailColor;
+    return GlassContainer(
+      isGlassActive: _hasBgMedia,
+      solidBackgroundColor: Colors.amber.withValues(alpha: 0.12),
+      border: Border.all(color: Colors.amber.withValues(alpha: 0.55)),
+      borderRadius: BorderRadius.circular(14),
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.workspace_premium,
+              color: Colors.amber,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppTranslations.getText('colors_pro_lock_title'),
+                  style: TextStyle(
+                    color: _cardTextColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  AppTranslations.getText('colors_pro_lock_desc'),
+                  style: TextStyle(color: _cardSecondaryColor, fontSize: 11.5),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.lock_open_rounded, size: 16),
+                  label: Text(AppTranslations.getText('upgrade_to_pro')),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
+                    visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () => monetization.showPaywall(context),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.lock_outline, color: ac.withValues(alpha: 0.7), size: 20),
+        ],
+      ),
     );
   }
 

@@ -130,7 +130,8 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
     final bool restricted = AppConfig.instance.hasRestrictedMod5;
     final ButtonMode safeMode = (restricted &&
             item.mode != ButtonMode.key &&
-            item.mode != ButtonMode.macro)
+            item.mode != ButtonMode.macro &&
+            item.mode != ButtonMode.parallelMacro)
         ? ButtonMode.key
         : item.mode;
     return Column(
@@ -144,43 +145,50 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
               style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
             const SizedBox(width: 8),
-            DropdownButton<ButtonMode>(
-              value: safeMode,
-              dropdownColor: const Color(0xFF1A1A3E),
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              items: [
-                DropdownMenuItem(
-                  value: ButtonMode.key,
-                  child: Text(AppTranslations.getText('mode_single_key')),
-                ),
-                if (!restricted) ...[
+            Expanded(
+              child: DropdownButton<ButtonMode>(
+                value: safeMode,
+                isExpanded: true,
+                dropdownColor: const Color(0xFF1A1A3E),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                items: [
                   DropdownMenuItem(
-                    value: ButtonMode.gasPct,
-                    child: Text(AppTranslations.getText('mode_fixed_gas')),
+                    value: ButtonMode.key,
+                    child: Text(AppTranslations.getText('mode_single_key')),
+                  ),
+                  if (!restricted) ...[
+                    DropdownMenuItem(
+                      value: ButtonMode.gasPct,
+                      child: Text(AppTranslations.getText('mode_fixed_gas')),
+                    ),
+                    DropdownMenuItem(
+                      value: ButtonMode.brakePct,
+                      child: Text(AppTranslations.getText('mode_fixed_brake')),
+                    ),
+                  ],
+                  DropdownMenuItem(
+                    value: ButtonMode.macro,
+                    child: Text(AppTranslations.getText('mode_macro')),
                   ),
                   DropdownMenuItem(
-                    value: ButtonMode.brakePct,
-                    child: Text(AppTranslations.getText('mode_fixed_brake')),
+                    value: ButtonMode.parallelMacro,
+                    child: Text(AppTranslations.getText('parallel_macro')),
                   ),
+                  if (!restricted) ...[
+                    DropdownMenuItem(
+                      value: ButtonMode.handbrakePct,
+                      child: Text(AppTranslations.getText('mode_handbrake_pct')),
+                    ),
+                    DropdownMenuItem(
+                      value: ButtonMode.clutchPct,
+                      child: Text(AppTranslations.getText('mode_clutch_pct')),
+                    ),
+                  ],
                 ],
-                DropdownMenuItem(
-                  value: ButtonMode.macro,
-                  child: Text(AppTranslations.getText('mode_macro')),
-                ),
-                if (!restricted) ...[
-                  DropdownMenuItem(
-                    value: ButtonMode.handbrakePct,
-                    child: Text(AppTranslations.getText('mode_handbrake_pct')),
-                  ),
-                  DropdownMenuItem(
-                    value: ButtonMode.clutchPct,
-                    child: Text(AppTranslations.getText('mode_clutch_pct')),
-                  ),
-                ],
-              ],
-              onChanged: (v) {
-                if (v != null) _update(item.copyWith(mode: v));
-              },
+                onChanged: (v) {
+                  if (v != null) _update(item.copyWith(mode: v));
+                },
+              ),
             ),
           ],
         ),
@@ -202,21 +210,12 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
                       final val = await showSearchableKeyPicker(
                         context,
                         item.keyIndex,
+                        hideMacros: true,
                       );
                       if (val != null) _update(item.copyWith(keyIndex: val));
                     },
                     child: Text(
-                      item.keyIndex >= 2000
-                          ? '${AppTranslations.getText('macro_prefix')}${item.keyIndex - 1999}'
-                          : KeyboardKeys.appKeyMap.entries
-                                .firstWhere(
-                                  (e) => e.value == item.keyIndex,
-                                  orElse: () => MapEntry(
-                                    AppTranslations.getText('select_key'),
-                                    0,
-                                  ),
-                                )
-                                .key,
+                      KeyboardKeys.getKeyLabel(item.keyIndex),
                       style: const TextStyle(color: Color(0xFF40E0D0)),
                     ),
                   ),
@@ -423,8 +422,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
                 final act = e.value;
                 String txt = '';
                 if (act.type == MacroActionType.key) {
-                  txt =
-                      '${AppTranslations.getText('key_prefix')} ${act.value.toInt()}';
+                  txt = KeyboardKeys.getKeyLabel(act.value.toInt());
                 } else if (act.type == MacroActionType.gasPct) {
                   txt =
                       '${AppTranslations.getText('gas_pct')} ${(act.value * 100).toInt()}%';
@@ -483,7 +481,71 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
                 ),
               ),
             ],
-          ),      ],
+          ),
+        if (safeMode == ButtonMode.parallelMacro)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppTranslations.getText('parallel_macro_desc'),
+                style: const TextStyle(color: Colors.amber, fontSize: 11),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: item.parallelMacroKeys.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final k = entry.value;
+                  return Chip(
+                    backgroundColor: Colors.amber.withValues(alpha: 0.16),
+                    label: Text(
+                      KeyboardKeys.getKeyLabel(k),
+                      style: const TextStyle(color: Colors.amber, fontSize: 11),
+                    ),
+                    deleteIconColor: Colors.redAccent,
+                    onDeleted: () {
+                      final updated = List<int>.from(item.parallelMacroKeys)
+                        ..removeAt(idx);
+                      _update(item.copyWith(parallelMacroKeys: updated));
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 8),
+              if (item.parallelMacroKeys.length < 4)
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add, size: 15, color: Colors.amber),
+                  label: Text(
+                    AppTranslations.getText('add_key'),
+                    style: const TextStyle(color: Colors.amber, fontSize: 11),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber.withValues(alpha: 0.18),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 0,
+                    ),
+                    minimumSize: const Size(0, 30),
+                  ),
+                  onPressed: () async {
+                    final k = await showSearchableKeyPicker(
+                      context,
+                      0,
+                      hideMacros: true,
+                    );
+                    if (k != null && k > 0) {
+                      final updated = List<int>.from(item.parallelMacroKeys);
+                      if (updated.length < 4 && !updated.contains(k)) {
+                        updated.add(k);
+                        _update(item.copyWith(parallelMacroKeys: updated));
+                      }
+                    }
+                  },
+                ),
+            ],
+          ),
+      ],
     );
   }
 
@@ -520,31 +582,44 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
           }),
           
           _label('Yukarı Kaydırma'),
-          _keyDropdown(item.customSwipeKeys?[1] ?? 0, (v) => _updateSwipeKey(item, 1, v)),
+          _keyDropdown(_effectiveBarSwipeKey(item, 1), (v) => _updateSwipeKey(item, 1, v)),
           
           _label('Aşağı Kaydırma'),
-          _keyDropdown(item.customSwipeKeys?[2] ?? 0, (v) => _updateSwipeKey(item, 2, v)),
+          _keyDropdown(_effectiveBarSwipeKey(item, 2), (v) => _updateSwipeKey(item, 2, v)),
           
           _label('Sola Kaydırma'),
-          _keyDropdown(item.customSwipeKeys?[3] ?? 0, (v) => _updateSwipeKey(item, 3, v)),
+          _keyDropdown(_effectiveBarSwipeKey(item, 3), (v) => _updateSwipeKey(item, 3, v)),
           
           _label('Sağa Kaydırma'),
-          _keyDropdown(item.customSwipeKeys?[4] ?? 0, (v) => _updateSwipeKey(item, 4, v)),
+          _keyDropdown(_effectiveBarSwipeKey(item, 4), (v) => _updateSwipeKey(item, 4, v)),
           
           _label('Sol Yukarı Kaydırma'),
-          _keyDropdown(item.customSwipeKeys?[5] ?? 0, (v) => _updateSwipeKey(item, 5, v)),
+          _keyDropdown(_effectiveBarSwipeKey(item, 5), (v) => _updateSwipeKey(item, 5, v)),
           
           _label('Sağ Yukarı Kaydırma'),
-          _keyDropdown(item.customSwipeKeys?[6] ?? 0, (v) => _updateSwipeKey(item, 6, v)),
+          _keyDropdown(_effectiveBarSwipeKey(item, 6), (v) => _updateSwipeKey(item, 6, v)),
           
           _label('Sol Aşağı Kaydırma'),
-          _keyDropdown(item.customSwipeKeys?[7] ?? 0, (v) => _updateSwipeKey(item, 7, v)),
+          _keyDropdown(_effectiveBarSwipeKey(item, 7), (v) => _updateSwipeKey(item, 7, v)),
           
           _label('Sağ Aşağı Kaydırma'),
-          _keyDropdown(item.customSwipeKeys?[8] ?? 0, (v) => _updateSwipeKey(item, 8, v)),
+          _keyDropdown(_effectiveBarSwipeKey(item, 8), (v) => _updateSwipeKey(item, 8, v)),
         ],
       ),
     );
+  }
+
+  int _effectiveBarSwipeKey(Layout5Item item, int dir) {
+    final int? raw = item.customSwipeKeys?[dir];
+    if (raw == null) {
+      if (dir == 1 || dir == 2) {
+        return item.type == Layout5ItemType.gasBar ? 19 : 20;
+      }
+      return 0;
+    }
+    if (raw == -1) return 19;
+    if (raw == -2) return 20;
+    return raw;
   }
 
   Widget _keyDropdown(int value, void Function(int) onChanged) {
@@ -563,14 +638,7 @@ extension _PropertiesPanelWidgetsExt on _PropertiesPanelState {
         child: Text(
           value == 0
               ? 'Atanmadı'
-              : (value >= 2000
-                  ? '${AppTranslations.getText('macro_prefix')}${value - 1999}'
-                  : KeyboardKeys.appKeyMap.entries
-                      .firstWhere(
-                        (e) => e.value == value,
-                        orElse: () => MapEntry(AppTranslations.getText('select_key'), 0),
-                      )
-                      .key),
+              : KeyboardKeys.getKeyLabel(value),
           style: const TextStyle(color: Color(0xFF40E0D0)),
         ),
       ),

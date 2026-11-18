@@ -60,7 +60,12 @@ private:
         if (GetModuleFileNameA(NULL, exePath, MAX_PATH) > 0) {
             std::filesystem::path p(exePath);
             std::filesystem::path dir = p.parent_path();
-            std::filesystem::path mainEkDir = dir / "DoYaDi_Ek";
+            std::filesystem::path mainEkDir = dir / "OyuKu_Ek";
+            std::filesystem::path legacyEkDir = dir / "DoYaDi_Ek";
+            if (!std::filesystem::exists(mainEkDir) && std::filesystem::exists(legacyEkDir)) {
+                std::error_code ec;
+                std::filesystem::create_directories(mainEkDir, ec);
+            }
             std::string mainStr = mainEkDir.string();
             try {
                 if (std::filesystem::exists(mainEkDir)) {
@@ -73,6 +78,16 @@ private:
             }
             dirs.push_back(mainEkDir.string());
             uniquePaths.insert(mainStr);
+
+            if (std::filesystem::exists(legacyEkDir)) {
+                try {
+                    std::string legStr = std::filesystem::canonical(legacyEkDir).string();
+                    if (uniquePaths.find(legStr) == uniquePaths.end()) {
+                        dirs.push_back(legacyEkDir.string());
+                        uniquePaths.insert(legStr);
+                    }
+                } catch (...) {}
+            }
         }
 
         if (!ekKlasorYolu.empty()) {
@@ -264,8 +279,9 @@ public:
                 // ── String Mesaj: DOYADI_ADDON_LIST ──
                 else if (bytes >= 17) {
                     std::string msg((char*)buffer, bytes);
-                    if (msg.find("DOYADI_ADDON_LIST") != std::string::npos) {
-                        std::cout << "[ADDON] Telefondan DOYADI_ADDON_LIST talebi alindi." << std::endl;
+                    if (msg.find("DOYADI_ADDON_LIST") != std::string::npos ||
+                        msg.find("OYUKU_ADDON_LIST") != std::string::npos) {
+                        std::cout << "[ADDON] Telefondan eklenti listesi talebi alindi." << std::endl;
                         std::string json = GetAddonListJson();
                         std::cout << "[ADDON] Gonderilen Yanit: " << json << std::endl;
                         sendto(addonSock, json.c_str(), (int)json.length(), 0,
@@ -379,7 +395,7 @@ public:
             loadedFiles.insert(path.filename().string());
         }
 
-        auto searchDirs = GetSearchDirectories(".\\DoYaDi_Ek");
+        auto searchDirs = GetSearchDirectories(".\\OyuKu_Ek");
         for (const auto& d : searchDirs) {
             if (std::filesystem::exists(d) && std::filesystem::is_directory(d)) {
                 try {

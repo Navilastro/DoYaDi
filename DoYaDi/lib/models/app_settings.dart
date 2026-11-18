@@ -539,7 +539,7 @@ class AppSettings {
     this.mod7RpmLowColor = const Color(0xFF00E676),
     this.mod7RpmMidColor = const Color(0xFFFFEA00),
     this.mod7RpmHighColor = const Color(0xFFFF1744),
-    this.mod7RpmLimColor = const Color(0xFFD500F9),
+    this.mod7RpmLimColor = const Color(0xFFFF0000),
     this.mod7GearColor = const Color(0xFFFFFFFF),
     this.mod7SpeedColor = const Color(0xFFFFFFFF),
     this.mod7DrsActiveColor = const Color(0xFF00E676),
@@ -811,7 +811,7 @@ class AppSettings {
     mod7RpmLowColor = const Color(0xFF00E676);
     mod7RpmMidColor = const Color(0xFFFFEA00);
     mod7RpmHighColor = const Color(0xFFFF1744);
-    mod7RpmLimColor = const Color(0xFFD500F9);
+    mod7RpmLimColor = const Color(0xFFFF0000);
     mod7GearColor = const Color(0xFFFFFFFF);
     mod7SpeedColor = const Color(0xFFFFFFFF);
     mod7DrsActiveColor = const Color(0xFF00E676);

@@ -1,0 +1,8 @@
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  image_path: "assets/icons/virplelev_logo.png"
+  adaptive_icon_background: "#09090B"
+  adaptive_icon_foreground: "assets/icons/virplelev_logo.png"

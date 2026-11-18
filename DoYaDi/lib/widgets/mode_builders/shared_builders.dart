@@ -213,7 +213,7 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
             children: [
               Expanded(
                 child: TapZone(
-                  label: '${AppTranslations.getText('key_prefix')} $k1',
+                  label: KeyboardKeys.getKeyLabel(k1),
                   color: color,
                   mediaPath: btnMedia,
                   blurLabel: hasBgMedia,
@@ -224,7 +224,7 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
               ),
               Expanded(
                 child: TapZone(
-                  label: '${AppTranslations.getText('key_prefix')} $k2',
+                  label: KeyboardKeys.getKeyLabel(k2),
                   color: color,
                   mediaPath: btnMedia,
                   blurLabel: hasBgMedia,
@@ -241,7 +241,7 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
             children: [
               Expanded(
                 child: TapZone(
-                  label: '${AppTranslations.getText('key_prefix')} $k3',
+                  label: KeyboardKeys.getKeyLabel(k3),
                   color: color,
                   mediaPath: btnMedia,
                   blurLabel: hasBgMedia,
@@ -252,7 +252,7 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
               ),
               Expanded(
                 child: TapZone(
-                  label: '${AppTranslations.getText('key_prefix')} $k4',
+                  label: KeyboardKeys.getKeyLabel(k4),
                   color: color,
                   mediaPath: btnMedia,
                   blurLabel: hasBgMedia,
@@ -267,7 +267,7 @@ extension _SharedBuildersExt<T extends StatefulWidget> on DrivingModeBuildMixin<
         if (k5 != null)
           Expanded(
             child: TapZone(
-              label: '${AppTranslations.getText('key_prefix')} $k5',
+              label: KeyboardKeys.getKeyLabel(k5),
               color: color,
               mediaPath: btnMedia,
               blurLabel: hasBgMedia,

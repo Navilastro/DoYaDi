@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/app_config.dart';
 import '../core/utils/app_translations.dart';
 import '../services/ad_service.dart';
 
@@ -40,12 +41,12 @@ class MonetizationProvider extends ChangeNotifier {
   List<ProductDetails> _products = [];
   final Set<String> _restoredActiveProductIds = <String>{};
 
-  /// Yıllık PRO aboneliği aktif mi?
-  bool get isPro => _isPro;
+  /// Yıllık PRO aboneliği aktif mi? (Admin/VIP flavor'da otomatik true)
+  bool get isPro => AppConfig.instance.isVIP || _isPro;
 
   /// Yıllık Reklam Kaldırma aboneliği aktif mi?
-  /// PRO olan kullanıcı otomatik olarak Ad-Free sayılır.
-  bool get isAdFree => _isAdFree || _isPro;
+  /// Admin/VIP veya PRO olan kullanıcı otomatik olarak Ad-Free sayılır.
+  bool get isAdFree => AppConfig.instance.isVIP || _isAdFree || _isPro;
 
   bool get isLoading => _isLoading;
   bool get isStoreAvailable => _isStoreAvailable;
@@ -91,6 +92,14 @@ class MonetizationProvider extends ChangeNotifier {
   Future<void> initialize() async {
     if (_isInitialized || _isDisposed) return;
     _isInitialized = true;
+
+    if (AppConfig.instance.isVIP) {
+      _isAdFree = true;
+      _isPro = true;
+      AdService().updateSubscriptionStatus(isAdFreeOrPro: true);
+      _safeNotifyListeners();
+      return;
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -399,6 +408,7 @@ class MonetizationProvider extends ChangeNotifier {
   /// Kullanıcı limiti aştığında (ör. 4. Ayar Şablonu) veya yükseltme istediğinde
   /// Abonelik / Paywall penceresini açar ve "Satın Alımları Geri Yükle" seçeneğini sunar.
   Future<void> showPaywall(BuildContext context) async {
+    if (AppConfig.instance.isVIP) return;
     if (!context.mounted) return;
     await showDialog<void>(
       context: context,

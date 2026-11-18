@@ -76,7 +76,7 @@ Sunucu kurulum dosyası setup.exe'yi indirmek için -> <a href="https://github.c
       Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
       [Files]
-      Source: "..\DoYaDi_Server\x64\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+      Source: "..\OyuKu_Server\x64\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
       [Icons]
       Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

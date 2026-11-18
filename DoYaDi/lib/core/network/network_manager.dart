@@ -105,6 +105,15 @@ class NetworkManager {
       targetIp = (prefs.getString('last_pc_ip') ?? '').trim();
     }
     if (targetIp.isEmpty) return;
+
+    // Soket zaten açık ve aynı hedef IP'ye ayarlıysa kapat-aç yapma; sadece uyandır.
+    if (_udpSocket != null && _targetAddress?.address == targetIp) {
+      try {
+        _udpSocket!.send(utf8.encode("DOYADI_SEARCH"), _targetAddress!, 8889);
+      } catch (_) {}
+      return;
+    }
+
     await initUdp(targetIp);
   }
 

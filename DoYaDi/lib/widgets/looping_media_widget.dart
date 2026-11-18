@@ -71,14 +71,17 @@ class LoopingMediaWidget extends StatefulWidget {
   State<LoopingMediaWidget> createState() => _LoopingMediaWidgetState();
 }
 
-class _LoopingMediaWidgetState extends State<LoopingMediaWidget> {
+class _LoopingMediaWidgetState extends State<LoopingMediaWidget>
+    with WidgetsBindingObserver {
   VideoPlayerController? _controller;
   bool _isInitialized = false;
   String? _currentPath;
+  ImageProvider? _cachedImageProvider;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentPath = widget.mediaPath;
     _initMedia();
   }
@@ -90,46 +93,87 @@ class _LoopingMediaWidgetState extends State<LoopingMediaWidget> {
       _currentPath = widget.mediaPath;
       _disposeController();
       _initMedia();
+    } else if (_controller != null &&
+        _isInitialized &&
+        !_controller!.value.isPlaying &&
+        !_controller!.value.isBuffering) {
+      _controller!.play();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        _controller != null &&
+        _isInitialized &&
+        !_controller!.value.isPlaying) {
+      _controller!.play();
+    }
+  }
+
+  void _onVideoControllerUpdate() {
+    final ctrl = _controller;
+    if (!mounted || ctrl == null || !_isInitialized) return;
+    if (!ctrl.value.isPlaying && !ctrl.value.isBuffering && !ctrl.value.hasError) {
+      ctrl.play();
     }
   }
 
   void _disposeController() {
+    _controller?.removeListener(_onVideoControllerUpdate);
     _controller?.pause();
     _controller?.dispose();
     _controller = null;
     _isInitialized = false;
+    _cachedImageProvider = null;
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _disposeController();
     super.dispose();
   }
 
   void _initMedia() {
     final path = _currentPath?.trim();
-    if (path == null || path.isEmpty) return;
+    if (path == null || path.isEmpty) {
+      _cachedImageProvider = null;
+      return;
+    }
 
     if (AppMediaHelper.isVideo(path)) {
+      _cachedImageProvider = null;
       final isNetwork = path.startsWith('http://') || path.startsWith('https://');
       final isAsset = path.startsWith('assets/');
+      final options = VideoPlayerOptions(mixWithOthers: true);
 
       if (isNetwork) {
-        _controller = VideoPlayerController.networkUrl(Uri.parse(path));
+        _controller = VideoPlayerController.networkUrl(
+          Uri.parse(path),
+          videoPlayerOptions: options,
+        );
       } else if (isAsset) {
-        _controller = VideoPlayerController.asset(path);
+        _controller = VideoPlayerController.asset(
+          path,
+          videoPlayerOptions: options,
+        );
       } else {
-        _controller = VideoPlayerController.file(File(path));
+        _controller = VideoPlayerController.file(
+          File(path),
+          videoPlayerOptions: options,
+        );
       }
 
       _controller?.setLooping(true);
       _controller?.setVolume(0.0); // Arka plan videoları sessiz oynatılır
       _controller?.initialize().then((_) {
-        if (mounted) {
+        if (mounted && _controller != null) {
           setState(() {
             _isInitialized = true;
           });
           _controller?.play();
+          _controller?.addListener(_onVideoControllerUpdate);
         }
       }).catchError((err) {
         debugPrint('Video oynatıcı başlatma hatası ($path): $err');
@@ -139,6 +183,16 @@ class _LoopingMediaWidgetState extends State<LoopingMediaWidget> {
           });
         }
       });
+    } else {
+      final isNetwork = path.startsWith('http://') || path.startsWith('https://');
+      final isAsset = path.startsWith('assets/');
+      if (isNetwork) {
+        _cachedImageProvider = NetworkImage(path);
+      } else if (isAsset) {
+        _cachedImageProvider = AssetImage(path);
+      } else {
+        _cachedImageProvider = FileImage(File(path));
+      }
     }
   }
 
@@ -175,17 +229,12 @@ class _LoopingMediaWidgetState extends State<LoopingMediaWidget> {
     }
 
     // Görsel veya GIF
-    final isNetwork = path.startsWith('http://') || path.startsWith('https://');
-    final isAsset = path.startsWith('assets/');
-
-    ImageProvider imageProvider;
-    if (isNetwork) {
-      imageProvider = NetworkImage(path);
-    } else if (isAsset) {
-      imageProvider = AssetImage(path);
-    } else {
-      imageProvider = FileImage(File(path));
-    }
+    final ImageProvider imageProvider = _cachedImageProvider ??
+        (path.startsWith('http://') || path.startsWith('https://')
+            ? NetworkImage(path)
+            : (path.startsWith('assets/')
+                ? AssetImage(path) as ImageProvider
+                : FileImage(File(path))));
 
     return Image(
       image: imageProvider,
@@ -193,6 +242,7 @@ class _LoopingMediaWidgetState extends State<LoopingMediaWidget> {
       height: widget.height,
       fit: widget.fit,
       alignment: widget.alignment,
+      gaplessPlayback: true,
       errorBuilder: (ctx, err, stack) {
         return widget.fallback ?? const SizedBox.shrink();
       },

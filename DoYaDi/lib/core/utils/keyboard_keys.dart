@@ -12,6 +12,8 @@ class KeyboardKeys {
       AppTranslations.getText('btn_y'): 8,
       AppTranslations.getText('btn_lb'): 1,
       AppTranslations.getText('btn_rb'): 2,
+      AppTranslations.getText('btn_rt_analog'): 19,
+      AppTranslations.getText('btn_lt_analog'): 20,
       AppTranslations.getText('btn_guide'): 3,
       AppTranslations.getText('btn_dpad_up'): 9,
       AppTranslations.getText('btn_dpad_down'): 10,
@@ -151,5 +153,28 @@ class KeyboardKeys {
     }
 
     return base;
+  }
+
+  /// Key ID'sini mevcut dildeki görünen buton/tuş adına çevirir.
+  static String getKeyLabel(int keyVal) {
+    if (keyVal == -1 || keyVal == 19) {
+      return AppTranslations.getText('btn_rt_analog');
+    }
+    if (keyVal == -2 || keyVal == 20) {
+      return AppTranslations.getText('btn_lt_analog');
+    }
+    for (final entry in appKeyMap.entries) {
+      if (entry.value == keyVal) {
+        return entry.key;
+      }
+    }
+    if (keyVal >= 3000) {
+      return '${AppTranslations.getText('macro_prefix')}#${keyVal - 3000}';
+    }
+    if (keyVal >= 2000) {
+      final int idx = keyVal >= 2010 ? keyVal - 2009 : keyVal - 1999;
+      return '${AppTranslations.getText('macro_prefix')}#$idx';
+    }
+    return '${AppTranslations.getText('key_prefix')} $keyVal';
   }
 }

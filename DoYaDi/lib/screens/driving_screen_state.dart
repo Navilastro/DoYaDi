@@ -138,6 +138,10 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   bool gasPedalIconPressed = false;
   bool brakePedalIconPressed = false;
 
+  // R2 (19) / L2 (20) buton tetik durumu
+  bool r2TriggerButtonActive = false;
+  bool l2TriggerButtonActive = false;
+
   // Debriyaj ve El Freni State
   double clutchPercentage = 0.0;
   double clutchIconValue = 0.0;
@@ -170,8 +174,16 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
   int flightFlapStage = 0; // 0=UP, 1=COMBAT, 2=LAND
   bool flightTargetLocked = false;
 
+  // Mode 10 (Uçuş Yönetim & MFD Kokpiti) Otopilot & Ekran Sekmesi
+  bool flightApWingLevel = false;
+  bool flightApAltHold = false;
+  bool flightAutoThrottleLock = false;
+  int mod10MfdTab = 0; // 0: PFD/ADI, 1: ENG/SYS, 2: NAV/HSI
+
   // Basılı tuşlar bitmap (1-16)
   final Set<int> pressedKeys = {};
+  // Mod 5 basılı buton görsel geri bildirimi
+  final Set<String> pressedMod5ButtonIds = {};
   final Map<int, Timer> _buttonTimers = {};
   // Hızlı (mode 3): basılı tutulurken tekrar ateşlemeyi engelleyen kilit
   final Set<int> _quickFireLocked = {};
@@ -249,7 +261,15 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
 
         int mappedKey = 0;
         if (state.customSwipeKeys != null) {
-          mappedKey = state.customSwipeKeys![state.direction.index] ?? -1;
+          final int? customKey = state.customSwipeKeys![state.direction.index];
+          if (customKey != null) {
+            mappedKey = customKey;
+          } else if (state.direction == SwipeDir.up ||
+              state.direction == SwipeDir.down) {
+            mappedKey = state.isGas ? -1 : -2;
+          } else {
+            mappedKey = 0;
+          }
         } else if (state.isGas) {
           switch (state.direction) {
             case SwipeDir.up:
@@ -310,12 +330,12 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
           }
         }
 
-        if (mappedKey == -1) {
-          // Gaz bar aksiyonu
+        if (mappedKey == -1 || mappedKey == 19) {
+          // Gaz bar aksiyonu (R2)
           state.isBarAction = true;
           state.isGas = true;
-        } else if (mappedKey == -2) {
-          // Fren bar aksiyonu
+        } else if (mappedKey == -2 || mappedKey == 20) {
+          // Fren bar aksiyonu (L2)
           state.isBarAction = true;
           state.isGas = false;
         } else if (mappedKey > 0) {
@@ -521,6 +541,18 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
       return;
     }
 
+    // Serial Macro: ID 2000 veya >= 2010 olan (ve customMacros içinde kayıtlı) makrolar adımları sırayla çalıştırır
+    if ((key == 2000 || key >= 2010) &&
+        key < 3000 &&
+        s.customMacros.containsKey(key)) {
+      final steps = s.customMacros[key];
+      if (steps != null && steps.isNotEmpty) {
+        _triggerHapticForButton(key, true);
+        _executeCustomSerialMacro(steps);
+      }
+      return;
+    }
+
     final mode = s.customButtonPressModes[key] ?? s.globalButtonPressMode;
 
     if (mode == 2) {
@@ -583,6 +615,25 @@ mixin DrivingInputMixin<T extends StatefulWidget> on State<T> {
     Future.delayed(const Duration(milliseconds: 80), () {
       if (mounted) setState(() => pressedKeys.remove(key));
     });
+  }
+
+  Future<void> _executeCustomSerialMacro(List<int> steps) async {
+    for (final step in steps) {
+      if (!mounted) return;
+      if (step <= -30000) {
+        final pct = (-(step + 30000) / 100.0).clamp(0.0, 1.0);
+        setState(() => brakePercentage = pct);
+      } else if (step <= -20000) {
+        final pct = (-(step + 20000) / 100.0).clamp(0.0, 1.0);
+        setState(() => gasPercentage = pct);
+      } else if (step <= -10000) {
+        final ms = -(step + 10000);
+        await Future.delayed(Duration(milliseconds: ms.clamp(10, 10000)));
+      } else if (step > 0) {
+        fireKey(step);
+        await Future.delayed(const Duration(milliseconds: 90));
+      }
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────

@@ -28,7 +28,7 @@ class RpmLedBarPainter extends CustomPainter {
     this.lowColor = const Color(0xFF00E676),
     this.midColor = const Color(0xFFFFEB3B),
     this.highColor = const Color(0xFFFF1744),
-    this.limColor = const Color(0xFF448AFF),
+    this.limColor = const Color(0xFFFF0000),
   });
 
   Color _segmentColorAt(int index) {

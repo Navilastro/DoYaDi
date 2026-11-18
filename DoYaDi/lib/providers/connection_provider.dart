@@ -301,6 +301,14 @@ class ConnectionProvider with ChangeNotifier {
     // 2. Wi-Fi veya USB IP mevcutsa (veya NetworkManager'da kayıtlıysa) UDP soketini tazele
     final targetIp = _wifiIp.isNotEmpty ? _wifiIp : NetworkManager().serverIp;
     if (targetIp.isNotEmpty) {
+      // Bağlantı ve soket zaten bu IP için hazırsa gereksiz disk/notify döngüsüne girme.
+      if (_status == ConnectionStatus.connected &&
+          _type == ConnectionType.wifi &&
+          NetworkManager().isUdpReady &&
+          NetworkManager().serverIp == targetIp.trim()) {
+        await NetworkManager().ensureUdpReady(targetIp);
+        return const Success(null);
+      }
       return connectWifi(ip: targetIp);
     }
 

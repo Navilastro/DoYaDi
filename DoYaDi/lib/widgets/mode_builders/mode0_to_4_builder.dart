@@ -199,7 +199,7 @@ extension _Mode0To4BuilderExt<T extends StatefulWidget> on DrivingModeBuildMixin
           SizedBox(
             height: size.height * 0.18,
             child: TapZone(
-              label: '${AppTranslations.getText('key_prefix')} ${s.m4KeyBottom}',
+              label: KeyboardKeys.getKeyLabel(s.m4KeyBottom),
               color: s.mode234ButtonColor,
               mediaPath: (s.mode234ButtonMediaPath != null && s.mode234ButtonMediaPath!.isNotEmpty)
                   ? s.mode234ButtonMediaPath
